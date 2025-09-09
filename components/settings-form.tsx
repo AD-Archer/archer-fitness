@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSession, signOut } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,21 +13,65 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { User, Dumbbell, Apple, Bell, Shield, Download, Calculator, Brain, Info } from "lucide-react"
+import { toast } from "sonner"
+import { User, Dumbbell, Apple, Bell, Shield, Download, Calculator, Brain, Info, Loader2 } from "lucide-react"
+
+interface UserProfile {
+  name: string
+  email: string
+  age: string
+  weight: string
+  height: string
+  gender: string
+  fitnessGoals: string
+  activityLevel: string
+}
+
+interface WorkoutPrefs {
+  defaultDuration: string
+  difficultyLevel: string
+  preferredTime: string
+  availableEquipment: string[]
+  restDayReminders: boolean
+}
+
+interface NutritionPrefs {
+  dailyCalories: string
+  proteinTarget: string
+  carbTarget: string
+  fatTarget: string
+  dietaryRestrictions: string[]
+  trackWater: boolean
+  waterTarget: string
+  useSmartCalculations: boolean
+}
+
+interface AppPrefs {
+  theme: string
+  units: string
+  notifications: boolean
+  weeklyReports: boolean
+  dataSharing: boolean
+}
 
 export function SettingsForm() {
-  const [profile, setProfile] = useState({
-    name: "John Doe",
-    email: "john@example.com",
-    age: "28",
-    weight: "75",
-    height: "180",
-    gender: "male", // Added gender for BMR calculation
-    fitnessGoal: "muscle_gain",
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+
+  const [profile, setProfile] = useState<UserProfile>({
+    name: "",
+    email: "",
+    age: "",
+    weight: "",
+    height: "",
+    gender: "male",
+    fitnessGoals: "muscle_gain",
     activityLevel: "moderate",
   })
 
-  const [workoutPrefs, setWorkoutPrefs] = useState({
+  const [workoutPrefs, setWorkoutPrefs] = useState<WorkoutPrefs>({
     defaultDuration: "45",
     difficultyLevel: "intermediate",
     preferredTime: "morning",
@@ -33,24 +79,67 @@ export function SettingsForm() {
     restDayReminders: true,
   })
 
-  const [nutritionPrefs, setNutritionPrefs] = useState({
+  const [nutritionPrefs, setNutritionPrefs] = useState<NutritionPrefs>({
     dailyCalories: "2200",
     proteinTarget: "150",
     carbTarget: "250",
     fatTarget: "80",
     dietaryRestrictions: [],
     trackWater: true,
-    waterTarget: "2500", // Added water target in ml
-    useSmartCalculations: true, // Toggle for AI calculations
+    waterTarget: "2500",
+    useSmartCalculations: true,
   })
 
-  const [appPrefs, setAppPrefs] = useState({
+  const [appPrefs, setAppPrefs] = useState<AppPrefs>({
     theme: "system",
     units: "metric",
     notifications: true,
     weeklyReports: true,
     dataSharing: false,
   })
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (status === "loading") return
+    if (!session) {
+      router.push("/auth/signin")
+      return
+    }
+  }, [session, status, router])
+
+  // Load user data
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (!session?.user?.id) return
+
+      setIsLoading(true)
+      try {
+        const response = await fetch("/api/user/profile")
+        if (response.ok) {
+          const userData = await response.json()
+          if (userData.user) {
+            setProfile({
+              name: userData.user.name || "",
+              email: userData.user.email || "",
+              age: userData.user.age?.toString() || "",
+              weight: userData.user.weight?.toString() || "",
+              height: userData.user.height?.toString() || "",
+              gender: "male", // Add to DB schema if needed
+              fitnessGoals: userData.user.fitnessGoals || "muscle_gain",
+              activityLevel: userData.user.activityLevel || "moderate",
+            })
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load user data:", error)
+        toast.error("Failed to load user data")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadUserData()
+  }, [session])
 
   const equipmentOptions = [
     "bodyweight",
@@ -112,48 +201,46 @@ export function SettingsForm() {
   const calculateGoalCalories = () => {
     const tdee = calculateTDEE()
     const goalAdjustments = {
-      weight_loss: -500, // 500 calorie deficit
-      muscle_gain: +300, // 300 calorie surplus
+      weight_loss: -500,
+      muscle_gain: +300,
       maintenance: 0,
       endurance: +200,
       strength: +250,
     }
-    return Math.round(tdee + goalAdjustments[profile.fitnessGoal as keyof typeof goalAdjustments])
+    return Math.round(tdee + goalAdjustments[profile.fitnessGoals as keyof typeof goalAdjustments])
   }
 
   const calculateMacros = () => {
     const calories = calculateGoalCalories()
-    const weight = Number.parseFloat(profile.weight)
 
-    let proteinRatio = 0.25 // Default 25% protein
-    let fatRatio = 0.25 // Default 25% fat
-    let carbRatio = 0.5 // Default 50% carbs
+    let proteinRatio = 0.25
+    let fatRatio = 0.25
+    let carbRatio = 0.5
 
-    // Adjust based on goals
-    if (profile.fitnessGoal === "muscle_gain") {
+    if (profile.fitnessGoals === "muscle_gain") {
       proteinRatio = 0.3
       fatRatio = 0.25
       carbRatio = 0.45
-    } else if (profile.fitnessGoal === "weight_loss") {
+    } else if (profile.fitnessGoals === "weight_loss") {
       proteinRatio = 0.35
       fatRatio = 0.3
       carbRatio = 0.35
-    } else if (profile.fitnessGoal === "strength") {
+    } else if (profile.fitnessGoals === "strength") {
       proteinRatio = 0.3
       fatRatio = 0.25
       carbRatio = 0.45
     }
 
     return {
-      protein: Math.round((calories * proteinRatio) / 4), // 4 cal per gram
-      carbs: Math.round((calories * carbRatio) / 4), // 4 cal per gram
-      fat: Math.round((calories * fatRatio) / 9), // 9 cal per gram
+      protein: Math.round((calories * proteinRatio) / 4),
+      carbs: Math.round((calories * carbRatio) / 4),
+      fat: Math.round((calories * fatRatio) / 9),
     }
   }
 
   const calculateWaterTarget = () => {
     const weight = Number.parseFloat(profile.weight)
-    const baseWater = weight * 35 // 35ml per kg base
+    const baseWater = weight * 35
     const activityBonus =
       profile.activityLevel === "extreme"
         ? 500
@@ -185,7 +272,7 @@ export function SettingsForm() {
     profile.height,
     profile.age,
     profile.gender,
-    profile.fitnessGoal,
+    profile.fitnessGoals,
     profile.activityLevel,
     nutritionPrefs.useSmartCalculations,
   ])
@@ -196,15 +283,101 @@ export function SettingsForm() {
     const goalCalories = calculateGoalCalories()
 
     let recommendation = ""
-    if (profile.fitnessGoal === "weight_loss") {
+    if (profile.fitnessGoals === "weight_loss") {
       recommendation = `For healthy weight loss, aim for a 500-calorie deficit. Your TDEE is ${tdee} calories, so targeting ${goalCalories} calories will help you lose about 1 pound per week.`
-    } else if (profile.fitnessGoal === "muscle_gain") {
+    } else if (profile.fitnessGoals === "muscle_gain") {
       recommendation = `For muscle gain, you need a slight caloric surplus. Your TDEE is ${tdee} calories, so ${goalCalories} calories with adequate protein will support muscle growth.`
     } else {
       recommendation = `For maintenance, your TDEE of ${tdee} calories is your target. This will help you maintain your current weight while supporting your fitness goals.`
     }
 
     return recommendation
+  }
+
+  const handleSaveChanges = async () => {
+    setIsSaving(true)
+    try {
+      const response = await fetch("/api/user/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: profile.name,
+          age: profile.age ? parseInt(profile.age) : null,
+          weight: profile.weight ? parseFloat(profile.weight) : null,
+          height: profile.height ? parseFloat(profile.height) : null,
+          fitnessGoals: profile.fitnessGoals,
+          activityLevel: profile.activityLevel,
+        }),
+      })
+
+      if (response.ok) {
+        toast.success("Settings saved successfully!")
+      } else {
+        throw new Error("Failed to save settings")
+      }
+    } catch (error) {
+      console.error("Failed to save settings:", error)
+      toast.error("Failed to save settings")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+      try {
+        const response = await fetch("/api/user/profile", {
+          method: "DELETE",
+        })
+
+        if (response.ok) {
+          await signOut({ callbackUrl: "/" })
+          toast.success("Account deleted successfully")
+        } else {
+          throw new Error("Failed to delete account")
+        }
+      } catch (error) {
+        console.error("Failed to delete account:", error)
+        toast.error("Failed to delete account")
+      }
+    }
+  }
+
+  const handleExportData = async () => {
+    try {
+      const response = await fetch("/api/user/export")
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.style.display = "none"
+        a.href = url
+        a.download = "fitness-data-export.json"
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        toast.success("Data exported successfully")
+      } else {
+        throw new Error("Failed to export data")
+      }
+    } catch (error) {
+      console.error("Failed to export data:", error)
+      toast.error("Failed to export data")
+    }
+  }
+
+  if (status === "loading" || isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
+
+  if (!session) {
+    return null
   }
 
   return (
@@ -255,8 +428,10 @@ export function SettingsForm() {
                     id="email"
                     type="email"
                     value={profile.email}
-                    onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                    disabled
+                    className="bg-muted"
                   />
+                  <p className="text-xs text-muted-foreground">Email cannot be changed</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="age">Age</Label>
@@ -319,8 +494,8 @@ export function SettingsForm() {
               <div className="space-y-2">
                 <Label htmlFor="goal">Fitness Goal</Label>
                 <Select
-                  value={profile.fitnessGoal}
-                  onValueChange={(value) => setProfile({ ...profile, fitnessGoal: value })}
+                  value={profile.fitnessGoals}
+                  onValueChange={(value) => setProfile({ ...profile, fitnessGoals: value })}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -499,7 +674,7 @@ export function SettingsForm() {
                   {nutritionPrefs.useSmartCalculations && (
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                       <Info className="h-3 w-3" />
-                      Calculated based on your {profile.fitnessGoal.replace("_", " ")} goal
+                      Calculated based on your {profile.fitnessGoals.replace("_", " ")} goal
                     </p>
                   )}
                 </div>
@@ -531,7 +706,7 @@ export function SettingsForm() {
                   {nutritionPrefs.useSmartCalculations && (
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                       <Info className="h-3 w-3" />
-                      Optimized for {profile.fitnessGoal.replace("_", " ")}
+                      Optimized for {profile.fitnessGoals.replace("_", " ")}
                     </p>
                   )}
                 </div>
@@ -719,15 +894,15 @@ export function SettingsForm() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Change Password</Label>
-                  <Button variant="outline" className="w-full sm:w-auto bg-transparent">
-                    Update Password
+                  <Button variant="outline" className="w-full sm:w-auto bg-transparent" onClick={() => signOut()}>
+                    Sign Out
                   </Button>
                 </div>
 
                 <div className="space-y-2">
                   <Label>Export Data</Label>
                   <p className="text-sm text-muted-foreground">Download all your workout and nutrition data</p>
-                  <Button variant="outline" className="w-full sm:w-auto bg-transparent">
+                  <Button variant="outline" className="w-full sm:w-auto bg-transparent" onClick={handleExportData}>
                     <Download className="h-4 w-4 mr-2" />
                     Export Data
                   </Button>
@@ -736,7 +911,7 @@ export function SettingsForm() {
                 <div className="space-y-2">
                   <Label>Delete Account</Label>
                   <p className="text-sm text-muted-foreground">Permanently delete your account and all data</p>
-                  <Button variant="destructive" className="w-full sm:w-auto">
+                  <Button variant="destructive" className="w-full sm:w-auto" onClick={handleDeleteAccount}>
                     Delete Account
                   </Button>
                 </div>
@@ -747,7 +922,16 @@ export function SettingsForm() {
       </Tabs>
 
       <div className="flex flex-col sm:flex-row gap-4 pt-6">
-        <Button className="flex-1 sm:flex-none">Save Changes</Button>
+        <Button className="flex-1 sm:flex-none" onClick={handleSaveChanges} disabled={isSaving}>
+          {isSaving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Save Changes"
+          )}
+        </Button>
         <Button variant="outline" className="flex-1 sm:flex-none bg-transparent">
           Reset to Defaults
         </Button>
