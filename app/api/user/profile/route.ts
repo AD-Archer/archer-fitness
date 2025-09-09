@@ -5,12 +5,13 @@ import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 
 const profileUpdateSchema = z.object({
-  name: z.string().min(2).optional(),
-  height: z.number().positive().optional(),
-  weight: z.number().positive().optional(),
-  age: z.number().positive().optional(),
-  fitnessGoals: z.string().optional(),
-  activityLevel: z.string().optional(),
+  name: z.string().min(2).optional().nullable(),
+  height: z.number().positive().optional().nullable(),
+  weight: z.number().positive().optional().nullable(),
+  age: z.number().int().positive().optional().nullable(),
+  gender: z.enum(["male", "female"]).optional().nullable(),
+  fitnessGoals: z.string().optional().nullable(),
+  activityLevel: z.string().optional().nullable(),
 })
 
 export async function GET() {
@@ -23,26 +24,14 @@ export async function GET() {
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true,
-        height: true,
-        weight: true,
-        age: true,
-        fitnessGoals: true,
-        activityLevel: true,
-        createdAt: true,
-        updatedAt: true,
-      }
     })
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ user })
+  const { password, ...safeUser } = user as any
+  return NextResponse.json({ user: safeUser })
   } catch (error) {
     console.error("Profile fetch error:", error)
     return NextResponse.json(
@@ -61,26 +50,23 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const updateData = profileUpdateSchema.parse(body)
+    const parsed = profileUpdateSchema.parse(body)
 
-    const user = await prisma.user.update({
+    // Prisma expects undefined to leave fields unchanged; pass values directly (including null) to set nulls
+    const updateData: Record<string, any> = {}
+    for (const key of Object.keys(parsed)) {
+      const value = (parsed as any)[key]
+      if (value === undefined) continue
+      updateData[key] = value
+    }
+
+    const updated = await prisma.user.update({
       where: { id: session.user.id },
       data: updateData,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true,
-        height: true,
-        weight: true,
-        age: true,
-        fitnessGoals: true,
-        activityLevel: true,
-        updatedAt: true,
-      }
     })
 
-    return NextResponse.json({ user })
+    const { password, ...safeUser } = updated as any
+    return NextResponse.json({ user: safeUser })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

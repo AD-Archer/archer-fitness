@@ -55,6 +55,7 @@ model User {
   height        Float?
   weight        Float?
   age           Int?
+  gender        String?   // "male" or "female"
   fitnessGoals  String?
   activityLevel String?
 
@@ -62,6 +63,7 @@ model User {
   sessions      Session[]
   workouts      Workout[]
   nutritionLogs NutritionLog[]
+  preferences   UserPreference?
 
   @@map("users")
 }
@@ -105,4 +107,18 @@ model NutritionLog {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("nutrition_logs")
+}
+
+// User preferences stored as JSON for flexibility
+model UserPreference {
+  userId     String   @id @map("user_id")
+  workout    Json
+  nutrition  Json
+  app        Json
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
 }

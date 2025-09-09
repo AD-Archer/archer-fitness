@@ -1,4 +1,4 @@
-import { SettingsForm } from "@/components/settings-form"
+import { SettingsForm } from "@/app/settings/components/settings-form"
 import { Sidebar } from "@/components/sidebar"
 
 export default function SettingsPage() {
