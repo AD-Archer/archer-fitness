@@ -1,4 +1,4 @@
-import { CalorieTracker } from "@/components/calorie-tracker"
+import { CalorieTracker } from "@/app/nutrition/components/calorie-tracker"
 import { Sidebar } from "@/components/sidebar"
 
 export default function NutritionPage() {

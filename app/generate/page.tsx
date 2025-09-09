@@ -1,5 +1,5 @@
-import { AIWorkoutGenerator } from "@/components/ai-workout-generator"
-import { AIMealGenerator } from "@/components/ai-meal-generator"
+import { AIWorkoutGenerator } from "@/app/generate/components/ai-workout-generator"
+import { AIMealGenerator } from "@/app/generate/components/ai-meal-generator"
 import { Sidebar } from "@/components/sidebar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dumbbell, ChefHat } from "lucide-react"

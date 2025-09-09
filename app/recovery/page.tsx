@@ -1,4 +1,4 @@
-import { RecoveryMonitor } from "@/components/recovery-monitor"
+import { RecoveryMonitor } from "@/app/recovery/components/recovery-monitor"
 import { Sidebar } from "@/components/sidebar"
 
 export default function RecoveryPage() {

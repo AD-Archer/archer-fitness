@@ -396,9 +396,9 @@ export function ProgressAnalytics() {
                       <span>Progress</span>
                       <span
                         className={
-                          goal.adherence > 100
+                          (goal.adherence ?? goal.progress ?? 0) > 100
                             ? "text-green-600"
-                            : goal.adherence > 90
+                            : (goal.adherence ?? goal.progress ?? 0) > 90
                               ? "text-blue-600"
                               : "text-orange-600"
                         }
@@ -408,8 +408,8 @@ export function ProgressAnalytics() {
                     </div>
                     <div className="w-full bg-muted rounded-full h-2">
                       <div
-                        className={`h-2 rounded-full ${goal.adherence > 100 ? "bg-green-500" : goal.adherence > 90 ? "bg-blue-500" : "bg-orange-500"}`}
-                        style={{ width: `${Math.min(goal.adherence || goal.progress, 100)}%` }}
+                        className={`h-2 rounded-full ${(goal.adherence ?? goal.progress ?? 0) > 100 ? "bg-green-500" : (goal.adherence ?? goal.progress ?? 0) > 90 ? "bg-blue-500" : "bg-orange-500"}`}
+                        style={{ width: `${Math.min(goal.adherence ?? goal.progress ?? 0, 100)}%` }}
                       />
                     </div>
                   </div>

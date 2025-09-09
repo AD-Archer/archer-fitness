@@ -1,4 +1,4 @@
-import { ProgressAnalytics } from "@/components/progress-analytics"
+import { ProgressAnalytics } from "@/app/progress/components/progress-analytics"
 import { Sidebar } from "@/components/sidebar"
 
 export default function ProgressPage() {

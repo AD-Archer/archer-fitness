@@ -1,4 +1,4 @@
-import { WorkoutHistory } from "@/components/workout-history"
+import { WorkoutHistory } from "@/app/workouts/components/workout-history"
 import { Sidebar } from "@/components/sidebar"
 
 export default function WorkoutsPage() {
