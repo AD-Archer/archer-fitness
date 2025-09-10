@@ -1,32 +1,40 @@
+# Note, I have removed the database service for production use, as the database is hosted externally.
+# If you want to run the database in a container, uncomment the relevant sections.
+# Also be sure to check your dotenv file for the correct configuration.
+
 services:
   app:
     container_name: archer-fitness
-    build: .
-    ports:
-      - "3676:3000"
+    build: 
+      context: .
+      args:
+        PORT: ${PORT:-3000}
+    network_mode: host
     env_file:
       - .env
     environment:
       - NODE_ENV=production
-      - NEXTAUTH_URL=http://localhost:3676
+      # - PORT=3000
+      # - DATABASE_URL=postgresql://archer_fitness_user:CHANGME@db:5432/archer_fitness
     restart: unless-stopped
     # Remove volumes for production - everything should be in the container
     # volumes:
     #   - .:/app
     #   - /app/node_modules
 
-#   # Database service
+  # Database service
 #   db:
 #     image: postgres:15-alpine
 #     container_name: archer-fitness-db
 #     environment:
 #       - POSTGRES_USER=archer_fitness_user
-#       - POSTGRES_PASSWORD=changeme
+#       - POSTGRES_PASSWORD=CHANGME
 #       - POSTGRES_DB=archer_fitness
 #     ports:
 #       - "5432:5432"
 #     volumes:
 #       - postgres_data:/var/lib/postgresql/data
+#     restart: unless-stopped
 
 # volumes:
 #   postgres_data:
