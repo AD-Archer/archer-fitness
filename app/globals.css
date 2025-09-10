@@ -121,5 +121,38 @@
   }
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden; /* Prevent horizontal scrolling */
+    width: 100%; /* Ensure body takes full width */
+    max-width: 100vw; /* Prevent overflow on mobile */
+  }
+  html {
+    overflow-x: hidden; /* Ensure html doesn't scroll horizontally */
+    width: 100%;
+  }
+  
+  /* Mobile-specific fixes */
+  @media (max-width: 768px) {
+    * {
+      max-width: 100vw; /* Prevent any element from exceeding viewport width */
+      box-sizing: border-box;
+    }
+    
+    /* Ensure cards don't overflow */
+    .card, [class*="card"] {
+      max-width: 100%;
+      overflow: hidden;
+    }
+    
+    /* Fix grid layouts on mobile */
+    .grid {
+      min-width: 0; /* Allow grid to shrink below content size */
+    }
+    
+    /* Ensure text doesn't overflow */
+    .truncate {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
 }
