@@ -15,18 +15,18 @@ services:
     #   - .:/app
     #   - /app/node_modules
 
-  # Database service
-  db:
-    image: postgres:15-alpine
-    container_name: archer-fitness-db
-    environment:
-      - POSTGRES_USER=archer_fitness_user
-      - POSTGRES_PASSWORD=Rmx4BhRtr6zvhGwOqO4u
-      - POSTGRES_DB=archer_fitness
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+#   # Database service
+#   db:
+#     image: postgres:15-alpine
+#     container_name: archer-fitness-db
+#     environment:
+#       - POSTGRES_USER=archer_fitness_user
+#       - POSTGRES_PASSWORD=changeme
+#       - POSTGRES_DB=archer_fitness
+#     ports:
+#       - "5432:5432"
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
 
-volumes:
-  postgres_data:
+# volumes:
+#   postgres_data:

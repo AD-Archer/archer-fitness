@@ -13,6 +13,12 @@ COPY package.json pnpm-lock.yaml ./
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
+# Copy Prisma schema
+COPY prisma ./prisma
+
+# Generate Prisma client
+RUN npx prisma generate
+
 # Copy source code
 COPY . .
 
@@ -38,6 +44,9 @@ RUN pnpm install --frozen-lockfile --prod && npm cache clean --force
 COPY --from=base /app/.next ./.next
 COPY --from=base /app/public ./public
 COPY --from=base /app/prisma ./prisma
+
+# Generate Prisma client in production
+RUN npx prisma generate
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs
