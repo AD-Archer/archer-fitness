@@ -212,16 +212,29 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
 
       if (response.ok) {
         const newSession = await response.json()
-        toast.success('Workout repeated! Starting new session...')
+        toast.success('Workout repeated! Redirecting to track...')
         
-        // Call the onRepeatWorkout callback if provided
+        // Redirect to track page after a short delay to show the toast
+        setTimeout(() => {
+          window.location.href = '/track'
+        }, 1000)
+        
+        // Call the onRepeatWorkout callback if provided (for legacy support)
         if (onRepeatWorkout) {
           onRepeatWorkout({
             id: newSession.id,
             name: newSession.name,
             date: new Date(newSession.startTime),
             duration: newSession.duration || 0,
-            exercises: newSession.exercises?.map((ex: any) => ({
+            exercises: newSession.exercises?.map((ex: {
+              exerciseId: string
+              exercise?: { name?: string }
+              sets: Array<{
+                reps: number
+                weight?: number
+                completed: boolean
+              }>
+            }) => ({
               exerciseId: ex.exerciseId,
               exerciseName: ex.exercise?.name || 'Unknown Exercise',
               sets: ex.sets || []

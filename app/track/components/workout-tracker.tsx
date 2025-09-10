@@ -70,18 +70,90 @@ export function WorkoutTracker() {
   const [isAddingExercise, setIsAddingExercise] = useState(false)
   const [exerciseTimer, setExerciseTimer] = useState(0)
 
-  // Fetch templates on load
+  // Fetch templates and check for active sessions on load
   useEffect(() => {
     let active = true
-    const loadTemplates = async () => {
+    
+    const loadData = async () => {
       try {
+        // First check for active or paused workout sessions
+        const activeSessionsRes = await fetch("/api/workout-sessions?status=active&limit=1")
+        const pausedSessionsRes = await fetch("/api/workout-sessions?status=paused&limit=1")
+        
+        let activeSession = null
+        
+        // Check for active sessions first
+        if (activeSessionsRes.ok) {
+          const activeSessions = await activeSessionsRes.json()
+          if (activeSessions.length > 0) {
+            activeSession = activeSessions[0]
+            console.log("Found active session:", activeSession)
+          }
+        }
+        
+        // If no active session, check for paused sessions
+        if (!activeSession && pausedSessionsRes.ok) {
+          const pausedSessions = await pausedSessionsRes.json()
+          if (pausedSessions.length > 0) {
+            activeSession = pausedSessions[0]
+            console.log("Found paused session:", activeSession)
+          }
+        }
+        
+        if (activeSession && active) {
+            // Transform the active session data
+            const mappedExercises: TrackedExercise[] = (activeSession.exercises || []).map((ex: any) => ({
+              id: ex.id,
+              name: ex.exercise?.name || "Exercise",
+              targetSets: ex.targetSets,
+              targetReps: ex.targetReps,
+              targetType: ex.targetType || "reps",
+              instructions: ex.exercise?.instructions,
+              sets: (ex.sets || []).map((s: any) => ({ 
+                reps: s.reps ?? 0, 
+                weight: s.weight == null ? undefined : s.weight, 
+                completed: s.completed 
+              })),
+              completed: false,
+            }))
+
+            const workoutSession: WorkoutSession = {
+              id: activeSession.id,
+              name: activeSession.name,
+              startTime: new Date(activeSession.startTime),
+              duration: activeSession.duration || 0,
+              exercises: mappedExercises,
+              isActive: true,
+            }
+
+            // Try to restore saved state
+            try {
+              const savedStateRes = await fetch(`/api/workout-sessions/${activeSession.id}/saved-state`)
+              if (savedStateRes.ok) {
+                const savedState = await savedStateRes.json()
+                setCurrentExerciseIndex(savedState.currentExerciseIndex || 0)
+                setTimer(savedState.timer || 0)
+                setExerciseTimer(savedState.exerciseTimer || 0)
+                setIsTimerRunning(savedState.isTimerRunning || false)
+                setIsResting(savedState.isResting || false)
+                setRestTimer(savedState.restTimer || 0)
+                console.log("Restored saved workout state:", savedState)
+              }
+            } catch {
+              console.log("No saved state found for active session")
+            }
+
+            setSession(workoutSession)
+            setShowWorkoutSelection(false)
+            return // Don't load templates if we have an active session
+        }
+
+        // Load templates if no active session
         const res = await fetch("/api/workout-templates?limit=20")
         if (!res.ok) throw new Error("Failed to load templates")
         const data = await res.json()
 
-
         const all = [...(data.userTemplates || []), ...(data.predefinedTemplates || [])]
-
 
         const transformed: WorkoutTemplate[] = all.map((t: any) => ({
           id: t.id,
@@ -100,14 +172,14 @@ export function WorkoutTracker() {
           isAIGenerated: t.name?.toLowerCase().includes('ai-generated') || false,
         }))
 
-
         if (active) setAvailableWorkouts(transformed)
       } catch (e) {
         console.warn("Using fallback workouts", e)
         if (active) setAvailableWorkouts(fallbackWorkouts)
       }
     }
-    loadTemplates()
+    
+    loadData()
     return () => {
       active = false
     }
@@ -137,6 +209,23 @@ export function WorkoutTracker() {
     }
     return () => clearInterval(interval)
   }, [isTimerRunning, session, currentExerciseIndex, isResting])
+
+  // Rest timer effect - counts down rest time
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+    if (isResting && restTimer > 0 && isTimerRunning) {
+      interval = setInterval(() => {
+        setRestTimer((prev) => {
+          if (prev <= 1) {
+            setIsResting(false)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }
+    return () => clearInterval(interval)
+  }, [isResting, restTimer, isTimerRunning])
 
     // Reset exercise timer when switching exercises
   useEffect(() => {
@@ -230,12 +319,9 @@ export function WorkoutTracker() {
   }
 
   const pauseWorkout = () => {
-    const newTimerRunning = !isTimerRunning
-    setIsTimerRunning(newTimerRunning)
-    // Also pause/resume rest timer when workout is paused/resumed
-    if (!newTimerRunning && isResting) {
-      setIsResting(false)
-    }
+    setIsTimerRunning(!isTimerRunning)
+    // When pausing, the rest timer will also pause due to the useEffect dependency
+    // When resuming, if we were resting, the rest timer will resume
   }
 
   const saveWorkout = async () => {
@@ -273,11 +359,14 @@ export function WorkoutTracker() {
         }),
       })
 
-      // Navigate back to selection
+      // Navigate back to selection and reset all timers
       setSession(null)
       setTimer(0)
       setIsTimerRunning(false)
       setCurrentExerciseIndex(0)
+      setExerciseTimer(0)
+      setIsResting(false)
+      setRestTimer(0)
       setShowWorkoutSelection(true)
       
     } catch (e) {
@@ -314,6 +403,44 @@ export function WorkoutTracker() {
     setTimer(0)
     setIsTimerRunning(false)
     setCurrentExerciseIndex(0)
+    setExerciseTimer(0)
+    setIsResting(false)
+    setRestTimer(0)
+    setShowWorkoutSelection(true)
+  }
+
+  const stopWorkout = async () => {
+    if (!session) return
+    try {
+      // Update session status to cancelled/stopped
+      await fetch(`/api/workout-sessions/${session.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "cancelled",
+          endTime: new Date().toISOString(),
+          duration: timer,
+        }),
+      })
+      
+      // Clear saved state since workout is stopped
+      try {
+        await fetch(`/api/workout-sessions/${session.id}/saved-state`, {
+          method: "DELETE",
+        })
+      } catch {
+        console.log("No saved state to clear")
+      }
+    } catch (e) {
+      console.error("Failed to stop session", e)
+    }
+    setSession(null)
+    setTimer(0)
+    setIsTimerRunning(false)
+    setCurrentExerciseIndex(0)
+    setExerciseTimer(0)
+    setIsResting(false)
+    setRestTimer(0)
     setShowWorkoutSelection(true)
   }
 
@@ -322,6 +449,9 @@ export function WorkoutTracker() {
     setTimer(0)
     setIsTimerRunning(false)
     setCurrentExerciseIndex(0)
+    setExerciseTimer(0)
+    setIsResting(false)
+    setRestTimer(0)
     setShowWorkoutSelection(true)
   }
 
@@ -589,6 +719,7 @@ export function WorkoutTracker() {
         exerciseTimer={exerciseTimer}
         onPauseWorkout={pauseWorkout}
         onFinishWorkout={finishWorkout}
+        onStopWorkout={stopWorkout}
         onBackToSelection={backToSelection}
         onAddSet={addSet}
         onAddExercise={addExerciseMidWorkout}

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Clock, Dumbbell, Repeat } from "lucide-react"
+import { toast } from "sonner"
 
 interface WorkoutSession {
   id: string
@@ -48,6 +49,34 @@ export function WorkoutDetailsModal({ workout, onRepeat, trigger }: WorkoutDetai
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}m ${secs}s`
+  }
+
+  const handleRepeatWorkout = async () => {
+    try {
+      const response = await fetch(`/api/workout-sessions/${workout.id}/repeat`, {
+        method: 'POST',
+      })
+
+      if (response.ok) {
+        await response.json() // Consume the response but don't store it
+        toast.success('Workout repeated! Redirecting to track...')
+        
+        // Redirect to track page after a short delay to show the toast
+        setTimeout(() => {
+          window.location.href = '/track'
+        }, 1000)
+        
+        // Call the onRepeat callback if provided (for legacy support)
+        if (onRepeat) {
+          onRepeat(workout)
+        }
+      } else {
+        throw new Error('Failed to repeat workout')
+      }
+    } catch (error) {
+      console.error('Failed to repeat workout:', error)
+      toast.error('Failed to repeat workout')
+    }
   }
 
   const calculateStats = () => {
@@ -171,9 +200,7 @@ export function WorkoutDetailsModal({ workout, onRepeat, trigger }: WorkoutDetai
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
             <Button
-              onClick={() => {
-                onRepeat?.(workout)
-              }}
+              onClick={handleRepeatWorkout}
               className="flex-1 sm:flex-none"
             >
               <Repeat className="w-4 h-4 mr-2" />
