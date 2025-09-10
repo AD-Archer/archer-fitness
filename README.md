@@ -65,7 +65,45 @@ An AI-powered fitness tracking application built by Antonio Archer, a software d
 - **Prettier** - Code formatting
 - **pnpm** - Package management
 
-## 🛠️ Installation & Setup
+## � CI/CD Pipeline
+
+The repository includes automated CI/CD pipelines for building, testing, and deploying the application:
+
+### 1. CI/CD Pipeline (`.github/workflows/ci-cd.yml`)
+
+**Triggers:**
+- ✅ Push to `main` or `develop` branches
+- ✅ Pull requests to `main` or `develop`
+- ✅ Release publications
+
+**Jobs:**
+- **Lint and Type Check**: Runs ESLint and TypeScript validation
+- **Build and Test**: Builds the Next.js application
+- **Docker Build and Push**: Builds and pushes Docker image to DockerHub
+
+**Note:** Automatic deployments are disabled. Use the deployment script manually when ready.
+
+### 2. Security Scan (`.github/workflows/security.yml`)
+
+**Triggers:**
+- Weekly schedule (Mondays at 2 AM UTC)
+- Push to `main`
+- Pull requests to `main`
+
+**Jobs:**
+- **Dependency Scan**: Runs `pnpm audit` for vulnerable dependencies
+- **Docker Security Scan**: Uses Trivy to scan Docker images for vulnerabilities
+
+### 3. Dependency Updates (`.github/workflows/dependency-updates.yml`)
+
+**Triggers:**
+- Weekly schedule (Mondays at 6 AM UTC)
+- Manual trigger
+
+**Jobs:**
+- **Update Dependencies**: Automatically updates dependencies and creates a PR
+
+## �🛠️ Installation & Setup
 
 ### Prerequisites
 - **Node.js 22+**
@@ -139,12 +177,44 @@ An AI-powered fitness tracking application built by Antonio Archer, a software d
    ```bash
    docker run -d \
      --name archer-fitness \
-     -p 3000:3000 \
-     -e DATABASE_URL="your-database-url" \
-     -e NEXTAUTH_SECRET="your-secret" \
-     -e NEXTAUTH_URL="http://localhost:3000" \
+     --network host \
+     --env-file .env \
+     -e NODE_ENV=production \
      archer-fitness
    ```
+
+### Home Server Deployment
+
+For production deployment to your home server via SSH:
+
+1. **Set up SSH access** (on your server):
+   ```bash
+   # Generate SSH key pair
+   ssh-keygen -t ed25519 -C "github-actions"
+
+   # Copy public key to authorized_keys
+   cat ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys
+   ```
+
+2. **Add SSH secrets to GitHub**:
+   - `SERVER_HOST`: Your server's IP address or domain
+   - `SERVER_SSH_KEY`: Private SSH key (contents of `~/.ssh/id_ed25519`)
+   - `SERVER_PORT`: SSH port (default: 22)
+
+3. **Set up project directory** (on your server):
+   ```bash
+   mkdir -p /home/adarcher/projects/archer-fitness
+   cd /home/adarcher/projects/archer-fitness
+
+   # Create docker-compose.yml
+   # (copy from repository)
+
+   # Create .env file with your configuration
+   ```
+
+4. **Automatic deployment**:
+   - Push to `main` branch → automatic production deployment
+   - Push to `develop` branch → automatic staging deployment
 
 ## 📁 Project Structure
 
@@ -216,15 +286,20 @@ pnpm run update:docker # Update Docker containers
 
 ## 🚀 Deployment
 
-### Vercel (Recommended)
+### Vercel (Recommended for Development/Staging)
 1. Connect your GitHub repository to Vercel
 2. Add environment variables in Vercel dashboard
 3. Deploy automatically on every push
 
-### Docker + Cloud
-1. Build and push Docker image to DockerHub
-2. Deploy to your preferred cloud platform (AWS, GCP, Azure)
-3. Set up database and environment variables
+### Docker + Home Server
+
+1. **Build and push Docker image to DockerHub** (handled by CI/CD)
+2. **Manual deployment to your home server**:
+   ```bash
+   # On your server
+   docker pull ad-archer/archer-fitness:latest
+   docker-compose up -d
+   ```
 
 ### Manual Server
 1. Build the application: `pnpm build`

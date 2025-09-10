@@ -1,40 +1,31 @@
-# Note, I have removed the database service for production use, as the database is hosted externally.
-# If you want to run the database in a container, uncomment the relevant sections.
-# Also be sure to check your dotenv file for the correct configuration.
+# Docker Compose for Archer Fitness
+# This configuration pulls the image from DockerHub and runs it in production
+# Database is hosted externally, so it's not included here
 
 services:
-  app:
+  archer-fitness:
+    image: ad-archer/archer-fitness:latest
     container_name: archer-fitness
-    build: 
-      context: .
-      args:
-        PORT: ${PORT:-3000}
     network_mode: host
     env_file:
       - .env
     environment:
       - NODE_ENV=production
-      # - PORT=3000
-      # - DATABASE_URL=postgresql://archer_fitness_user:CHANGME@db:5432/archer_fitness
+      - PORT=${PORT:-3000}
     restart: unless-stopped
-    # Remove volumes for production - everything should be in the container
-    # volumes:
-    #   - .:/app
-    #   - /app/node_modules
-
-  # Database service
-#   db:
-#     image: postgres:15-alpine
-#     container_name: archer-fitness-db
-#     environment:
-#       - POSTGRES_USER=archer_fitness_user
-#       - POSTGRES_PASSWORD=CHANGME
-#       - POSTGRES_DB=archer_fitness
-#     ports:
-#       - "5432:5432"
-#     volumes:
-#       - postgres_data:/var/lib/postgresql/data
-#     restart: unless-stopped
-
-# volumes:
-#   postgres_data:
+    # Health check using the configured port
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${PORT:-3000}/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Security: Drop all capabilities and run as non-root
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    # Only mount necessary volumes
+    volumes:
+      - /tmp:/tmp:ro
