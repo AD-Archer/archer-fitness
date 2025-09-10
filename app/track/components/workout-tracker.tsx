@@ -43,6 +43,7 @@ interface WorkoutTemplate {
   estimatedDuration: number
   exercises: WorkoutTemplateExercise[]
   isCustom: boolean
+  isAIGenerated?: boolean
 }
 
 interface WorkoutSession {
@@ -96,6 +97,7 @@ export function WorkoutTracker() {
             instructions: ex.exercise?.instructions ?? undefined,
           })),
           isCustom: !t.isPredefined,
+          isAIGenerated: t.name?.toLowerCase().includes('ai-generated') || false,
         }))
 
 
@@ -452,6 +454,7 @@ export function WorkoutTracker() {
                     instructions: ex.exercise?.instructions ?? undefined,
                   })),
                   isCustom: !t.isPredefined,
+                  isAIGenerated: t.name?.toLowerCase().includes('ai-generated') || false,
                 }))
                 setAvailableWorkouts(transformed)
               }
