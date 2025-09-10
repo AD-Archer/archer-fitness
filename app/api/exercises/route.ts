@@ -10,6 +10,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    // Verify that the user still exists in the database
+    const userExists = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { id: true }
+    })
+    
+    if (!userExists) {
+      return NextResponse.json(
+        { error: "User session is invalid. Please sign in again." },
+        { status: 401 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const category = searchParams.get("category")
     const muscleGroup = searchParams.get("muscleGroup")
@@ -58,6 +71,19 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Verify that the user still exists in the database
+    const userExists = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { id: true }
+    })
+    
+    if (!userExists) {
+      return NextResponse.json(
+        { error: "User session is invalid. Please sign in again." },
+        { status: 401 }
+      )
     }
 
     const body = await request.json()

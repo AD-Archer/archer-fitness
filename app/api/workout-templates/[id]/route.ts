@@ -42,28 +42,50 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (Array.isArray(exercises)) {
       // Resolve exercise IDs (create by name if missing)
       const resolved = [] as Array<any>
+      const seenExerciseIds = new Set<string>()
       for (let i = 0; i < exercises.length; i++) {
         const ex = exercises[i]
         let exerciseId: string | undefined = ex.exerciseId
+        // If an ID was provided, check it exists
+        if (exerciseId) {
+          const exists = await prisma.exercise.findUnique({ where: { id: exerciseId }, select: { id: true } })
+          if (!exists) exerciseId = undefined
+        }
+        // If no valid ID, resolve by name
         if (!exerciseId) {
           const nameFromBody: string | undefined = ex.name
           if (!nameFromBody) {
             return NextResponse.json({ error: `Exercise at position ${i + 1} missing exerciseId or name` }, { status: 400 })
           }
-          const created = await prisma.exercise.create({
-            data: {
-              userId: session.user.id,
-              name: nameFromBody,
-              description: ex.description,
-              instructions: ex.instructions,
-            },
-          })
-          exerciseId = created.id
+          // Try user's custom exercise
+          let exRec = await prisma.exercise.findFirst({ where: { userId: session.user.id, name: nameFromBody }, select: { id: true } })
+          if (!exRec) {
+            // Try predefined
+            exRec = await prisma.exercise.findFirst({ where: { isPredefined: true, name: nameFromBody }, select: { id: true } })
+          }
+          if (!exRec) {
+            // Create new custom exercise
+            const created = await prisma.exercise.create({
+              data: { userId: session.user.id, name: nameFromBody, description: null },
+              select: { id: true }
+            })
+            exerciseId = created.id
+          } else {
+            exerciseId = exRec.id
+          }
         }
+
+        // Skip if this exerciseId already added to prevent unique constraint violation
+        if (seenExerciseIds.has(exerciseId)) {
+          continue
+        }
+        seenExerciseIds.add(exerciseId)
+
         resolved.push({
           exerciseId,
           targetSets: ex.targetSets ?? 3,
           targetReps: ex.targetReps ?? "8-12",
+          targetType: ex.targetType ?? "reps",
           targetWeight: ex.targetWeight ?? null,
           restTime: ex.restTime ?? 90,
           notes: ex.notes ?? null,
@@ -81,6 +103,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
               order: index,
               targetSets: ex.targetSets,
               targetReps: ex.targetReps,
+              targetType: ex.targetType,
               targetWeight: ex.targetWeight,
               restTime: ex.restTime,
               notes: ex.notes,

@@ -52,7 +52,7 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { exerciseId, targetSets = 3, targetReps = "8-12", notes } = body
+    const { exerciseId, targetSets = 3, targetReps = "8-12", targetType = "reps", notes } = body
 
     if (!exerciseId) {
       return NextResponse.json(
@@ -82,6 +82,7 @@ export async function POST(
         order: count,
         targetSets,
         targetReps,
+        targetType,
         notes,
       },
       include: {

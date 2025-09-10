@@ -73,8 +73,10 @@ export async function POST(request: NextRequest) {
       exerciseId: string
       targetSets: number
       targetReps: string
+      targetType: string
       notes?: string | null
     }> = []
+    const seenExerciseIds = new Set<string>()
 
     for (let i = 0; i < (exercises?.length || 0); i++) {
       const ex = exercises[i]
@@ -124,10 +126,18 @@ export async function POST(request: NextRequest) {
           }
         }
       }
+
+      // Skip if this exerciseId already added to prevent unique constraint violation
+      if (seenExerciseIds.has(exerciseId)) {
+        continue
+      }
+      seenExerciseIds.add(exerciseId)
+
       resolvedExercises.push({
         exerciseId: exerciseId!,
         targetSets: ex.targetSets || 3,
         targetReps: ex.targetReps || "8-12",
+        targetType: ex.targetType || "reps",
         notes: ex.notes ?? null,
       })
     }
@@ -145,6 +155,7 @@ export async function POST(request: NextRequest) {
             order: index,
             targetSets: ex.targetSets,
             targetReps: ex.targetReps,
+            targetType: ex.targetType,
             notes: ex.notes || undefined,
           })),
         },

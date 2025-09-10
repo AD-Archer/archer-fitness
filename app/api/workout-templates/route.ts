@@ -62,6 +62,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    // Verify that the user still exists in the database
+    const userExists = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { id: true }
+    })
+    
+    if (!userExists) {
+      return NextResponse.json(
+        { error: "User session is invalid. Please sign in again." },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
     const { name, description, estimatedDuration, category, difficulty, exercises } = body
 
@@ -74,6 +87,7 @@ export async function POST(request: NextRequest) {
 
     // Resolve exercise IDs (validate provided or find/create by name)
     const resolvedExercises: Array<any> = []
+    const seenExerciseIds = new Set<string>()
     for (let idx = 0; idx < exercises.length; idx++) {
       const ex = exercises[idx]
       let exerciseId = ex.exerciseId as string | undefined
@@ -100,7 +114,7 @@ export async function POST(request: NextRequest) {
         if (!exRec) {
           // Create new custom exercise
           const created = await prisma.exercise.create({
-            data: { userId: session.user.id, name: nameFromBody, description: ex.notes ?? null },
+            data: { userId: session.user.id, name: nameFromBody, description: null },
             select: { id: true }
           })
           exerciseId = created.id
@@ -108,15 +122,24 @@ export async function POST(request: NextRequest) {
           exerciseId = exRec.id
         }
       }
+
+      // Skip if this exerciseId already added to prevent unique constraint violation
+      if (seenExerciseIds.has(exerciseId)) {
+        continue
+      }
+      seenExerciseIds.add(exerciseId)
+
       resolvedExercises.push({
         exerciseId: exerciseId!,
         targetSets: ex.targetSets ?? 3,
         targetReps: ex.targetReps ?? "8-12",
+        targetType: ex.targetType ?? "reps",
         targetWeight: ex.targetWeight ?? null,
         restTime: ex.restTime ?? 90,
         notes: ex.notes ?? null,
       })
     }
+
 
     // Create the workout template
     const workoutTemplate = await prisma.workoutTemplate.create({
@@ -133,6 +156,7 @@ export async function POST(request: NextRequest) {
             order: index,
             targetSets: ex.targetSets,
             targetReps: ex.targetReps,
+            targetType: ex.targetType,
             targetWeight: ex.targetWeight,
             restTime: ex.restTime,
             notes: ex.notes,
@@ -155,7 +179,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error creating workout template:", error)
     return NextResponse.json(
-      { error: "Failed to create workout template" },
+      { error: `Failed to create workout template: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
     )
   }

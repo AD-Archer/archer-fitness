@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress"
 import { Check, Pause, Play, Square, Target, Timer } from "lucide-react"
 import { AddSetForm } from "./add-set-form"
 import { RestTimer } from "./rest-timer"
+import { ExerciseTimer } from "./exercise-timer"
 
 interface ExerciseSet {
   reps: number
@@ -19,6 +20,7 @@ interface TrackedExercise {
   name: string
   targetSets: number
   targetReps: string
+  targetType?: "reps" | "time"
   instructions?: string
   sets: ExerciseSet[]
   completed: boolean
@@ -38,6 +40,7 @@ interface WorkoutSessionProps {
   isTimerRunning: boolean
   isResting: boolean
   restTimer: number
+  exerciseTimer: number
   onPauseWorkout: () => void
   onFinishWorkout: () => void
   onBackToSelection: () => void
@@ -58,6 +61,7 @@ export function WorkoutSession({
   isTimerRunning,
   isResting,
   restTimer,
+  exerciseTimer,
   onPauseWorkout,
   onFinishWorkout,
   onBackToSelection,
@@ -71,6 +75,30 @@ export function WorkoutSession({
   getWorkoutProgress,
 }: WorkoutSessionProps) {
   const currentExercise = session.exercises[currentExerciseIndex]
+
+  // Guard clause: if no exercises or invalid index, show message
+  if (!currentExercise) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Timer className="w-5 h-5 text-red-600" />
+              No Exercises Found
+            </CardTitle>
+            <CardDescription>
+              This workout session doesn&apos;t have any exercises. Please go back and select a different workout.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={onBackToSelection} variant="outline" className="bg-transparent">
+              Back to Selection
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -97,7 +125,7 @@ export function WorkoutSession({
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span>Workout Progress</span>
-              <span>{Math.round(getWorkoutProgress())}%</span>
+              <span>{Math.round(getWorkoutProgress())}% • {session.exercises.filter(ex => ex.completed).length}/{session.exercises.length} exercises</span>
             </div>
             <Progress value={getWorkoutProgress()} className="h-2" />
           </div>
@@ -113,18 +141,35 @@ export function WorkoutSession({
             <Button onClick={onBackToSelection} variant="outline" className="bg-transparent">
               Back to Selection
             </Button>
-            <Button onClick={onAddExercise} variant="outline" className="bg-transparent">
-              Add Exercise
-            </Button>
           </div>
         </CardContent>
       </Card>
+
+      {/* Add Exercise Button - Prominent */}
+      <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 rounded-lg p-4 sm:p-6 border-2 border-dashed border-blue-200 dark:border-blue-800">
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground mb-3">Need to add another exercise?</p>
+          <Button onClick={onAddExercise} className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto">
+            <Target className="w-4 h-4 mr-2" />
+            Add Exercise
+          </Button>
+        </div>
+      </div>
 
       {/* Rest Timer */}
       {isResting && (
         <RestTimer
           restTimer={restTimer}
           onSkipRest={onSkipRest}
+          formatTime={formatTime}
+        />
+      )}
+
+      {/* Exercise Timer for Timed Exercises */}
+      {currentExercise.targetType === "time" && !isResting && (
+        <ExerciseTimer
+          exerciseTimer={exerciseTimer}
+          targetTime={currentExercise.targetReps}
           formatTime={formatTime}
         />
       )}
@@ -139,7 +184,18 @@ export function WorkoutSession({
                 {currentExercise.name}
               </CardTitle>
               <CardDescription>
-                Target: {currentExercise.targetSets} sets × {currentExercise.targetReps} reps
+                <div className="space-y-3">
+                  <div className="text-base font-medium text-foreground">
+                    Target: {currentExercise.targetSets} sets × {currentExercise.targetReps} {currentExercise.targetType === "time" ? "" : "reps"}
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Progress</span>
+                      <span>{currentExercise.sets.length} sets completed</span>
+                    </div>
+                    <Progress value={currentExercise.sets.length > 0 ? 100 : 0} className="h-2" />
+                  </div>
+                </div>
               </CardDescription>
             </div>
             {currentExercise.completed && (
@@ -151,9 +207,11 @@ export function WorkoutSession({
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="p-3 rounded-lg bg-muted/50">
-            <p className="text-sm">{currentExercise.instructions}</p>
-          </div>
+          {currentExercise.instructions && (
+            <div className="p-3 rounded-lg bg-muted/50">
+              <p className="text-sm">{currentExercise.instructions}</p>
+            </div>
+          )}
 
           {/* Exercise Sets */}
           <div className="space-y-4">
@@ -168,21 +226,24 @@ export function WorkoutSession({
                 <div className="flex items-center gap-3">
                   <Badge variant="secondary">Set {index + 1}</Badge>
                   <span className="text-sm">
-        {set.reps} reps × {set.weight != null ? `${set.weight} lbs` : "bodyweight"}
+                    {currentExercise.targetType === "time"
+                      ? `${Math.floor(set.reps / 60)}:${(set.reps % 60).toString().padStart(2, "0")}`
+                      : `${set.reps} reps × ${set.weight != null ? `${set.weight} lbs` : "bodyweight"}`
+                    }
                   </span>
                 </div>
                 <Check className="w-4 h-4 text-green-600" />
               </div>
             ))}
 
-            {/* Add New Set */}
-            {currentExercise.sets.length < currentExercise.targetSets && (
-              <AddSetForm
-                exerciseId={currentExercise.id}
-                setNumber={currentExercise.sets.length + 1}
-                onAddSet={onAddSet}
-              />
-            )}
+            {/* Add New Set - Always available */}
+            <AddSetForm
+              exerciseId={currentExercise.id}
+              setNumber={currentExercise.sets.length + 1}
+              targetType={currentExercise.targetType}
+              currentExerciseTimer={exerciseTimer}
+              onAddSet={onAddSet}
+            />
           </div>
 
           {/* Navigation */}
@@ -215,36 +276,45 @@ export function WorkoutSession({
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {session.exercises.map((ex, idx) => (
-              <div
-                key={ex.id}
-                className={`flex items-center justify-between p-3 rounded-lg border ${
-                  idx === currentExerciseIndex
-                    ? "bg-blue-50 dark:bg-blue-950 border-blue-200"
-                    : ex.completed
-                    ? "bg-green-50 dark:bg-green-950 border-green-200"
-                    : "bg-muted/50"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Badge variant={idx === currentExerciseIndex ? "default" : "secondary"}>
-                    {idx === currentExerciseIndex ? "Current" : ex.completed ? "Done" : "Upcoming"}
-                  </Badge>
-                  <span className="font-medium">{ex.name}</span>
-                  <span className="text-sm text-muted-foreground">
-                    {ex.sets.length}/{ex.targetSets} sets
-                  </span>
-                </div>
-                <Button
-                  onClick={() => onSwitchToExercise(idx)}
-                  variant="outline"
-                  size="sm"
-                  disabled={idx === currentExerciseIndex}
+            {session.exercises.map((ex, idx) => {
+              return (
+                <div
+                  key={ex.id}
+                  className={`p-3 rounded-lg border ${
+                    idx === currentExerciseIndex
+                      ? "bg-blue-50 dark:bg-blue-950 border-blue-200"
+                      : ex.completed
+                      ? "bg-green-50 dark:bg-green-950 border-green-200"
+                      : "bg-muted/50"
+                  }`}
                 >
-                  {idx === currentExerciseIndex ? "Active" : "Go"}
-                </Button>
-              </div>
-            ))}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <Badge variant={idx === currentExerciseIndex ? "default" : "secondary"}>
+                        {idx === currentExerciseIndex ? "Current" : ex.completed ? "Done" : "Upcoming"}
+                      </Badge>
+                      <span className="font-medium">{ex.name}</span>
+                    </div>
+                    <Button
+                      onClick={() => onSwitchToExercise(idx)}
+                      variant="outline"
+                      size="sm"
+                      disabled={idx === currentExerciseIndex}
+                    >
+                      {idx === currentExerciseIndex ? "Active" : "Go"}
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <span>{ex.sets.length} sets</span>
+                    <div className="flex-1">
+                      <Progress value={ex.sets.length > 0 ? 100 : 0} className="h-1" />
+                    </div>
+                    <span>{ex.sets.length > 0 ? "Done" : "Not started"}</span>
+                    {ex.targetType === "time" && <span className="text-xs">({ex.targetReps})</span>}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </CardContent>
       </Card>

@@ -8,12 +8,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Plus, Trash2 } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface TrackedExercise {
   id: string
   name: string
   targetSets: number
   targetReps: string
+  targetType: "reps" | "time"
   instructions?: string
 }
 
@@ -24,6 +26,15 @@ interface WorkoutTemplate {
   estimatedDuration: number
   exercises: Omit<TrackedExercise, "sets" | "completed">[]
   isCustom: boolean
+}
+
+interface InitialExercise {
+  id: string
+  name: string
+  targetSets: number
+  targetReps: string
+  targetType?: "reps" | "time"
+  instructions?: string
 }
 
 interface CustomWorkoutFormProps {
@@ -39,7 +50,10 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
     initialWorkout?.estimatedDuration ? String(initialWorkout.estimatedDuration) : ""
   )
   const [exercises, setExercises] = useState<Omit<TrackedExercise, "sets" | "completed">[]>(
-    initialWorkout?.exercises ?? []
+    initialWorkout?.exercises?.map((ex: InitialExercise) => ({
+      ...ex,
+      targetType: ex.targetType || "reps"
+    })) ?? []
   )
 
   const addExercise = () => {
@@ -48,6 +62,7 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
       name: "",
       targetSets: 3,
       targetReps: "8-12",
+      targetType: "reps",
       instructions: "",
     }
     setExercises((prev) => [...prev, newExercise])
@@ -74,6 +89,7 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
         name: ex.name.trim() || "Push-ups",
         targetSets: ex.targetSets || 3,
         targetReps: ex.targetReps || "8-12",
+        targetType: ex.targetType || "reps",
         instructions: ex.instructions || "",
       })).filter((ex) => ex.name.trim()),
       isCustom: true,
@@ -118,10 +134,6 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-medium">Exercises</h3>
-          <Button onClick={addExercise} size="sm">
-            <Plus className="w-4 h-4 mr-1" />
-            Add Exercise
-          </Button>
         </div>
 
         {exercises.map((exercise, index) => (
@@ -160,13 +172,31 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
                     />
                   </div>
                   <div>
-                    <Label>Target Reps</Label>
-                    <Input
-                      placeholder="8-12"
-                      value={exercise.targetReps}
-                      onChange={(e) => updateExercise(index, "targetReps", e.target.value)}
-                    />
+                    <Label>Exercise Type</Label>
+                    <Select
+                      value={exercise.targetType}
+                      onValueChange={(value: "reps" | "time") => updateExercise(index, "targetType", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="reps">Reps</SelectItem>
+                        <SelectItem value="time">Time</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
+                </div>
+
+                <div>
+                  <Label>
+                    Target {exercise.targetType === "reps" ? "Reps" : "Time"}
+                  </Label>
+                  <Input
+                    placeholder={exercise.targetType === "reps" ? "8-12" : "30s"}
+                    value={exercise.targetReps}
+                    onChange={(e) => updateExercise(index, "targetReps", e.target.value)}
+                  />
                 </div>
 
                 <div>
@@ -182,6 +212,14 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
             </div>
           </Card>
         ))}
+
+        {/* Add Exercise Button at the bottom */}
+        <div className="flex justify-center pt-4">
+          <Button onClick={addExercise} variant="outline" className="bg-transparent">
+            <Plus className="w-4 h-4 mr-1" />
+            Add Exercise
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-2 pt-4">

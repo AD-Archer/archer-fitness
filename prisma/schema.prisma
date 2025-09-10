@@ -133,6 +133,7 @@ model WorkoutTemplateExercise {
   order            Int     @default(0)
   targetSets       Int     @default(3)
   targetReps       String  @default("8-12") // can be "8-12" or "30 seconds"
+  targetType       String  @default("reps") // "reps" or "time"
   targetWeight     Float?  // optional target weight
   restTime         Int     @default(90) // seconds
   notes            String?
@@ -172,6 +173,7 @@ model WorkoutSessionExercise {
   order            Int      @default(0)
   targetSets       Int      @default(3)
   targetReps       String   @default("8-12")
+  targetType       String   @default("reps") // "reps" or "time"
   notes            String?
   completed        Boolean  @default(false)
   createdAt        DateTime @default(now()) @map("created_at")
