@@ -126,7 +126,7 @@ jobs:
           # You can set DOCKERHUB_USERNAME as a secret to override the default (adarcher)
           tags: |
             ${{ env.REGISTRY }}/adarcher/archer-fitness:latest
-            ghcr.io/${{ github.repository_owner }}/archer-fitness:latest
+            ghcr.io/${{ github.repository_owner.toLowerCase() }}/archer-fitness:latest
             ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
