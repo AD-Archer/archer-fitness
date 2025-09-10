@@ -108,7 +108,9 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+            ghcr.io/${{ github.repository_owner.toLowerCase() }}/archer-fitness
           tags: |
             type=ref,event=branch
             type=ref,event=pr
