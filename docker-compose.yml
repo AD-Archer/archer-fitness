@@ -3,26 +3,30 @@ services:
     container_name: archer-fitness
     build: .
     ports:
-      - "3000:3000"
+      - "3676:3000"
     env_file:
       - .env
-    volumes:
-      - .:/app
-      - /app/node_modules
+    environment:
+      - NODE_ENV=production
+      - NEXTAUTH_URL=http://localhost:3676
     restart: unless-stopped
+    # Remove volumes for production - everything should be in the container
+    # volumes:
+    #   - .:/app
+    #   - /app/node_modules
 
-  # Remove this db service if you're using the remote database from .env
-  # db:
-  #   image: postgres:15-alpine
-  #   container_name: archer-fitness-db
-  #   environment:
-  #     - POSTGRES_USER=user
-  #     - POSTGRES_PASSWORD=password
-  #     - POSTGRES_DB=archer_fitness
-  #   ports:
-  #     - "5432:5432"
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
+  # Database service
+  db:
+    image: postgres:15-alpine
+    container_name: archer-fitness-db
+    environment:
+      - POSTGRES_USER=archer_fitness_user
+      - POSTGRES_PASSWORD=Rmx4BhRtr6zvhGwOqO4u
+      - POSTGRES_DB=archer_fitness
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
-# volumes:
-#   postgres_data:
+volumes:
+  postgres_data:
