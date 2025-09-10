@@ -22,8 +22,8 @@ import { usePathname } from "next/navigation"
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Generate", href: "/generate", icon: Zap },
-  { name: "Track", href: "/track", icon: Play },
-  { name: "Workouts", href: "/workouts", icon: Dumbbell },
+  { name: "Tracker", href: "/track", icon: Play },
+  { name: "History", href: "/workouts", icon: Dumbbell },
   { name: "Nutrition", href: "/nutrition", icon: Apple },
   { name: "Progress", href: "/progress", icon: TrendingUp },
   { name: "Schedule", href: "#", icon: Calendar },

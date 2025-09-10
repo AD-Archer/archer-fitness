@@ -3,11 +3,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Clock, CheckCircle } from "lucide-react"
 import { useEffect, useState } from "react"
+import { WorkoutDetailsModal } from "./workout-details-modal"
 
 interface WorkoutSession {
   id: string
   name: string
-  date: Date
+  date: Date | string
   duration: number
   exercises: Array<{
     exerciseId: string
@@ -81,10 +82,11 @@ interface ApiTemplatesResponse {
   predefinedTemplates: ApiWorkoutTemplate[]
 }
 
-export function RecentWorkouts() {
+export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout: WorkoutSession) => void }) {
   const [recentWorkouts, setRecentWorkouts] = useState<WorkoutSession[]>([])
   const [workoutTemplates, setWorkoutTemplates] = useState<WorkoutTemplate[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedWorkout, setSelectedWorkout] = useState<WorkoutSession | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -144,15 +146,16 @@ export function RecentWorkouts() {
   }, [])
 
   // Helper function to format date
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date
     const today = new Date()
     const yesterday = new Date(today)
     yesterday.setDate(yesterday.getDate() - 1)
 
-    if (date.toDateString() === today.toDateString()) return "Today"
-    if (date.toDateString() === yesterday.toDateString()) return "Yesterday"
+    if (dateObj.toDateString() === today.toDateString()) return "Today"
+    if (dateObj.toDateString() === yesterday.toDateString()) return "Yesterday"
 
-    const daysAgo = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+    const daysAgo = Math.floor((today.getTime() - dateObj.getTime()) / (1000 * 60 * 60 * 24))
     return `${daysAgo} days ago`
   }
 
@@ -219,9 +222,15 @@ export function RecentWorkouts() {
                   <Badge variant="outline" className="capitalize">
                     {template.difficulty}
                   </Badge>
-                  <Button variant="ghost" size="sm">
-                    View Details
-                  </Button>
+                  <WorkoutDetailsModal
+                    workout={selectedWorkout}
+                    onRepeat={onRepeatWorkout}
+                    trigger={
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedWorkout(workout)}>
+                        View Details
+                      </Button>
+                    }
+                  />
                 </div>
               </div>
             )

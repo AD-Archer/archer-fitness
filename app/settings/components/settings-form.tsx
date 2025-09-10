@@ -219,10 +219,18 @@ export function SettingsForm() {
         waterTarget: waterTarget.toString(),
       }))
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    profile,
-    nutritionPrefs,
-    appPrefs,
+    profile.age,
+    profile.weight,
+    profile.heightFeet,
+    profile.heightInches,
+    profile.heightCm,
+    profile.gender,
+    profile.fitnessGoals,
+    profile.activityLevel,
+    nutritionPrefs.useSmartCalculations,
+    appPrefs.units,
   ])
 
   // Convert height when units change
@@ -253,7 +261,8 @@ export function SettingsForm() {
         }))
       }
     }
-  }, [appPrefs.units, profile])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appPrefs.units, profile.heightCm, profile.heightFeet, profile.heightInches])
 
   const handleResetToDefaults = () => {
     setProfile({

@@ -4,11 +4,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Clock, Calendar, TrendingUp } from "lucide-react"
 import { useEffect, useState } from "react"
+import { WorkoutDetailsModal } from "./workout-details-modal"
 
 interface WorkoutSession {
   id: string
   name: string
-  date: string
+  date: string | Date
   duration: number
   exercises: Array<{
     exerciseId: string
@@ -39,9 +40,10 @@ interface ApiWorkoutSession {
   notes?: string
 }
 
-export function WorkoutHistory() {
+export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout: WorkoutSession) => void }) {
   const [workoutHistory, setWorkoutHistory] = useState<WorkoutSession[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedWorkout, setSelectedWorkout] = useState<WorkoutSession | null>(null)
 
   useEffect(() => {
     const fetchWorkoutHistory = async () => {
@@ -76,9 +78,9 @@ export function WorkoutHistory() {
     return `${mins} min`
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString("en-US", {
+  const formatDate = (date: string | Date) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date
+    return dateObj.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -181,10 +183,16 @@ export function WorkoutHistory() {
                   </div>
 
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="bg-transparent">
-                      View Details
-                    </Button>
-                    <Button variant="outline" size="sm" className="bg-transparent">
+                    <WorkoutDetailsModal
+                      workout={selectedWorkout}
+                      onRepeat={onRepeatWorkout}
+                      trigger={
+                        <Button variant="outline" size="sm" onClick={() => setSelectedWorkout(workout)}>
+                          View Details
+                        </Button>
+                      }
+                    />
+                    <Button variant="outline" size="sm" onClick={() => onRepeatWorkout?.(workout)}>
                       Repeat Workout
                     </Button>
                   </div>
