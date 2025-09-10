@@ -9,11 +9,11 @@ import { Clock, Dumbbell, Repeat } from "lucide-react"
 interface WorkoutSession {
   id: string
   name: string
-  date: Date | string
+  date: string | Date
   duration: number
   exercises: Array<{
     exerciseId: string
-    name?: string
+    exerciseName: string
     sets: Array<{
       reps: number
       weight?: number
@@ -130,7 +130,7 @@ export function WorkoutDetailsModal({ workout, onRepeat, trigger }: WorkoutDetai
                 {workout.exercises.map((exercise, index) => (
                   <div key={exercise.exerciseId} className="border rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-medium text-lg">{exercise.name || `Exercise ${index + 1}`}</h3>
+                      <h3 className="font-medium text-lg">{exercise.exerciseName || `Exercise ${index + 1}`}</h3>
                       <Badge variant="secondary">{exercise.sets.length} sets</Badge>
                     </div>
                     <div className="space-y-2">

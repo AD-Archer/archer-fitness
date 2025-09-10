@@ -2,9 +2,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Clock, Calendar, TrendingUp } from "lucide-react"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Clock, Calendar, TrendingUp, Trash2, Eye } from "lucide-react"
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import { WorkoutDetailsModal } from "./workout-details-modal"
+import { QuickViewModal } from "./quick-view-modal"
 
 interface WorkoutSession {
   id: string
@@ -13,6 +16,7 @@ interface WorkoutSession {
   duration: number
   exercises: Array<{
     exerciseId: string
+    exerciseName: string
     sets: Array<{
       reps: number
       weight?: number
@@ -30,6 +34,10 @@ interface ApiWorkoutSession {
   duration: number | null
   exercises: Array<{
     exerciseId: string
+    exercise: {
+      id: string
+      name: string
+    }
     sets: Array<{
       reps: number
       weight?: number
@@ -57,7 +65,11 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
             name: session.name,
             date: session.startTime,
             duration: session.duration || 0,
-            exercises: session.exercises || [],
+            exercises: session.exercises?.map(ex => ({
+              exerciseId: ex.exerciseId,
+              exerciseName: ex.exercise?.name || 'Unknown Exercise',
+              sets: ex.sets || []
+            })) || [],
             status: session.status,
             notes: session.notes,
           }))
@@ -100,6 +112,24 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
       totalSets,
       totalReps,
       avgWeight: avgWeight > 0 ? avgWeight : undefined,
+    }
+  }
+
+  const handleDeleteWorkout = async (workoutId: string) => {
+    try {
+      const response = await fetch(`/api/workout-sessions/${workoutId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        setWorkoutHistory(prev => prev.filter(workout => workout.id !== workoutId))
+        toast.success('Workout deleted successfully')
+      } else {
+        throw new Error('Failed to delete workout')
+      }
+    } catch (error) {
+      console.error('Failed to delete workout:', error)
+      toast.error('Failed to delete workout')
     }
   }
 
@@ -182,7 +212,16 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    <QuickViewModal
+                      workout={workout}
+                      trigger={
+                        <Button variant="outline" size="sm">
+                          <Eye className="w-4 h-4 mr-2" />
+                          Quick View
+                        </Button>
+                      }
+                    />
                     <WorkoutDetailsModal
                       workout={selectedWorkout}
                       onRepeat={onRepeatWorkout}
@@ -195,6 +234,33 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
                     <Button variant="outline" size="sm" onClick={() => onRepeatWorkout?.(workout)}>
                       Repeat Workout
                     </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Workout</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete this workout? This action cannot be undone.
+                            <br />
+                            <strong>{workout.name}</strong> from {formatDate(workout.date)}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteWorkout(workout.id)}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            Delete Workout
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               )
