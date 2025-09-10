@@ -1,0 +1,28 @@
+services:
+  app:
+    container_name: archer-fitness
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - /app/node_modules
+    restart: unless-stopped
+
+  # Remove this db service if you're using the remote database from .env
+  # db:
+  #   image: postgres:15-alpine
+  #   container_name: archer-fitness-db
+  #   environment:
+  #     - POSTGRES_USER=user
+  #     - POSTGRES_PASSWORD=password
+  #     - POSTGRES_DB=archer_fitness
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+
+# volumes:
+#   postgres_data:
