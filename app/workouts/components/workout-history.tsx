@@ -156,6 +156,37 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
     }
   }
 
+  const handleRepeatWorkout = async (workoutId: string) => {
+    try {
+      const response = await fetch(`/api/workout-sessions/${workoutId}/repeat`, {
+        method: 'POST',
+      })
+
+      if (response.ok) {
+        await response.json() // Consume the response but don't store it
+        toast.success('Workout repeated! Redirecting to track...')
+        
+        // Redirect to track page after a short delay to show the toast
+        setTimeout(() => {
+          window.location.href = '/track'
+        }, 1000)
+        
+        // Call the onRepeatWorkout callback if provided (for legacy support)
+        if (onRepeatWorkout) {
+          const workout = workoutHistory.find(w => w.id === workoutId)
+          if (workout) {
+            onRepeatWorkout(workout)
+          }
+        }
+      } else {
+        throw new Error('Failed to repeat workout')
+      }
+    } catch (error) {
+      console.error('Failed to repeat workout:', error)
+      toast.error('Failed to repeat workout')
+    }
+  }
+
   if (loading) {
     return (
       <Card>
@@ -273,7 +304,7 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
                         </Button>
                       }
                     />
-                    <Button variant="outline" size="sm" onClick={() => onRepeatWorkout?.(workout)}>
+                    <Button variant="outline" size="sm" onClick={() => handleRepeatWorkout(workout.id)}>
                       Repeat Workout
                     </Button>
                     <AlertDialog>

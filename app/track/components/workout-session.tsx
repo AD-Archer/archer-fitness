@@ -43,6 +43,7 @@ interface WorkoutSessionProps {
   exerciseTimer: number
   onPauseWorkout: () => void
   onFinishWorkout: () => void
+  onStopWorkout: () => void
   onBackToSelection: () => void
   onAddSet: (exerciseId: string, reps: number, weight?: number) => void
   onAddExercise: () => void
@@ -64,7 +65,7 @@ export function WorkoutSession({
   restTimer,
   exerciseTimer,
   onPauseWorkout,
-  onFinishWorkout,
+  onStopWorkout,
   onBackToSelection,
   onAddSet,
   onAddExercise,
@@ -147,9 +148,9 @@ export function WorkoutSession({
             <Button onClick={onPauseWorkout} variant="outline" className="bg-transparent">
               {isTimerRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
             </Button>
-            <Button onClick={onFinishWorkout} variant="outline" className="bg-transparent">
+            <Button onClick={onStopWorkout} variant="outline" className="bg-transparent text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950">
               <Square className="w-4 h-4" />
-              Finish
+              Stop
             </Button>
             <Button onClick={onBackToSelection} variant="outline" className="bg-transparent">
               Back to Selection
