@@ -20,12 +20,3 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    # Security: Drop all capabilities and run as non-root
-    security_opt:
-      - no-new-privileges:true
-    read_only: true
-    tmpfs:
-      - /tmp
-    # Only mount necessary volumes
-    volumes:
-      - /tmp:/tmp:ro
