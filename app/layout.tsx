@@ -7,19 +7,21 @@ import { Toaster } from 'sonner'
 import Script from 'next/script'
 import './globals.css'
 
+const baseUrl = process.env.NEXTAUTH_URL || 'https://fitness.archer.software'
+
 export const metadata: Metadata = {
   title: 'Archer Fitness | AI Workout Dashboard',
   description:
     'AI-powered fitness app by Antonio Archer, a software developer from Philadelphia. Track workouts, nutrition, and progress with intelligent insights.',
-  metadataBase: new URL('https://fitness.adarcher.app'),
+  metadataBase: new URL(baseUrl),
   alternates: {
-    canonical: 'https://fitness.adarcher.app',
+    canonical: baseUrl,
   },
   openGraph: {
     title: 'Archer Fitness | AI Workout Dashboard',
     description:
       'AI-powered fitness app by Antonio Archer, a software developer from Philadelphia. Track workouts, nutrition, and progress with intelligent insights.',
-    url: 'https://fitness.adarcher.app',
+    url: baseUrl,
     siteName: 'Archer Fitness',
     images: [
       {
@@ -88,7 +90,7 @@ export default function RootLayout({
               '@context': 'https://schema.org',
               '@type': 'WebSite',
               name: 'Archer Fitness',
-              url: 'https://fitness.adarcher.app',
+              url: baseUrl,
               potentialAction: {
                 '@type': 'SearchAction',
                 target: 'https://www.google.com/search?q={search_term_string}',
@@ -113,7 +115,7 @@ export default function RootLayout({
               '@type': 'Person',
               name: 'Antonio Archer',
               url: 'https://www.antonioarcher.com',
-              image: 'https://fitness.adarcher.app/logo.webp',
+              image: `${baseUrl}/logo.webp`,
               jobTitle: 'Software Developer & DevOps Engineer',
               worksFor: {
                 '@type': 'Organization',
@@ -149,7 +151,7 @@ export default function RootLayout({
           {children}
           <Toaster />
         </AuthProvider>
-        <Analytics />
+        {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
   )
