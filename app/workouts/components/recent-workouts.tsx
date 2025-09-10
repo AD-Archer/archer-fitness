@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Clock, CheckCircle, Trash2, Eye } from "lucide-react"
+import { Clock, CheckCircle, Trash2, Eye, RotateCcw } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { WorkoutDetailsModal } from "./workout-details-modal"
@@ -204,6 +204,42 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
     }
   }
 
+  const handleRepeatWorkout = async (workoutId: string) => {
+    try {
+      const response = await fetch(`/api/workout-sessions/${workoutId}/repeat`, {
+        method: 'POST',
+      })
+
+      if (response.ok) {
+        const newSession = await response.json()
+        toast.success('Workout repeated! Starting new session...')
+        
+        // Call the onRepeatWorkout callback if provided
+        if (onRepeatWorkout) {
+          onRepeatWorkout({
+            id: newSession.id,
+            name: newSession.name,
+            date: new Date(newSession.startTime),
+            duration: newSession.duration || 0,
+            exercises: newSession.exercises?.map((ex: any) => ({
+              exerciseId: ex.exerciseId,
+              exerciseName: ex.exercise?.name || 'Unknown Exercise',
+              sets: ex.sets || []
+            })) || [],
+            status: newSession.status,
+            notes: newSession.notes,
+            templateId: newSession.workoutTemplateId,
+          })
+        }
+      } else {
+        throw new Error('Failed to repeat workout')
+      }
+    } catch (error) {
+      console.error('Failed to repeat workout:', error)
+      toast.error('Failed to repeat workout')
+    }
+  }
+
   if (loading) {
     return (
       <Card>
@@ -252,6 +288,15 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
                   <Badge variant="outline" className="capitalize text-xs">
                     {template.difficulty}
                   </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRepeatWorkout(workout.id)}
+                    className="text-xs px-2 py-1 h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  >
+                    <RotateCcw className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    <span className="hidden xs:inline">Repeat</span>
+                  </Button>
                   <QuickViewModal
                     workout={workout}
                     trigger={

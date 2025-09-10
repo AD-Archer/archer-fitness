@@ -50,6 +50,7 @@ interface WorkoutSessionProps {
   onPreviousExercise: () => void
   onSkipRest: () => void
   onSwitchToExercise: (index: number) => void
+  onSaveWorkout?: () => void
   formatTime: (seconds: number) => string
   getWorkoutProgress: () => number
 }
@@ -71,10 +72,22 @@ export function WorkoutSession({
   onPreviousExercise,
   onSkipRest,
   onSwitchToExercise,
+  onSaveWorkout,
   formatTime,
   getWorkoutProgress,
 }: WorkoutSessionProps) {
   const currentExercise = session.exercises[currentExerciseIndex]
+
+  // Get last set data for pre-filling the form
+  const getLastSetData = () => {
+    if (currentExercise.sets.length === 0) return undefined
+    const lastSet = currentExercise.sets[currentExercise.sets.length - 1]
+    return {
+      reps: lastSet.reps,
+      weight: lastSet.weight,
+      isBodyweight: lastSet.weight === undefined
+    }
+  }
 
   // Guard clause: if no exercises or invalid index, show message
   if (!currentExercise) {
@@ -242,7 +255,9 @@ export function WorkoutSession({
               setNumber={currentExercise.sets.length + 1}
               targetType={currentExercise.targetType}
               currentExerciseTimer={exerciseTimer}
+              lastSetData={getLastSetData()}
               onAddSet={onAddSet}
+              onSaveWorkout={onSaveWorkout}
             />
           </div>
 

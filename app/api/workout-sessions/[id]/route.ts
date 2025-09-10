@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { calculateWorkoutPerformance } from "@/lib/workout-performance"
 
 export async function GET(
   request: NextRequest,
@@ -63,6 +64,63 @@ export async function PUT(
     const body = await request.json()
     const { status, endTime, duration, notes } = body
 
+    // If completing the workout, calculate performance metrics
+    let performanceData = {}
+    if (status === "completed") {
+      // First get the workout session with all exercises and sets
+      const workoutSession = await prisma.workoutSession.findFirst({
+        where: {
+          id: params.id,
+          userId: session.user.id,
+        },
+        include: {
+          exercises: {
+            include: {
+              sets: {
+                orderBy: {
+                  setNumber: "asc",
+                },
+              },
+            },
+            orderBy: {
+              order: "asc",
+            },
+          },
+        },
+      })
+
+      if (workoutSession) {
+        // Transform the data to match our performance calculation interface
+        const transformedSession = {
+          ...workoutSession,
+          exercises: workoutSession.exercises.map(ex => ({
+            ...ex,
+            completedSets: ex.sets.filter(set => set.completed).length,
+          }))
+        }
+        
+        const performance = calculateWorkoutPerformance(transformedSession)
+        
+        performanceData = {
+          performanceStatus: performance.performanceStatus,
+          completionRate: performance.completionRate,
+          perfectionScore: performance.perfectionScore,
+        }
+
+        // Update individual exercise scores and completed sets count
+        // Note: perfectionScore and completedSets will be available after DB migration
+        // for (const exerciseScore of performance.exerciseScores) {
+        //   await prisma.workoutSessionExercise.update({
+        //     where: { id: exerciseScore.exerciseId },
+        //     data: {
+        //       perfectionScore: exerciseScore.score,
+        //       completedSets: exerciseScore.completedSets,
+        //     },
+        //   })
+        // }
+      }
+    }
+
     const workoutSession = await prisma.workoutSession.update({
       where: {
         id: params.id,
@@ -73,6 +131,7 @@ export async function PUT(
         endTime: endTime ? new Date(endTime) : undefined,
         duration,
         notes,
+        ...performanceData,
         updatedAt: new Date(),
       },
       include: {
