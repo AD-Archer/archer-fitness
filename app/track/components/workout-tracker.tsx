@@ -138,7 +138,7 @@ export function WorkoutTracker() {
     return () => clearInterval(interval)
   }, [isTimerRunning, session, currentExerciseIndex, isResting])
 
-  // Reset exercise timer when switching exercises
+    // Reset exercise timer when switching exercises
   useEffect(() => {
     setExerciseTimer(0)
   }, [currentExerciseIndex])
@@ -202,11 +202,27 @@ export function WorkoutTracker() {
         isActive: created.status !== "completed",
       }
 
+      // Check for saved state
+      try {
+        const savedStateRes = await fetch(`/api/workout-sessions/${created.id}/saved-state`)
+        if (savedStateRes.ok) {
+          const savedState = await savedStateRes.json()
+          setCurrentExerciseIndex(savedState.currentExerciseIndex || 0)
+          setTimer(savedState.timer || 0)
+          setExerciseTimer(savedState.exerciseTimer || 0)
+          setIsTimerRunning(savedState.isTimerRunning || false)
+          setIsResting(savedState.isResting || false)
+          setRestTimer(savedState.restTimer || 0)
+          console.log("Restored saved workout state:", savedState)
+        }
+      } catch {
+        console.log("No saved state found, starting fresh")
+      }
+
       console.log("New session:", newSession)
 
       setSession(newSession)
       setIsTimerRunning(true)
-      setCurrentExerciseIndex(0)
       setShowWorkoutSelection(false)
     } catch (e) {
       console.error("Error in startWorkout:", e)
@@ -222,9 +238,57 @@ export function WorkoutTracker() {
     }
   }
 
+  const saveWorkout = async () => {
+    if (!session) return
+    
+    try {
+      // Save workout state to the server
+      await fetch(`/api/workout-sessions/${session.id}/saved-state`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentExerciseIndex,
+          timer,
+          exerciseTimer,
+          isTimerRunning,
+          isResting,
+          restTimer,
+          lastSetData: session.exercises[currentExerciseIndex]?.sets.length > 0 
+            ? {
+                reps: session.exercises[currentExerciseIndex].sets[session.exercises[currentExerciseIndex].sets.length - 1].reps,
+                weight: session.exercises[currentExerciseIndex].sets[session.exercises[currentExerciseIndex].sets.length - 1].weight,
+                isBodyweight: session.exercises[currentExerciseIndex].sets[session.exercises[currentExerciseIndex].sets.length - 1].weight === undefined
+              }
+            : null
+        }),
+      })
+
+      // Update session status to paused
+      await fetch(`/api/workout-sessions/${session.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "paused",
+          duration: timer,
+        }),
+      })
+
+      // Navigate back to selection
+      setSession(null)
+      setTimer(0)
+      setIsTimerRunning(false)
+      setCurrentExerciseIndex(0)
+      setShowWorkoutSelection(true)
+      
+    } catch (e) {
+      console.error("Failed to save workout state", e)
+    }
+  }
+
   const finishWorkout = async () => {
     if (!session) return
     try {
+      // Update session status to completed, which will trigger performance calculation in the API
       await fetch(`/api/workout-sessions/${session.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -234,6 +298,15 @@ export function WorkoutTracker() {
           duration: timer,
         }),
       })
+      
+      // Clear saved state since workout is complete
+      try {
+        await fetch(`/api/workout-sessions/${session.id}/saved-state`, {
+          method: "DELETE",
+        })
+      } catch {
+        console.log("No saved state to clear")
+      }
     } catch (e) {
       console.error("Failed to complete session", e)
     }
@@ -523,6 +596,7 @@ export function WorkoutTracker() {
         onPreviousExercise={previousExercise}
         onSkipRest={() => setIsResting(false)}
         onSwitchToExercise={switchToExercise}
+        onSaveWorkout={saveWorkout}
         formatTime={formatTime}
         getWorkoutProgress={getWorkoutProgress}
       />

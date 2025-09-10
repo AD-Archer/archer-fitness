@@ -8,6 +8,7 @@ import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { WorkoutDetailsModal } from "./workout-details-modal"
 import { QuickViewModal } from "./quick-view-modal"
+import { getPerformanceBadgeProps, type WorkoutPerformanceStatus } from "@/lib/workout-performance"
 
 interface WorkoutSession {
   id: string
@@ -24,6 +25,9 @@ interface WorkoutSession {
     }>
   }>
   status: "completed" | "in_progress" | "skipped"
+  performanceStatus?: WorkoutPerformanceStatus
+  completionRate?: number
+  perfectionScore?: number
   notes?: string
 }
 
@@ -45,6 +49,9 @@ interface ApiWorkoutSession {
     }>
   }>
   status: string
+  performanceStatus?: string
+  completionRate?: number
+  perfectionScore?: number
   notes?: string
 }
 
@@ -71,6 +78,9 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
               sets: ex.sets || []
             })) || [],
             status: session.status,
+            performanceStatus: session.performanceStatus as WorkoutPerformanceStatus,
+            completionRate: session.completionRate,
+            perfectionScore: session.perfectionScore,
             notes: session.notes,
           }))
           setWorkoutHistory(transformedData)
@@ -97,6 +107,19 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
       day: "numeric",
       year: "numeric",
     })
+  }
+
+  const getWorkoutPerformanceStatus = (workout: WorkoutSession): WorkoutPerformanceStatus => {
+    if (workout.performanceStatus) {
+      return workout.performanceStatus
+    }
+    
+    // Fallback for old workouts without performance status
+    if (workout.status === "completed") {
+      return "completed"
+    } else {
+      return "unfinished"
+    }
   }
 
   const calculateWorkoutStats = (workout: WorkoutSession) => {
@@ -186,9 +209,28 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
                         </div>
                       </div>
                     </div>
-                    <Badge variant="outline" className="capitalize">
-                      {workout.status.replace('_', ' ')}
-                    </Badge>
+                    <div className="flex flex-col gap-2 items-end">
+                      {(() => {
+                        const performanceStatus = getWorkoutPerformanceStatus(workout)
+                        const badgeProps = getPerformanceBadgeProps(performanceStatus)
+                        return (
+                          <Badge className={badgeProps.className}>
+                            <span className="mr-1">{badgeProps.icon}</span>
+                            {badgeProps.text}
+                          </Badge>
+                        )
+                      })()}
+                      {workout.performanceStatus && workout.completionRate !== undefined && (
+                        <div className="text-xs text-muted-foreground text-right">
+                          {workout.completionRate.toFixed(0)}% complete
+                          {workout.perfectionScore !== undefined && (
+                            <>
+                              <br />Score: {workout.perfectionScore.toFixed(0)}/100
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">

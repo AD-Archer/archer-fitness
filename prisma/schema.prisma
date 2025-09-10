@@ -70,6 +70,7 @@ model User {
   preferences   UserPreference?
   foods         Food[]
   meals         Meal[]
+  savedWorkoutStates SavedWorkoutState[]
 
   @@map("users")
 }
@@ -155,6 +156,9 @@ model WorkoutSession {
   endTime          DateTime?
   duration         Int?     // actual duration in seconds
   status           String   @default("active") // "active", "completed", "paused"
+  performanceStatus String? // "completed", "unfinished", "perfect"
+  completionRate   Float?   // percentage of workout completed (0-100)
+  perfectionScore  Float?   // score for how well user performed (0-100)
   notes            String?
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
@@ -162,6 +166,7 @@ model WorkoutSession {
   user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
   workoutTemplate  WorkoutTemplate? @relation(fields: [workoutTemplateId], references: [id])
   exercises        WorkoutSessionExercise[]
+  savedState       SavedWorkoutState?
 
   @@map("workout_sessions")
 }
@@ -176,6 +181,8 @@ model WorkoutSessionExercise {
   targetType       String   @default("reps") // "reps" or "time"
   notes            String?
   completed        Boolean  @default(false)
+  completedSets    Int      @default(0) // track how many sets were actually completed
+  perfectionScore  Float?   // individual exercise performance score (0-100)
   createdAt        DateTime @default(now()) @map("created_at")
 
   workoutSession WorkoutSession @relation(fields: [workoutSessionId], references: [id], onDelete: Cascade)
@@ -201,6 +208,27 @@ model ExerciseSet {
 
   @@unique([workoutSessionExerciseId, setNumber])
   @@map("exercise_sets")
+}
+
+// Model to save workout progress when user exits mid-workout
+model SavedWorkoutState {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  workoutSessionId String   @unique @map("workout_session_id")
+  currentExerciseIndex Int  @default(0)
+  timer            Int      @default(0) // seconds
+  exerciseTimer    Int      @default(0) // seconds for current exercise
+  isTimerRunning   Boolean  @default(false)
+  isResting        Boolean  @default(false)
+  restTimer        Int      @default(0)
+  lastSetData      Json?    // Store last set data (reps, weight) for quick access
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutSession   WorkoutSession @relation(fields: [workoutSessionId], references: [id], onDelete: Cascade)
+
+  @@map("saved_workout_states")
 }
 
 model Workout {

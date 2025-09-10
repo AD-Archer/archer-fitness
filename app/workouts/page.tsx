@@ -6,7 +6,7 @@ export default function WorkoutsPage() {
     <div className="flex min-h-screen bg-background">
       <Sidebar />
 
-      <main className="flex-1 p-6 lg:p-8">
+      <main className="flex-1 p-6 pt-10 lg:p-8">
         <div className="max-w-6xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold tracking-tight text-balance">My Workouts</h1>
