@@ -16,15 +16,15 @@ export function DashboardMainContent() {
       <DashboardStats />
 
       {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
         {/* Left Column - 2/3 width */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           <WeeklyProgress />
           <RecentWorkouts />
         </div>
 
         {/* Right Column - 1/3 width */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
 
           {/* Today's Focus */}
           <Card>
@@ -32,10 +32,10 @@ export function DashboardMainContent() {
               <CardTitle className="text-lg">Today&#39;s Focus</CardTitle>
               <CardDescription>AI recommended workout</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="p-4 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 border">
-                <h3 className="font-semibold text-blue-900 dark:text-blue-100">Upper Body Strength</h3>
-                <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">45 min • 6 exercises • Intermediate</p>
+            <CardContent className="space-y-3 sm:space-y-4">
+              <div className="p-3 sm:p-4 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 border overflow-hidden">
+                <h3 className="font-semibold text-blue-900 dark:text-blue-100 truncate">Upper Body Strength</h3>
+                <p className="text-sm text-blue-700 dark:text-blue-300 mt-1 truncate">45 min • 6 exercises • Intermediate</p>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
@@ -55,30 +55,30 @@ export function DashboardMainContent() {
             <CardHeader>
               <CardTitle className="text-lg">Recovery Status</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Sleep Quality</span>
+            <CardContent className="space-y-3 sm:space-y-4">
+              <div className="flex items-center justify-between min-w-0">
+                <span className="text-sm font-medium truncate flex-1 mr-2">Sleep Quality</span>
                 <Badge
                   variant="secondary"
-                  className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                  className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 flex-shrink-0"
                 >
                   Good
                 </Badge>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Muscle Recovery</span>
+              <div className="flex items-center justify-between min-w-0">
+                <span className="text-sm font-medium truncate flex-1 mr-2">Muscle Recovery</span>
                 <Badge
                   variant="secondary"
-                  className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                  className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 flex-shrink-0"
                 >
                   Moderate
                 </Badge>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Energy Level</span>
+              <div className="flex items-center justify-between min-w-0">
+                <span className="text-sm font-medium truncate flex-1 mr-2">Energy Level</span>
                 <Badge
                   variant="secondary"
-                  className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                  className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 flex-shrink-0"
                 >
                   High
                 </Badge>

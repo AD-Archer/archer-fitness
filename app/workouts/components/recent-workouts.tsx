@@ -231,33 +231,33 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
           {recentWorkouts.map((workout) => {
             const template = getTemplateInfo(workout.templateId)
             return (
-              <div key={workout.id} className="flex items-center justify-between p-4 rounded-lg border bg-card/50">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                    <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+              <div key={workout.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 rounded-lg border bg-card/50 gap-3 sm:gap-4">
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" />
                   </div>
-                  <div>
-                    <h3 className="font-medium">{workout.name}</h3>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                      <span>{formatDate(workout.date)}</span>
-                      <div className="flex items-center gap-1">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-medium truncate">{workout.name}</h3>
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-muted-foreground mt-1">
+                      <span className="whitespace-nowrap">{formatDate(workout.date)}</span>
+                      <div className="flex items-center gap-1 whitespace-nowrap">
                         <Clock className="w-3 h-3" />
-                        {workout.duration} min
+                        {workout.duration ? Math.round(workout.duration / 60) : 0} min
                       </div>
-                      <span>{template.exercises.length} exercises</span>
+                      <span className="whitespace-nowrap">{template.exercises.length} exercises</span>
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge variant="outline" className="capitalize">
+                <div className="flex items-center gap-1 sm:gap-2 flex-wrap sm:flex-nowrap">
+                  <Badge variant="outline" className="capitalize text-xs">
                     {template.difficulty}
                   </Badge>
                   <QuickViewModal
                     workout={workout}
                     trigger={
-                      <Button variant="ghost" size="sm">
-                        <Eye className="w-4 h-4 mr-2" />
-                        Quick View
+                      <Button variant="ghost" size="sm" className="text-xs px-2 py-1 h-8">
+                        <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                        <span className="hidden xs:inline">Quick View</span>
                       </Button>
                     }
                   />
@@ -265,16 +265,17 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
                     workout={selectedWorkout}
                     onRepeat={onRepeatWorkout}
                     trigger={
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedWorkout(workout)}>
-                        View Details
+                      <Button variant="ghost" size="sm" className="text-xs px-2 py-1 h-8" onClick={() => setSelectedWorkout(workout)}>
+                        <span className="hidden xs:inline">View Details</span>
+                        <span className="xs:hidden">Details</span>
                       </Button>
                     }
                   />
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
+                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs px-2 py-1 h-8">
+                        <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                        <span className="hidden xs:inline">Delete</span>
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>

@@ -54,12 +54,12 @@ export function WeeklyProgress() {
           <Progress value={progressPercentage} className="h-3" />
         </div>
 
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
           {weeklyData.map((day) => (
-            <div key={day.day} className="text-center">
-              <div className="text-xs text-muted-foreground mb-2">{day.day}</div>
+            <div key={day.day} className="text-center min-w-0">
+              <div className="text-xs text-muted-foreground mb-1 sm:mb-2">{day.day}</div>
               <div
-                className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center text-xs font-medium ${
+                className={`w-6 h-6 sm:w-8 sm:h-8 mx-auto rounded-full flex items-center justify-center text-xs font-medium ${
                   day.completed
                     ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
                     : day.isRestDay
@@ -69,8 +69,8 @@ export function WeeklyProgress() {
               >
                 {day.completed ? "✓" : day.isRestDay ? "—" : "○"}
               </div>
-              <div className="text-xs text-muted-foreground mt-1 truncate">
-                {day.workout.length > 8 ? `${day.workout.substring(0, 8)}...` : day.workout}
+              <div className="text-xs text-muted-foreground mt-1 truncate max-w-full">
+                {day.workout.length > 6 ? `${day.workout.substring(0, 6)}...` : day.workout}
               </div>
             </div>
           ))}
