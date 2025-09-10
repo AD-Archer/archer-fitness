@@ -120,7 +120,6 @@ export function CalorieTracker() {
           setUseDatabase(true)
         }
       } catch {
-        console.log('Using sample foods (database not available)')
         setAvailableFoods(SAMPLE_FOODS)
       }
     }
@@ -139,7 +138,6 @@ export function CalorieTracker() {
           setMeals(dbMeals)
         }
       } catch {
-        console.log('Could not fetch meals')
       } finally {
         setIsLoadingMeals(false)
       }
@@ -168,7 +166,6 @@ export function CalorieTracker() {
           method: 'POST'
         })
       } catch {
-        console.log('Could not update usage count')
       }
     }
   }
@@ -291,7 +288,6 @@ export function CalorieTracker() {
         }
       }
     } catch {
-      console.log('Search failed, using local filtering')
       setSearchResults(filteredFoods.slice(0, 10))
     } finally {
       setIsSearching(false)

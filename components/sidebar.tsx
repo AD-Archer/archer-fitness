@@ -14,10 +14,12 @@ import {
   Apple,
   Menu,
   X,
+  LogOut,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { signOut } from "next-auth/react"
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -110,7 +112,7 @@ export function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-border">
+        <div className="p-4 border-t border-border space-y-2">
           <Link href="/settings">
             <Button
               variant="ghost"
@@ -120,6 +122,14 @@ export function Sidebar() {
               {!collapsed && <span>Settings</span>}
             </Button>
           </Link>
+          <Button
+            variant="ghost"
+            className={cn("w-full justify-start gap-3 h-10 text-red-600 hover:text-red-600 hover:bg-red-50", collapsed && "justify-center px-2 lg:px-2")}
+            onClick={() => signOut({ callbackUrl: "/auth/signin" })}
+          >
+            <LogOut className="h-4 w-4 flex-shrink-0" />
+            {!collapsed && <span>Sign Out</span>}
+          </Button>
         </div>
       </div>
     </>
