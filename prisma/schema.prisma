@@ -58,10 +58,14 @@ model User {
   gender        String?   // "male" or "female"
   fitnessGoals  String?
   activityLevel String?
+  experienceLevel String? @default("beginner") // "beginner", "intermediate", "advanced"
 
   accounts      Account[]
   sessions      Session[]
   workouts      Workout[]
+  workoutTemplates WorkoutTemplate[]
+  workoutSessions WorkoutSession[]
+  exercises     Exercise[]
   nutritionLogs NutritionLog[]
   preferences   UserPreference?
   foods         Food[]
@@ -80,13 +84,130 @@ model VerificationToken {
 }
 
 // Fitness-related models
+model WorkoutTemplate {
+  id               String   @id @default(cuid())
+  userId           String?  @map("user_id") // null for predefined templates
+  name             String
+  description      String?
+  estimatedDuration Int     @default(30) // minutes
+  category         String?  // e.g., "upper-body", "lower-body", "full-body"
+  difficulty       String?  // "beginner", "intermediate", "advanced"
+  isPublic         Boolean  @default(false)
+  isPredefined     Boolean  @default(false)
+  usageCount       Int      @default(0)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercises        WorkoutTemplateExercise[]
+  workoutSessions  WorkoutSession[]
+
+  @@map("workout_templates")
+}
+
+model Exercise {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  category    String?  // e.g., "chest", "back", "legs", "shoulders", "arms", "core"
+  muscleGroup String?  // primary muscle group targeted
+  equipment   String?  // e.g., "dumbbells", "barbell", "bodyweight", "machine"
+  instructions String?
+  isPublic    Boolean  @default(false)
+  isPredefined Boolean @default(false)
+  userId      String?  @map("user_id") // null for predefined exercises
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  templateExercises WorkoutTemplateExercise[]
+  sessionExercises  WorkoutSessionExercise[]
+
+  @@map("exercises")
+}
+
+model WorkoutTemplateExercise {
+  id               String  @id @default(cuid())
+  workoutTemplateId String  @map("workout_template_id")
+  exerciseId       String  @map("exercise_id")
+  order            Int     @default(0)
+  targetSets       Int     @default(3)
+  targetReps       String  @default("8-12") // can be "8-12" or "30 seconds"
+  targetWeight     Float?  // optional target weight
+  restTime         Int     @default(90) // seconds
+  notes            String?
+
+  workoutTemplate WorkoutTemplate @relation(fields: [workoutTemplateId], references: [id], onDelete: Cascade)
+  exercise         Exercise        @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([workoutTemplateId, exerciseId])
+  @@map("workout_template_exercises")
+}
+
+model WorkoutSession {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  workoutTemplateId String? @map("workout_template_id") // null for custom sessions
+  name             String
+  description      String?
+  startTime        DateTime @default(now())
+  endTime          DateTime?
+  duration         Int?     // actual duration in seconds
+  status           String   @default("active") // "active", "completed", "paused"
+  notes            String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutTemplate  WorkoutTemplate? @relation(fields: [workoutTemplateId], references: [id])
+  exercises        WorkoutSessionExercise[]
+
+  @@map("workout_sessions")
+}
+
+model WorkoutSessionExercise {
+  id               String   @id @default(cuid())
+  workoutSessionId String   @map("workout_session_id")
+  exerciseId       String   @map("exercise_id")
+  order            Int      @default(0)
+  targetSets       Int      @default(3)
+  targetReps       String   @default("8-12")
+  notes            String?
+  completed        Boolean  @default(false)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  workoutSession WorkoutSession @relation(fields: [workoutSessionId], references: [id], onDelete: Cascade)
+  exercise       Exercise       @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  sets           ExerciseSet[]
+
+  @@map("workout_session_exercises")
+}
+
+model ExerciseSet {
+  id                    String   @id @default(cuid())
+  workoutSessionExerciseId String @map("workout_session_exercise_id")
+  setNumber             Int
+  reps                  Int?
+  weight                Float?
+  duration              Int?     // for time-based exercises (seconds)
+  completed             Boolean  @default(false)
+  restTime              Int?     // actual rest time taken
+  notes                 String?
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  workoutSessionExercise WorkoutSessionExercise @relation(fields: [workoutSessionExerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([workoutSessionExerciseId, setNumber])
+  @@map("exercise_sets")
+}
+
 model Workout {
   id          String   @id @default(cuid())
   userId      String   @map("user_id")
   name        String
   description String?
   duration    Int      // minutes
-  exercises   Json     // Store exercises as JSON
+  exercises   Json     // Store exercises as JSON - keeping for backward compatibility
   date        DateTime @default(now())
   createdAt   DateTime @default(now()) @map("created_at")
 

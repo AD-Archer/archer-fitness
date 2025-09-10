@@ -1,4 +1,4 @@
-import { WorkoutTracker } from "@/components/workout-tracker"
+import { WorkoutTracker } from "@/app/track/components/workout-tracker"
 import { Sidebar } from "@/components/sidebar"
 
 export default function TrackPage() {

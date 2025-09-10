@@ -2,6 +2,101 @@ import { PrismaClient } from "@prisma/client"
 
 const prisma = new PrismaClient()
 
+const exercises = [
+  // Chest exercises
+  { name: "Dumbbell Bench Press", category: "chest", muscleGroup: "chest", equipment: "dumbbells", instructions: "Lower weights to chest, press up explosively", isPredefined: true },
+  { name: "Push-ups", category: "chest", muscleGroup: "chest", equipment: "bodyweight", instructions: "Lower chest to ground, push back up", isPredefined: true },
+  { name: "Incline Dumbbell Press", category: "chest", muscleGroup: "chest", equipment: "dumbbells", instructions: "Press weights up at an incline", isPredefined: true },
+
+  // Back exercises
+  { name: "Bent-over Rows", category: "back", muscleGroup: "back", equipment: "dumbbells", instructions: "Hinge at hips, pull weights to lower chest", isPredefined: true },
+  { name: "Pull-ups", category: "back", muscleGroup: "back", equipment: "bodyweight", instructions: "Hang from bar, pull body up", isPredefined: true },
+  { name: "Lat Pulldowns", category: "back", muscleGroup: "back", equipment: "machine", instructions: "Pull bar down to chest", isPredefined: true },
+
+  // Legs exercises
+  { name: "Goblet Squats", category: "legs", muscleGroup: "quadriceps", equipment: "dumbbells", instructions: "Hold dumbbell at chest, squat down keeping chest up", isPredefined: true },
+  { name: "Romanian Deadlifts", category: "legs", muscleGroup: "hamstrings", equipment: "dumbbells", instructions: "Hinge at hips, lower weights while keeping back straight", isPredefined: true },
+  { name: "Bulgarian Split Squats", category: "legs", muscleGroup: "quadriceps", equipment: "dumbbells", instructions: "Rear foot elevated, lunge down on front leg", isPredefined: true },
+  { name: "Calf Raises", category: "legs", muscleGroup: "calves", equipment: "bodyweight", instructions: "Rise up on toes, squeeze calves at the top", isPredefined: true },
+
+  // Shoulders exercises
+  { name: "Overhead Press", category: "shoulders", muscleGroup: "shoulders", equipment: "dumbbells", instructions: "Press weights overhead, keep core tight", isPredefined: true },
+  { name: "Lateral Raises", category: "shoulders", muscleGroup: "shoulders", equipment: "dumbbells", instructions: "Raise arms out to sides to shoulder height", isPredefined: true },
+
+  // Arms exercises
+  { name: "Bicep Curls", category: "arms", muscleGroup: "biceps", equipment: "dumbbells", instructions: "Curl weights up, control the descent", isPredefined: true },
+  { name: "Tricep Extensions", category: "arms", muscleGroup: "triceps", equipment: "dumbbells", instructions: "Extend arms overhead, lower behind head", isPredefined: true },
+
+  // Core exercises
+  { name: "Plank", category: "core", muscleGroup: "core", equipment: "bodyweight", instructions: "Hold plank position, keep core tight and body straight", isPredefined: true },
+  { name: "Mountain Climbers", category: "core", muscleGroup: "core", equipment: "bodyweight", instructions: "Plank position, alternate bringing knees to chest", isPredefined: true },
+  { name: "Russian Twists", category: "core", muscleGroup: "core", equipment: "bodyweight", instructions: "Sit with knees bent, twist torso side to side", isPredefined: true },
+
+  // Full body exercises
+  { name: "Burpees", category: "full-body", muscleGroup: "full-body", equipment: "bodyweight", instructions: "Drop down, jump back, push-up, jump forward, jump up", isPredefined: true },
+  { name: "Dumbbell Thrusters", category: "full-body", muscleGroup: "full-body", equipment: "dumbbells", instructions: "Squat with weights at shoulders, stand and press overhead", isPredefined: true },
+  { name: "Kettlebell Swings", category: "full-body", muscleGroup: "full-body", equipment: "kettlebell", instructions: "Swing kettlebell from between knees to chest height", isPredefined: true },
+]
+
+const workoutTemplates = [
+  {
+    name: "Upper Body Strength",
+    description: "Focus on chest, shoulders, and arms",
+    estimatedDuration: 45,
+    category: "upper-body",
+    difficulty: "intermediate",
+    isPredefined: true,
+    exercises: [
+      { exerciseName: "Dumbbell Bench Press", targetSets: 4, targetReps: "8-12", restTime: 90 },
+      { exerciseName: "Bent-over Rows", targetSets: 4, targetReps: "10-12", restTime: 90 },
+      { exerciseName: "Overhead Press", targetSets: 3, targetReps: "8-10", restTime: 90 },
+      { exerciseName: "Bicep Curls", targetSets: 3, targetReps: "12-15", restTime: 60 },
+    ],
+  },
+  {
+    name: "Lower Body Power",
+    description: "Legs, glutes, and core strength",
+    estimatedDuration: 50,
+    category: "lower-body",
+    difficulty: "intermediate",
+    isPredefined: true,
+    exercises: [
+      { exerciseName: "Goblet Squats", targetSets: 4, targetReps: "12-15", restTime: 90 },
+      { exerciseName: "Romanian Deadlifts", targetSets: 4, targetReps: "10-12", restTime: 90 },
+      { exerciseName: "Bulgarian Split Squats", targetSets: 3, targetReps: "10-12", restTime: 90 },
+      { exerciseName: "Calf Raises", targetSets: 3, targetReps: "15-20", restTime: 60 },
+    ],
+  },
+  {
+    name: "Full Body Circuit",
+    description: "Complete body workout in minimal time",
+    estimatedDuration: 35,
+    category: "full-body",
+    difficulty: "intermediate",
+    isPredefined: true,
+    exercises: [
+      { exerciseName: "Burpees", targetSets: 3, targetReps: "8-10", restTime: 60 },
+      { exerciseName: "Mountain Climbers", targetSets: 3, targetReps: "20-30", restTime: 60 },
+      { exerciseName: "Dumbbell Thrusters", targetSets: 3, targetReps: "10-12", restTime: 60 },
+      { exerciseName: "Plank", targetSets: 3, targetReps: "30-60", restTime: 60 },
+    ],
+  },
+  {
+    name: "Beginner Full Body",
+    description: "Perfect for beginners starting their fitness journey",
+    estimatedDuration: 30,
+    category: "full-body",
+    difficulty: "beginner",
+    isPredefined: true,
+    exercises: [
+      { exerciseName: "Push-ups", targetSets: 3, targetReps: "8-12", restTime: 60 },
+      { exerciseName: "Goblet Squats", targetSets: 3, targetReps: "10-15", restTime: 60 },
+      { exerciseName: "Bent-over Rows", targetSets: 3, targetReps: "10-12", restTime: 60 },
+      { exerciseName: "Plank", targetSets: 3, targetReps: "20-30", restTime: 45 },
+    ],
+  },
+]
+
 const foods = [
   // Proteins
   { name: "Chicken Breast", brand: null, calories: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0, sugar: 0, sodium: 74, servingSize: 100, servingUnit: "g", category: "protein", verified: true },
@@ -33,20 +128,70 @@ const foods = [
 ]
 
 async function main() {
+  console.log("Seeding exercises...")
+
+  for (const exercise of exercises) {
+    try {
+      await prisma.exercise.create({
+        data: exercise,
+      })
+    } catch (error: any) {
+      // Skip if exercise already exists
+      console.log(`Exercise ${exercise.name} already exists, skipping...`)
+    }
+  }
+
+  console.log("Seeding workout templates...")
+
+  for (const template of workoutTemplates) {
+    // First, find the exercises by name
+    const exercisePromises = template.exercises.map(async (ex) => {
+      const exercise = await prisma.exercise.findFirst({
+        where: { name: ex.exerciseName, isPredefined: true },
+      })
+      return exercise ? { ...ex, exerciseId: exercise.id } : null
+    })
+
+    const exercisesWithIds = (await Promise.all(exercisePromises)).filter(Boolean)
+
+    if (exercisesWithIds.length > 0) {
+      try {
+        await prisma.workoutTemplate.create({
+          data: {
+            ...template,
+            exercises: {
+              create: exercisesWithIds.map((ex, index) => ({
+                exerciseId: ex!.exerciseId,
+                order: index,
+                targetSets: ex!.targetSets,
+                targetReps: ex!.targetReps,
+                restTime: ex!.restTime,
+              })),
+            },
+          },
+        })
+      } catch (error: any) {
+        console.log(`Workout template ${template.name} already exists, skipping...`)
+      }
+    }
+  }
+
   console.log("Seeding foods...")
 
   for (const food of foods) {
-    await prisma.food.upsert({
-      where: { id: `${food.name}-${food.servingSize}` }, // Create a unique identifier
-      update: {},
-      create: {
-        ...food,
-        userId: null, // Global foods
-      },
-    })
+    try {
+      await prisma.food.create({
+        data: {
+          ...food,
+          userId: null, // Global foods
+        },
+      })
+    } catch (error: any) {
+      console.log(`Food ${food.name} already exists, skipping...`)
+    }
   }
 
-  console.log("Foods seeded successfully!")
+  console.log("Seeding completed successfully!")
 }
 
 main()

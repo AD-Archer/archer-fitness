@@ -2,11 +2,146 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Clock, CheckCircle } from "lucide-react"
-import { getRecentWorkouts, getWorkoutTemplates } from "@/lib/data-store"
+import { useEffect, useState } from "react"
+
+interface WorkoutSession {
+  id: string
+  name: string
+  date: Date
+  duration: number
+  exercises: Array<{
+    exerciseId: string
+    sets: Array<{
+      reps: number
+      weight?: number
+      completed: boolean
+    }>
+  }>
+  status: "completed" | "in_progress" | "skipped"
+  notes?: string
+  templateId?: string
+}
+
+interface WorkoutTemplate {
+  id: string
+  name: string
+  description: string
+  difficulty: "beginner" | "intermediate" | "advanced"
+  duration: number
+  exercises: Array<{
+    id: string
+    name: string
+  }>
+}
+
+interface ApiWorkoutSession {
+  id: string
+  name: string
+  startTime: string
+  duration: number | null
+  exercises: Array<{
+    exerciseId: string
+    sets: Array<{
+      reps: number
+      weight?: number
+      completed: boolean
+    }>
+  }>
+  status: string
+  notes?: string
+  workoutTemplateId?: string
+  workoutTemplate?: {
+    id: string
+    name: string
+    difficulty: string
+    exercises: Array<{
+      id: string
+      name: string
+    }>
+  }
+}
+
+interface ApiWorkoutTemplate {
+  id: string
+  name: string
+  description?: string
+  estimatedDuration?: number
+  difficulty: string
+  exercises?: Array<{
+    exercise?: {
+      id: string
+      name: string
+    }
+    exerciseId: string
+  }>
+}
+
+interface ApiTemplatesResponse {
+  userTemplates: ApiWorkoutTemplate[]
+  predefinedTemplates: ApiWorkoutTemplate[]
+}
 
 export function RecentWorkouts() {
-  const recentWorkouts = getRecentWorkouts(3)
-  const workoutTemplates = getWorkoutTemplates()
+  const [recentWorkouts, setRecentWorkouts] = useState<WorkoutSession[]>([])
+  const [workoutTemplates, setWorkoutTemplates] = useState<WorkoutTemplate[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch recent workout sessions
+        const sessionsResponse = await fetch('/api/workout-sessions?limit=3')
+        let sessionsData: ApiWorkoutSession[] = []
+        if (sessionsResponse.ok) {
+          sessionsData = await sessionsResponse.json()
+        }
+
+        // Fetch workout templates
+        const templatesResponse = await fetch('/api/workout-templates?limit=10')
+        let templatesData: ApiTemplatesResponse = { userTemplates: [], predefinedTemplates: [] }
+        if (templatesResponse.ok) {
+          templatesData = await templatesResponse.json()
+        }
+
+        // Transform sessions data
+        const transformedSessions = sessionsData.map((session) => ({
+          id: session.id,
+          name: session.name,
+          date: new Date(session.startTime),
+          duration: session.duration || 0,
+          exercises: session.exercises || [],
+          status: session.status as "completed" | "in_progress" | "skipped",
+          notes: session.notes,
+          templateId: session.workoutTemplateId,
+        }))
+
+        setRecentWorkouts(transformedSessions)
+
+        // Transform templates data
+        const allTemplates = [...templatesData.userTemplates, ...templatesData.predefinedTemplates]
+        const transformedTemplates = allTemplates.map((template: ApiWorkoutTemplate) => ({
+          id: template.id,
+          name: template.name,
+          description: template.description || template.name,
+          difficulty: template.difficulty as "beginner" | "intermediate" | "advanced",
+          duration: template.estimatedDuration || 0,
+          exercises: template.exercises?.map((ex) => ({
+            id: ex.exercise?.id || ex.exerciseId,
+            name: ex.exercise?.name || "Unknown Exercise",
+          })) || [],
+        }))
+
+        setWorkoutTemplates(transformedTemplates)
+
+      } catch (error) {
+        console.error('Failed to fetch recent workouts:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   // Helper function to format date
   const formatDate = (date: Date) => {
@@ -22,9 +157,34 @@ export function RecentWorkouts() {
   }
 
   // Helper function to get template info
-  const getTemplateInfo = (templateId: string) => {
+  const getTemplateInfo = (templateId?: string) => {
+    if (!templateId) {
+      return {
+        difficulty: "intermediate" as const,
+        exercises: [],
+      }
+    }
     const template = workoutTemplates.find((t) => t.id === templateId)
-    return template || { difficulty: "Intermediate", exercises: [] }
+    return template || {
+      difficulty: "intermediate" as const,
+      exercises: [],
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Workouts</CardTitle>
+          <CardDescription>Your latest training sessions</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            Loading recent workouts...
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
