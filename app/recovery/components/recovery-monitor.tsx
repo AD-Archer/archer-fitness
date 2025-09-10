@@ -180,7 +180,7 @@ export function RecoveryMonitor() {
       <Tabs defaultValue="today" className="space-y-6">
         <div className="flex items-center justify-between">
           <TabsList>
-            <TabsTrigger value="today">Today's Status</TabsTrigger>
+            <TabsTrigger value="today">Today&#39;s Status</TabsTrigger>
             <TabsTrigger value="trends">Recovery Trends</TabsTrigger>
             <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
           </TabsList>
@@ -202,9 +202,9 @@ export function RecoveryMonitor() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Plus className="w-5 h-5 text-blue-600" />
-                  Log Today's Recovery Metrics
+                  Log Today&#39;s Recovery Metrics
                 </CardTitle>
-                <CardDescription>Track your recovery indicators for personalized insights</CardDescription>
+                <CardDescription>Track your&#39;s recovery indicators for personalized insights</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid gap-6 md:grid-cols-2">
@@ -367,7 +367,7 @@ export function RecoveryMonitor() {
                     <span className="font-medium text-blue-800 dark:text-blue-200">Sleep Optimization</span>
                   </div>
                   <p className="text-sm text-blue-700 dark:text-blue-300">
-                    Aim for 7-9 hours of sleep tonight to improve tomorrow's recovery score.
+                    Aim for 7-9 hours of sleep tonight to improve tomorrow&#39;s recovery score.
                   </p>
                 </div>
               </CardContent>

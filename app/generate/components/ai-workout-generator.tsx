@@ -251,7 +251,7 @@ export function AIWorkoutGenerator() {
 
     await new Promise((resolve) => setTimeout(resolve, 2000))
 
-    const { fitnessLevel, workoutType, duration, equipment, notes } = preferences
+    const { fitnessLevel, workoutType, duration, equipment } = preferences
     const durationNum = Number.parseInt(duration)
 
     let availableExercises =
@@ -280,7 +280,6 @@ export function AIWorkoutGenerator() {
     const selectedExercises = availableExercises.slice(0, exerciseCount)
 
     const equipmentText = equipment.length > 0 ? ` (${equipment.join(", ")})` : ""
-    const notesText = notes ? ` - ${notes.slice(0, 30)}${notes.length > 30 ? "..." : ""}` : ""
 
     const workout: WorkoutPlan = {
       name: `AI-Generated ${workoutType.charAt(0).toUpperCase() + workoutType.slice(1)} Workout${equipmentText}`,
@@ -313,7 +312,7 @@ export function AIWorkoutGenerator() {
             <Zap className="w-5 h-5 text-blue-600" />
             AI Workout Generator
           </CardTitle>
-          <CardDescription>Tell me about your preferences and I'll create a personalized workout plan</CardDescription>
+          <CardDescription>Tell me about your preferences and I&apos;ll create a personalized workout plan</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
@@ -435,8 +434,7 @@ export function AIWorkoutGenerator() {
               className="resize-none"
             />
             <p className="text-xs text-muted-foreground">
-              Examples: "I have a bad knee, avoid lunges", "I love compound movements", "Focus on upper body today", "I
-              only have 20 minutes between meetings"
+              {`Examples: "I have a bad knee, avoid lunges", "I love compound movements", "Focus on upper body today", "I only have 20 minutes between meetings"`}
             </p>
           </div>
 
@@ -496,8 +494,7 @@ export function AIWorkoutGenerator() {
                     AI Insights
                   </h3>
                   <p className="text-sm text-blue-800 dark:text-blue-200">
-                    Based on your notes: "{preferences.notes.slice(0, 100)}
-                    {preferences.notes.length > 100 ? "..." : ""}", I've customized this workout to match your specific
+                    Based on your notes: {`"${preferences.notes.slice(0, 100)}${preferences.notes.length > 100 ? "..." : ""}"`}, I&apos;ve customized this workout to match your specific
                     needs and preferences.
                   </p>
                 </div>

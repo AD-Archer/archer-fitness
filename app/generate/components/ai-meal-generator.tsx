@@ -236,14 +236,12 @@ export function AIMealGenerator() {
 
     for (let day = 1; day <= daysNum; day++) {
       const dayMeals: Meal[] = []
-      let dailyCalories = 0
 
       // Add breakfast
       const breakfastOptions =
         mealDatabase.breakfast[mealStyle as keyof typeof mealDatabase.breakfast] || mealDatabase.breakfast.balanced
       const breakfast = breakfastOptions[Math.floor(Math.random() * breakfastOptions.length)]
       dayMeals.push(breakfast)
-      dailyCalories += breakfast.calories
       breakfast.ingredients.forEach((ing) => allIngredients.add(ing))
 
       // Add lunch
@@ -251,7 +249,6 @@ export function AIMealGenerator() {
         mealDatabase.lunch[mealStyle as keyof typeof mealDatabase.lunch] || mealDatabase.lunch.balanced
       const lunch = lunchOptions[Math.floor(Math.random() * lunchOptions.length)]
       dayMeals.push(lunch)
-      dailyCalories += lunch.calories
       lunch.ingredients.forEach((ing) => allIngredients.add(ing))
 
       // Add dinner
@@ -259,14 +256,12 @@ export function AIMealGenerator() {
         mealDatabase.dinner[mealStyle as keyof typeof mealDatabase.dinner] || mealDatabase.dinner.balanced
       const dinner = dinnerOptions[Math.floor(Math.random() * dinnerOptions.length)]
       dayMeals.push(dinner)
-      dailyCalories += dinner.calories
       dinner.ingredients.forEach((ing) => allIngredients.add(ing))
 
       // Add snacks if needed
       if (mealsNum > 3) {
         const snack = mealDatabase.snacks[Math.floor(Math.random() * mealDatabase.snacks.length)]
         dayMeals.push(snack)
-        dailyCalories += snack.calories
         snack.ingredients.forEach((ing) => allIngredients.add(ing))
       }
 
@@ -296,7 +291,7 @@ export function AIMealGenerator() {
             <Brain className="w-5 h-5 text-emerald-600" />
             AI Meal Plan Generator
           </CardTitle>
-          <CardDescription>Tell me about your nutrition goals and I'll create a personalized meal plan</CardDescription>
+          <CardDescription>Tell me about your nutrition goals and I&apos;ll create a personalized meal plan</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">

@@ -604,7 +604,7 @@ export function ProgressAnalytics() {
             <CardContent className="space-y-3">
               <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800">
                 <p className="text-sm text-green-800 dark:text-green-200">
-                  <strong>Excellent progress!</strong> You've lost 1.2kg while maintaining high protein intake,
+                  <strong>Excellent progress!</strong> You&apos;ve lost 1.2kg while maintaining high protein intake,
                   indicating healthy fat loss.
                 </p>
               </div>

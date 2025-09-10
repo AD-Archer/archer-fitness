@@ -73,28 +73,42 @@ export function ProfileTab({ profile, setProfile, units }: ProfileTabProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="height">Height</Label>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <Input
-                  id="heightFeet"
-                  type="number"
-                  placeholder="Feet"
-                  value={profile.heightFeet}
-                  onChange={(e) => setProfile({ ...profile, heightFeet: e.target.value })}
-                />
+            <Label htmlFor="height">
+              Height {units === "imperial" ? "(feet and inches)" : "(cm)"}
+            </Label>
+            {units === "imperial" ? (
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Input
+                    id="heightFeet"
+                    type="number"
+                    placeholder="Feet"
+                    value={profile.heightFeet}
+                    onChange={(e) => setProfile({ ...profile, heightFeet: e.target.value })}
+                  />
+                </div>
+                <div className="flex-1">
+                  <Input
+                    id="heightInches"
+                    type="number"
+                    placeholder="Inches"
+                    value={profile.heightInches}
+                    onChange={(e) => setProfile({ ...profile, heightInches: e.target.value })}
+                  />
+                </div>
               </div>
-              <div className="flex-1">
-                <Input
-                  id="heightInches"
-                  type="number"
-                  placeholder="Inches"
-                  value={profile.heightInches}
-                  onChange={(e) => setProfile({ ...profile, heightInches: e.target.value })}
-                />
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">Enter height in feet and inches</p>
+            ) : (
+              <Input
+                id="heightCm"
+                type="number"
+                placeholder="Height in cm"
+                value={profile.heightCm}
+                onChange={(e) => setProfile({ ...profile, heightCm: e.target.value })}
+              />
+            )}
+            <p className="text-xs text-muted-foreground">
+              {units === "imperial" ? "Enter height in feet and inches" : "Enter height in centimeters"}
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="activity">Activity Level</Label>
@@ -136,7 +150,10 @@ export function ProfileTab({ profile, setProfile, units }: ProfileTabProps) {
           </Select>
         </div>
 
-        {profile.weight && profile.heightFeet && profile.heightInches && profile.age && (
+        {profile.weight && profile.age && (
+          (units === "imperial" && profile.heightFeet && profile.heightInches) ||
+          (units === "metric" && profile.heightCm)
+        ) && (
           <Card className="bg-muted/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">

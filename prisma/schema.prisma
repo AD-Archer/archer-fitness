@@ -64,6 +64,8 @@ model User {
   workouts      Workout[]
   nutritionLogs NutritionLog[]
   preferences   UserPreference?
+  foods         Food[]
+  meals         Meal[]
 
   @@map("users")
 }
@@ -121,4 +123,64 @@ model UserPreference {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_preferences")
+}
+
+model Food {
+  id          String   @id @default(cuid())
+  name        String
+  brand       String?
+  calories    Float
+  protein     Float
+  carbs       Float
+  fat         Float
+  fiber       Float?
+  sugar       Float?
+  sodium      Float?
+  servingSize Float    // in grams
+  servingUnit String   @default("g")
+  category    String?  // e.g., "protein", "vegetable", "fruit", etc.
+  verified    Boolean  @default(false) // for user-added vs verified foods
+  isPublic    Boolean  @default(false) // allow users to share their custom foods
+  userId      String?  @map("user_id") // null for global foods, userId for custom foods
+  usageCount  Int      @default(0) // track how many times this food is used
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mealIngredients MealIngredient[]
+
+  @@map("foods")
+}
+
+model Meal {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  totalCalories Float
+  totalProtein  Float
+  totalCarbs    Float
+  totalFat      Float
+  totalFiber    Float?
+  totalSugar    Float?
+  totalSodium   Float?
+  isPublic     Boolean @default(false)
+  userId       String  @map("user_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ingredients MealIngredient[]
+
+  @@map("meals")
+}
+
+model MealIngredient {
+  id        String  @id @default(cuid())
+  mealId    String  @map("meal_id")
+  foodId    String  @map("food_id")
+  quantity  Float   // how many servings/units
+  createdAt DateTime @default(now()) @map("created_at")
+
+  meal Meal @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  food Food @relation(fields: [foodId], references: [id], onDelete: Cascade)
+
+  @@map("meal_ingredients")
 }

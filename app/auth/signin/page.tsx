@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { signIn, getSession } from "next-auth/react"
+import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -40,7 +40,7 @@ export default function SignInPage() {
       } else {
         router.push(callbackUrl)
       }
-    } catch (error) {
+    } catch {
       setError("Something went wrong")
     } finally {
       setIsLoading(false)
@@ -131,7 +131,7 @@ export default function SignInPage() {
         </CardContent>
         <CardFooter>
           <p className="text-center text-sm text-gray-600 w-full">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link href="/auth/signup" className="font-medium text-blue-600 hover:text-blue-500">
               Sign up
             </Link>

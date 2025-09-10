@@ -10,6 +10,13 @@ export const convertHeightToCm = (heightFeet: number, heightInches: number) => {
   return totalInches * 2.54
 }
 
+export const convertCmToFeetInches = (heightCm: number) => {
+  const totalInches = heightCm / 2.54
+  const feet = Math.floor(totalInches / 12)
+  const inches = Math.round(totalInches % 12)
+  return { feet, inches }
+}
+
 export const convertHeightToInches = (heightCm: number) => {
   return heightCm / 2.54
 }
@@ -17,15 +24,25 @@ export const convertHeightToInches = (heightCm: number) => {
 // Calculation utilities for metabolic data
 export const calculateBMR = (profile: UserProfile, units: string = "metric") => {
   const weight = Number.parseFloat(profile.weight)
-  const heightFeet = Number.parseFloat(profile.heightFeet)
-  const heightInches = Number.parseFloat(profile.heightInches)
   const age = Number.parseFloat(profile.age)
 
-  if (!weight || !heightFeet || !heightInches || !age) return 0
+  if (!weight || !age) return 0
 
-  // Convert to metric for calculations
+  let heightCm: number
+
+  if (units === "imperial") {
+    const heightFeet = Number.parseFloat(profile.heightFeet)
+    const heightInches = Number.parseFloat(profile.heightInches)
+    if (!heightFeet && !heightInches) return 0
+    heightCm = convertHeightToCm(heightFeet, heightInches)
+  } else {
+    const heightCmValue = Number.parseFloat(profile.heightCm)
+    if (!heightCmValue) return 0
+    heightCm = heightCmValue
+  }
+
+  // Convert weight to kg for calculations
   const weightKg = convertWeightToKg(weight, units)
-  const heightCm = convertHeightToCm(heightFeet, heightInches)
 
   // Mifflin-St Jeor Equation
   if (profile.gender === "male") {
@@ -109,7 +126,6 @@ export const calculateWaterTarget = (profile: UserProfile, units: string = "metr
 }
 
 export const getAIRecommendation = (profile: UserProfile, units: string = "metric") => {
-  const bmr = calculateBMR(profile, units)
   const tdee = calculateTDEE(profile, units)
   const goalCalories = calculateGoalCalories(profile, units)
 

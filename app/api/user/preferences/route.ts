@@ -45,8 +45,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-  const prismaAny = prisma as any
-  const delegate = prismaAny.userPreference
+  const delegate = prisma.userPreference
   if (!delegate) {
     return NextResponse.json(
       { error: "Preferences storage not initialized. Run database migrations." },
@@ -84,8 +83,7 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json()
     const parsed = preferencesSchema.parse(body)
-    const prismaAny = prisma as any
-    const delegate = prismaAny.userPreference
+    const delegate = prisma.userPreference
     if (!delegate) {
       return NextResponse.json(
         { error: "Preferences storage not initialized. Run database migrations." },

@@ -6,6 +6,7 @@ export interface UserProfile {
   weight: string
   heightFeet: string
   heightInches: string
+  heightCm: string
   gender: string
   fitnessGoals: string
   activityLevel: string

@@ -176,7 +176,6 @@ export function WorkoutTracker() {
   const [restTimer, setRestTimer] = useState(0)
   const [isResting, setIsResting] = useState(false)
   const [availableWorkouts, setAvailableWorkouts] = useState<WorkoutTemplate[]>(predefinedWorkouts)
-  const [selectedWorkout, setSelectedWorkout] = useState<WorkoutTemplate | null>(null)
   const [showWorkoutSelection, setShowWorkoutSelection] = useState(true)
   const [showCustomWorkoutDialog, setShowCustomWorkoutDialog] = useState(false)
 

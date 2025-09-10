@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress"
 import { DashboardStats } from "@/components/dashboard/dashboard-stats"
 import { RecentWorkouts } from "@/app/workouts/components/recent-workouts"
 import { WeeklyProgress } from "@/components/weekly-progress"
-import { QuickActions } from "@/components/quick-actions"
+
 
 export function DashboardMainContent() {
   return (
@@ -25,12 +25,11 @@ export function DashboardMainContent() {
 
         {/* Right Column - 1/3 width */}
         <div className="space-y-6">
-          <QuickActions />
 
           {/* Today's Focus */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Today's Focus</CardTitle>
+              <CardTitle className="text-lg">Today&#39;s Focus</CardTitle>
               <CardDescription>AI recommended workout</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

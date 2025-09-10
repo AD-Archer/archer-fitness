@@ -89,7 +89,7 @@ export function DashboardStats() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold mb-4">Today's Nutrition</h2>
+        <h2 className="text-lg font-semibold mb-4">Today&#39;s Nutrition</h2>
         <div className="grid gap-4 md:grid-cols-2">
           {nutritionStats.map((stat) => {
             const Icon = stat.icon

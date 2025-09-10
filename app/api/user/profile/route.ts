@@ -30,7 +30,8 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-  const { password, ...safeUser } = user as any
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { password, ...safeUser } = user
   return NextResponse.json({ user: safeUser })
   } catch (error) {
     console.error("Profile fetch error:", error)
@@ -53,9 +54,9 @@ export async function PUT(request: NextRequest) {
     const parsed = profileUpdateSchema.parse(body)
 
     // Prisma expects undefined to leave fields unchanged; pass values directly (including null) to set nulls
-    const updateData: Record<string, any> = {}
+    const updateData: Record<string, unknown> = {}
     for (const key of Object.keys(parsed)) {
-      const value = (parsed as any)[key]
+      const value = parsed[key as keyof typeof parsed]
       if (value === undefined) continue
       updateData[key] = value
     }
@@ -65,7 +66,8 @@ export async function PUT(request: NextRequest) {
       data: updateData,
     })
 
-    const { password, ...safeUser } = updated as any
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...safeUser } = updated
     return NextResponse.json({ user: safeUser })
   } catch (error) {
     if (error instanceof z.ZodError) {

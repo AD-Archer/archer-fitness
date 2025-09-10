@@ -57,7 +57,7 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt"
   },
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       // Handle OAuth sign-in (Google)
       if (account?.provider === "google") {
         try {
@@ -108,7 +108,7 @@ export const authOptions: NextAuthOptions = {
       
       return true
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id
       }

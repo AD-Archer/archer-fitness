@@ -28,6 +28,7 @@ export function SettingsForm() {
     weight: "",
     heightFeet: "",
     heightInches: "",
+    heightCm: "",
     gender: "male",
     fitnessGoals: "maintenance",
     activityLevel: "moderate",
@@ -85,7 +86,7 @@ export function SettingsForm() {
         if (profileRes.ok) {
           const userData = await profileRes.json()
           if (userData.user) {
-            // Convert height from cm to feet and inches
+            // Convert height from cm to feet and inches, and also store cm
             const heightCm = userData.user.height || 0
             const totalInches = heightCm / 2.54
             const heightFeet = Math.floor(totalInches / 12)
@@ -98,6 +99,7 @@ export function SettingsForm() {
               weight: userData.user.weight?.toString() || "",
               heightFeet: heightFeet.toString(),
               heightInches: heightInches.toString(),
+              heightCm: heightCm.toString(),
               gender: userData.user.gender || "male",
               fitnessGoals: userData.user.fitnessGoals || "maintenance",
               activityLevel: userData.user.activityLevel || "moderate",
@@ -109,20 +111,86 @@ export function SettingsForm() {
         if (prefsRes.ok) {
           const data = await prefsRes.json()
           if (data?.preferences) {
-            setWorkoutPrefs(data.preferences.workoutPrefs || workoutPrefs)
-            setNutritionPrefs(data.preferences.nutritionPrefs || nutritionPrefs)
-            setAppPrefs(data.preferences.appPrefs || appPrefs)
+            const defaultWorkoutPrefs = {
+              defaultDuration: "45",
+              difficultyLevel: "intermediate",
+              preferredTime: "morning",
+              availableEquipment: ["dumbbells", "barbell", "bodyweight"],
+              restDayReminders: true,
+            }
+            const defaultNutritionPrefs = {
+              dailyCalories: "2200",
+              proteinTarget: "150",
+              carbTarget: "250",
+              fatTarget: "80",
+              dietaryRestrictions: [],
+              trackWater: true,
+              waterTarget: "2500",
+              useSmartCalculations: true,
+            }
+            const defaultAppPrefs = {
+              theme: "system",
+              units: "imperial",
+              notifications: true,
+              weeklyReports: true,
+              dataSharing: false,
+            }
+            setWorkoutPrefs(data.preferences.workoutPrefs || defaultWorkoutPrefs)
+            setNutritionPrefs(data.preferences.nutritionPrefs || defaultNutritionPrefs)
+            setAppPrefs(data.preferences.appPrefs || defaultAppPrefs)
           } else {
             // Use defaults if no preferences exist
-            setWorkoutPrefs(workoutPrefs)
-            setNutritionPrefs(nutritionPrefs)
-            setAppPrefs(appPrefs)
+            setWorkoutPrefs({
+              defaultDuration: "45",
+              difficultyLevel: "intermediate",
+              preferredTime: "morning",
+              availableEquipment: ["dumbbells", "barbell", "bodyweight"],
+              restDayReminders: true,
+            })
+            setNutritionPrefs({
+              dailyCalories: "2200",
+              proteinTarget: "150",
+              carbTarget: "250",
+              fatTarget: "80",
+              dietaryRestrictions: [],
+              trackWater: true,
+              waterTarget: "2500",
+              useSmartCalculations: true,
+            })
+            setAppPrefs({
+              theme: "system",
+              units: "imperial",
+              notifications: true,
+              weeklyReports: true,
+              dataSharing: false,
+            })
           }
         } else {
           // Use defaults if API fails
-          setWorkoutPrefs(workoutPrefs)
-          setNutritionPrefs(nutritionPrefs)
-          setAppPrefs(appPrefs)
+          setWorkoutPrefs({
+            defaultDuration: "45",
+            difficultyLevel: "intermediate",
+            preferredTime: "morning",
+            availableEquipment: ["dumbbells", "barbell", "bodyweight"],
+            restDayReminders: true,
+          })
+          setNutritionPrefs({
+            dailyCalories: "2200",
+            proteinTarget: "150",
+            carbTarget: "250",
+            fatTarget: "80",
+            dietaryRestrictions: [],
+            trackWater: true,
+            waterTarget: "2500",
+            useSmartCalculations: true,
+          })
+          setAppPrefs({
+            theme: "system",
+            units: "imperial",
+            notifications: true,
+            weeklyReports: true,
+            dataSharing: false,
+          })
         }
       } catch (error) {
         console.error("Failed to load user data:", error)
@@ -152,16 +220,40 @@ export function SettingsForm() {
       }))
     }
   }, [
-    profile.weight,
-    profile.heightFeet,
-    profile.heightInches,
-    profile.age,
-    profile.gender,
-    profile.fitnessGoals,
-    profile.activityLevel,
-    nutritionPrefs.useSmartCalculations,
-    appPrefs.units,
+    profile,
+    nutritionPrefs,
+    appPrefs,
   ])
+
+  // Convert height when units change
+  useEffect(() => {
+    if (appPrefs.units === "imperial" && profile.heightCm && (!profile.heightFeet || !profile.heightInches)) {
+      // Convert cm to feet and inches
+      const heightCm = parseFloat(profile.heightCm)
+      if (heightCm > 0) {
+        const totalInches = heightCm / 2.54
+        const feet = Math.floor(totalInches / 12)
+        const inches = Math.round(totalInches % 12)
+        setProfile(prev => ({
+          ...prev,
+          heightFeet: feet.toString(),
+          heightInches: inches.toString(),
+        }))
+      }
+    } else if (appPrefs.units === "metric" && (profile.heightFeet || profile.heightInches) && !profile.heightCm) {
+      // Convert feet and inches to cm
+      const feet = parseFloat(profile.heightFeet) || 0
+      const inches = parseFloat(profile.heightInches) || 0
+      if (feet > 0 || inches > 0) {
+        const totalInches = (feet * 12) + inches
+        const cm = Math.round(totalInches * 2.54)
+        setProfile(prev => ({
+          ...prev,
+          heightCm: cm.toString(),
+        }))
+      }
+    }
+  }, [appPrefs.units, profile])
 
   const handleResetToDefaults = () => {
     setProfile({
@@ -171,6 +263,7 @@ export function SettingsForm() {
       weight: "",
       heightFeet: "",
       heightInches: "",
+      heightCm: "",
       gender: "male",
       fitnessGoals: "maintenance",
       activityLevel: "moderate",
@@ -211,8 +304,10 @@ export function SettingsForm() {
           name: profile.name,
           age: profile.age ? parseInt(profile.age) : null,
           weight: profile.weight ? parseFloat(profile.weight) : null,
-          height: (profile.heightFeet && profile.heightInches) ? 
-            convertHeightToCm(parseFloat(profile.heightFeet), parseFloat(profile.heightInches)) : null,
+          height: appPrefs.units === "imperial" 
+            ? (profile.heightFeet && profile.heightInches) ? 
+                convertHeightToCm(parseFloat(profile.heightFeet), parseFloat(profile.heightInches)) : null
+            : profile.heightCm ? parseFloat(profile.heightCm) : null,
           gender: profile.gender,
           fitnessGoals: profile.fitnessGoals,
           activityLevel: profile.activityLevel,
