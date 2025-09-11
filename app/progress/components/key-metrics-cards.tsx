@@ -16,97 +16,38 @@ interface KeyMetrics {
   strengthGainExercise: string
 }
 
-interface WorkoutSession {
-  id: string
-  startTime: string
-  status: string
-  exercises?: Array<{
-    exercise: {
-      name: string
-    }
-    sets?: Array<{
-      completed: boolean
-      weight?: number
-      reps?: number
-    }>
-  }>
+interface KeyMetricsCardsProps {
+  timeRange?: string
 }
 
-export function KeyMetricsCards() {
+
+
+export function KeyMetricsCards({ timeRange = "3months" }: KeyMetricsCardsProps) {
   const [metrics, setMetrics] = useState<KeyMetrics | null>(null)
   const [loading, setLoading] = useState(true)
 
+
+
   useEffect(() => {
+
     const fetchKeyMetrics = async () => {
       try {
-        // Fetch workout sessions for workout metrics
-        const workoutsResponse = await fetch('/api/workout-tracker/workout-sessions?limit=100')
+        // Use analytics API for general stats
         let totalWorkouts = 0
-        let workoutChange = 0
         let totalWeightLifted = 0
-        let strengthGain = 0
-        let strengthGainExercise = ""
-
-        if (workoutsResponse.ok) {
-          const sessions: WorkoutSession[] = await workoutsResponse.json()
-          const completedSessions = sessions.filter(s => s.status === 'completed')
-          totalWorkouts = completedSessions.length
-
-          // Calculate workout change (compare last 4 weeks vs previous 4 weeks)
-          const now = new Date()
-          const fourWeeksAgo = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000)
-          const eightWeeksAgo = new Date(now.getTime() - 56 * 24 * 60 * 60 * 1000)
-
-          const recentWorkouts = completedSessions.filter(s => 
-            new Date(s.startTime) >= fourWeeksAgo
-          )
-          const previousWorkouts = completedSessions.filter(s => 
-            new Date(s.startTime) >= eightWeeksAgo && new Date(s.startTime) < fourWeeksAgo
-          )
-
-          workoutChange = recentWorkouts.length - previousWorkouts.length
-
-          // Calculate total weight lifted and strength gains
-          const exerciseMaxes = new Map<string, { old: number; new: number }>()
-          
-          completedSessions.forEach(session => {
-            session.exercises?.forEach(ex => {
-              const exerciseName = ex.exercise.name
-              const sessionDate = new Date(session.startTime)
-              
-              ex.sets?.forEach(set => {
-                if (set.completed && set.weight && set.reps) {
-                  totalWeightLifted += set.weight * set.reps
-
-                  // Track max weights for strength gain calculation
-                  const isRecent = sessionDate >= fourWeeksAgo
-                  const current = exerciseMaxes.get(exerciseName) || { old: 0, new: 0 }
-                  
-                  if (isRecent && set.weight > current.new) {
-                    current.new = set.weight
-                  } else if (!isRecent && sessionDate >= eightWeeksAgo && set.weight > current.old) {
-                    current.old = set.weight
-                  }
-                  
-                  exerciseMaxes.set(exerciseName, current)
-                }
-              })
-            })
-          })
-
-          // Find biggest strength gain
-          let maxGain = 0
-          exerciseMaxes.forEach((weights, exercise) => {
-            if (weights.old > 0 && weights.new > weights.old) {
-              const gain = weights.new - weights.old
-              if (gain > maxGain) {
-                maxGain = gain
-                strengthGainExercise = exercise
-              }
+        try {
+          const res = await fetch(`/api/workout-tracker/analytics?timeRange=${timeRange}`)
+          if (res.ok) {
+            const data = await res.json()
+            if (data && data.generalStats) {
+              totalWorkouts = data.generalStats.totalWorkouts || 0
+              totalWeightLifted = data.generalStats.totalVolume || 0
             }
-          })
-          strengthGain = maxGain
+          }
+        } catch (e) {
+          console.error('Failed to fetch general stats from analytics API', e)
         }
+
 
         // Fetch nutrition data
         let avgCalories = 0
@@ -142,14 +83,14 @@ export function KeyMetricsCards() {
 
         setMetrics({
           totalWorkouts,
-          workoutChange,
+          workoutChange: 0, // Optionally update this if you want to calculate period-over-period change
           avgCalories,
           caloriesPercentage,
           totalWeight: Math.round(totalWeightLifted),
           weightChange: Math.round(totalWeightLifted * 0.15), // Simplified calculation
           hydrationRate,
-          strengthGain,
-          strengthGainExercise
+          strengthGain: 0, // Optionally update if you want to calculate this from analytics
+          strengthGainExercise: ""
         })
 
       } catch (error) {
@@ -172,7 +113,7 @@ export function KeyMetricsCards() {
     }
 
     fetchKeyMetrics()
-  }, [])
+  }, [timeRange])
 
   if (loading) {
     return (
@@ -199,7 +140,8 @@ export function KeyMetricsCards() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center text-muted-foreground">
-              Failed to load metrics
+              Failed to load metrics.<br />
+              <span style={{fontSize: '0.8em'}}>Check API or data format. See console for debug info.</span>
             </div>
           </CardContent>
         </Card>

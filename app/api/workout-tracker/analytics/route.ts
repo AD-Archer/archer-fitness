@@ -13,11 +13,49 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const type = searchParams.get("type") // "strength", "volume", "records", "all"
     const limit = parseInt(searchParams.get("limit") || "100")
+    const timeRange = searchParams.get("timeRange") // "7days", "4weeks", "3months", "6months", "1year"
+
+    // Calculate date filter based on time range
+    let dateFilter = {}
+    if (timeRange) {
+      const now = new Date()
+      let daysAgo = 0
+      
+      switch (timeRange) {
+        case "7days":
+          daysAgo = 7
+          break
+        case "4weeks":
+          daysAgo = 28
+          break
+        case "3months":
+          daysAgo = 90
+          break
+        case "6months":
+          daysAgo = 180
+          break
+        case "1year":
+          daysAgo = 365
+          break
+        default:
+          daysAgo = 90 // Default to 3 months
+      }
+      
+      const startDate = new Date(now)
+      startDate.setDate(startDate.getDate() - daysAgo)
+      
+      dateFilter = {
+        startTime: {
+          gte: startDate
+        }
+      }
+    }
 
     // Get all workout sessions with exercise and set data
     const workoutSessions = await prisma.workoutSession.findMany({
       where: {
         userId: session.user.id,
+        ...dateFilter,
       },
       include: {
         exercises: {

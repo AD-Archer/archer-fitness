@@ -36,7 +36,11 @@ interface PersonalRecordData {
   muscleGroups: string[]
 }
 
-export function StrengthAnalytics() {
+interface StrengthAnalyticsProps {
+  timeRange?: string
+}
+
+export function StrengthAnalytics({ timeRange = "3months" }: StrengthAnalyticsProps) {
   const [strengthData, setStrengthData] = useState<StrengthProgress[]>([])
   const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,7 +48,7 @@ export function StrengthAnalytics() {
   useEffect(() => {
     const fetchStrengthData = async () => {
       try {
-        const response = await fetch('/api/workout-tracker/analytics?type=strength')
+        const response = await fetch(`/api/workout-tracker/analytics?type=strength&timeRange=${timeRange}`)
         if (response.ok) {
           const data = await response.json()
           
@@ -129,7 +133,7 @@ export function StrengthAnalytics() {
     }
 
     fetchStrengthData()
-  }, [])
+  }, [timeRange])
 
   const getExerciseColor = (index: number) => {
     const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']

@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "20")
     const status = searchParams.get("status") // "active", "completed", "paused"
     const date = searchParams.get("date") // YYYY-MM-DD format
+    const timeRange = searchParams.get("timeRange") // "7days", "4weeks", "3months", "6months", "1year"
 
     let dateFilter = {}
     if (date) {
@@ -27,6 +28,39 @@ export async function GET(request: NextRequest) {
         startTime: {
           gte: startOfDay,
           lte: endOfDay,
+        }
+      }
+    } else if (timeRange) {
+      // Calculate date filter based on time range
+      const now = new Date()
+      let daysAgo = 0
+      
+      switch (timeRange) {
+        case "7days":
+          daysAgo = 7
+          break
+        case "4weeks":
+          daysAgo = 28
+          break
+        case "3months":
+          daysAgo = 90
+          break
+        case "6months":
+          daysAgo = 180
+          break
+        case "1year":
+          daysAgo = 365
+          break
+        default:
+          daysAgo = 90 // Default to 3 months
+      }
+      
+      const startDate = new Date(now)
+      startDate.setDate(startDate.getDate() - daysAgo)
+      
+      dateFilter = {
+        startTime: {
+          gte: startDate
         }
       }
     }

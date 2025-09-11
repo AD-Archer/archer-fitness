@@ -23,7 +23,11 @@ interface VolumeStats {
   volumeTrend: number
 }
 
-export function VolumeAnalytics() {
+interface VolumeAnalyticsProps {
+  timeRange?: string
+}
+
+export function VolumeAnalytics({ timeRange = "3months" }: VolumeAnalyticsProps) {
   const [volumeData, setVolumeData] = useState<VolumeData[]>([])
   const [volumeStats, setVolumeStats] = useState<VolumeStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -31,7 +35,7 @@ export function VolumeAnalytics() {
   useEffect(() => {
     const fetchVolumeData = async () => {
       try {
-        const response = await fetch('/api/workout-tracker/analytics?type=volume')
+        const response = await fetch(`/api/workout-tracker/analytics?type=volume&timeRange=${timeRange}`)
         if (response.ok) {
           const data = await response.json()
           
@@ -77,7 +81,7 @@ export function VolumeAnalytics() {
     }
 
     fetchVolumeData()
-  }, [])
+  }, [timeRange])
 
   if (loading) {
     return (

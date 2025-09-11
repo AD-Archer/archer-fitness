@@ -4,22 +4,86 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 import { Scale, Target } from "lucide-react"
 
-const nutritionProgressData = [
-  { date: "Jan 1", calories: 2100, protein: 140, carbs: 220, fat: 75, water: 2200, weight: 75.2 },
-  { date: "Jan 8", calories: 2180, protein: 145, carbs: 235, fat: 78, water: 2400, weight: 75.0 },
-  { date: "Jan 15", calories: 2220, protein: 150, carbs: 245, fat: 80, water: 2500, weight: 74.8 },
-  { date: "Jan 22", calories: 2200, protein: 155, carbs: 240, fat: 82, water: 2600, weight: 74.5 },
-  { date: "Jan 29", calories: 2250, protein: 160, carbs: 250, fat: 85, water: 2700, weight: 74.3 },
-  { date: "Feb 5", calories: 2300, protein: 165, carbs: 260, fat: 88, water: 2800, weight: 74.0 },
-]
+import { useEffect, useState } from "react"
 
-const macroDistributionData = [
-  { name: "Protein", value: 30, color: "#ef4444", grams: 165 },
-  { name: "Carbs", value: 45, color: "#3b82f6", grams: 260 },
-  { name: "Fat", value: 25, color: "#10b981", grams: 88 },
-]
 
-export function BodyCompositionAnalytics() {
+interface NutritionProgressEntry {
+  date: string
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+  water: number
+  weight: number
+}
+
+interface MacroDistributionEntry {
+  name: string
+  value: number
+  color: string
+  grams: number
+}
+
+interface BodyCompositionAnalyticsProps {
+  timeRange?: string
+}
+
+export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyCompositionAnalyticsProps) {
+  const [nutritionProgressData, setNutritionProgressData] = useState<NutritionProgressEntry[]>([])
+  const [macroDistributionData, setMacroDistributionData] = useState<MacroDistributionEntry[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    // Example API endpoint, adjust as needed
+    const fetchData = async () => {
+      try {
+        const res = await fetch(`/api/analytics/body-composition?timeRange=${timeRange}`)
+        if (res.ok) {
+          const data = await res.json()
+          setNutritionProgressData(data.nutritionProgressData)
+          setMacroDistributionData(data.macroDistributionData)
+        } else {
+          // fallback to static data if API fails
+          setNutritionProgressData([
+            { date: "Jan 1", calories: 2100, protein: 140, carbs: 220, fat: 75, water: 2200, weight: 75.2 },
+            { date: "Jan 8", calories: 2180, protein: 145, carbs: 235, fat: 78, water: 2400, weight: 75.0 },
+            { date: "Jan 15", calories: 2220, protein: 150, carbs: 245, fat: 80, water: 2500, weight: 74.8 },
+            { date: "Jan 22", calories: 2200, protein: 155, carbs: 240, fat: 82, water: 2600, weight: 74.5 },
+            { date: "Jan 29", calories: 2250, protein: 160, carbs: 250, fat: 85, water: 2700, weight: 74.3 },
+            { date: "Feb 5", calories: 2300, protein: 165, carbs: 260, fat: 88, water: 2800, weight: 74.0 },
+          ])
+          setMacroDistributionData([
+            { name: "Protein", value: 30, color: "#ef4444", grams: 165 },
+            { name: "Carbs", value: 45, color: "#3b82f6", grams: 260 },
+            { name: "Fat", value: 25, color: "#10b981", grams: 88 },
+          ])
+        }
+      } catch {
+        setNutritionProgressData([
+          { date: "Jan 1", calories: 2100, protein: 140, carbs: 220, fat: 75, water: 2200, weight: 75.2 },
+          { date: "Jan 8", calories: 2180, protein: 145, carbs: 235, fat: 78, water: 2400, weight: 75.0 },
+          { date: "Jan 15", calories: 2220, protein: 150, carbs: 245, fat: 80, water: 2500, weight: 74.8 },
+          { date: "Jan 22", calories: 2200, protein: 155, carbs: 240, fat: 82, water: 2600, weight: 74.5 },
+          { date: "Jan 29", calories: 2250, protein: 160, carbs: 250, fat: 85, water: 2700, weight: 74.3 },
+          { date: "Feb 5", calories: 2300, protein: 165, carbs: 260, fat: 88, water: 2800, weight: 74.0 },
+        ])
+        setMacroDistributionData([
+          { name: "Protein", value: 30, color: "#ef4444", grams: 165 },
+          { name: "Carbs", value: 45, color: "#3b82f6", grams: 260 },
+          { name: "Fat", value: 25, color: "#10b981", grams: 88 },
+        ])
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [timeRange])
+
+  if (loading) {
+    return <div className="h-64 flex items-center justify-center text-muted-foreground">Loading body composition data...</div>
+  }
+
   return (
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-2">

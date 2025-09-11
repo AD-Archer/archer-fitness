@@ -33,7 +33,11 @@ interface WorkoutSession {
   }>
 }
 
-export function DistributionAnalytics() {
+interface DistributionAnalyticsProps {
+  timeRange?: string
+}
+
+export function DistributionAnalytics({ timeRange = "3months" }: DistributionAnalyticsProps) {
   const [muscleGroupData, setMuscleGroupData] = useState<MuscleGroupData[]>([])
   const [loading, setLoading] = useState(true)
   const [totalSets, setTotalSets] = useState(0)
@@ -41,7 +45,7 @@ export function DistributionAnalytics() {
   useEffect(() => {
     const fetchMuscleGroupData = async () => {
       try {
-        const response = await fetch('/api/workout-tracker/workout-sessions?limit=50')
+        const response = await fetch(`/api/workout-tracker/workout-sessions?limit=50&timeRange=${timeRange}`)
         if (response.ok) {
           const sessions: WorkoutSession[] = await response.json()
           
@@ -138,7 +142,7 @@ export function DistributionAnalytics() {
     }
 
     fetchMuscleGroupData()
-  }, [])
+  }, [timeRange])
 
   // Normalize muscle names into broader categories
   const normalizeMuscleGroup = (muscleName: string): string => {

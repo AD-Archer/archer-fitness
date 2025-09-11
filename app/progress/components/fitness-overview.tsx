@@ -35,7 +35,11 @@ interface TopPerformance {
   category: 'strength' | 'endurance' | 'volume'
 }
 
-export function FitnessOverview() {
+interface FitnessOverviewProps {
+  timeRange?: string
+}
+
+export function FitnessOverview({ timeRange = "3months" }: FitnessOverviewProps) {
   const [overview, setOverview] = useState<FitnessOverview | null>(null)
   const [topPerformances, setTopPerformances] = useState<TopPerformance[]>([])
   const [loading, setLoading] = useState(true)
@@ -43,7 +47,7 @@ export function FitnessOverview() {
   useEffect(() => {
     const fetchOverviewData = async () => {
       try {
-        const response = await fetch('/api/workout-tracker/analytics')
+        const response = await fetch(`/api/workout-tracker/analytics?timeRange=${timeRange}`)
         if (response.ok) {
           const data = await response.json()
           
@@ -115,7 +119,7 @@ export function FitnessOverview() {
     }
 
     fetchOverviewData()
-  }, [])
+  }, [timeRange])
 
   const formatVolume = (volume: number) => {
     if (volume >= 10000) {
@@ -131,6 +135,17 @@ export function FitnessOverview() {
       return `${hours}h ${minutes % 60}m`
     }
     return `${minutes}m`
+  }
+
+  const getTimeRangeLabel = (timeRange: string) => {
+    switch (timeRange) {
+      case "7days": return "Last 7 Days"
+      case "4weeks": return "Last 4 Weeks"  
+      case "3months": return "Last 3 Months"
+      case "6months": return "Last 6 Months"
+      case "1year": return "Last Year"
+      default: return "Last 3 Months"
+    }
   }
 
   if (loading || !overview) {
@@ -156,6 +171,14 @@ export function FitnessOverview() {
 
   return (
     <div className="space-y-6">
+      {/* Header with time range indicator */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Fitness Overview</h2>
+        <span className="text-sm text-muted-foreground">
+          {getTimeRangeLabel(timeRange)}
+        </span>
+      </div>
+      
       {/* Main Stats Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>

@@ -16,7 +16,11 @@ const achievements = [
   { title: "Volume King", description: "Hit 16,000 lbs total volume", date: "Feb 5", type: "volume" },
 ]
 
-export function AchievementsAnalytics() {
+interface AchievementsAnalyticsProps {
+  timeRange?: string
+}
+
+export function AchievementsAnalytics({ timeRange = "3months" }: AchievementsAnalyticsProps) {
   return (
     <div className="space-y-6">
       <Card>
