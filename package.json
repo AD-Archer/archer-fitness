@@ -2,13 +2,16 @@
   "name": "archer-fitness",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "npx prisma generate && next build",
     "dev": "next dev -p ${PORT:-3000}",
     "lint": "next lint",
     "start": "next start -p ${PORT:-3000}",
     "update:docker": "git pull && docker compose build --no-cache && docker compose up -d",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "scrape": "node scripts/simple-exercise-scraper.js",
+    "import:exercises": "node scripts/import-exercises.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

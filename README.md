@@ -377,17 +377,12 @@ This project is private and proprietary. All rights reserved.
 
 ## 🙏 Acknowledgments
 
-- **Next.js Team** for the amazing React framework
-- **Prisma Team** for the excellent database toolkit
-- **Radix UI** for accessible component primitives
-- **Tailwind CSS** for the utility-first CSS framework
-- **Vercel** for hosting and deployment platform
+- [**Exercise DB**](https://www.exercisedb.dev/) - For their Amazing Database to get all of our exercises, machines, muscles, and bodyparts 
+
 
 ## 📞 Support
 
 For support or questions:
 - Create an issue on GitHub
-- Contact: antonio@archer.software
-- Documentation: [docs.archer.software](https://docs.archer.software)
-
+- Contact: antonioarcher.dev@gmail.com
 ---
