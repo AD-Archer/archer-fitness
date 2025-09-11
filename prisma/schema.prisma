@@ -110,9 +110,6 @@ model Exercise {
   id          String   @id @default(cuid())
   name        String
   description String?
-  category    String?  // e.g., "chest", "back", "legs", "shoulders", "arms", "core"
-  muscleGroup String?  // primary muscle group targeted
-  equipment   String?  // e.g., "dumbbells", "barbell", "bodyweight", "machine"
   instructions String?
   isPublic    Boolean  @default(false)
   isPredefined Boolean @default(false)
@@ -124,7 +121,65 @@ model Exercise {
   templateExercises WorkoutTemplateExercise[]
   sessionExercises  WorkoutSessionExercise[]
 
+  // Relations to global entities
+  bodyParts   ExerciseBodyPart[]
+  equipments  ExerciseEquipment[]
+  muscles     ExerciseMuscle[]
+
   @@map("exercises")
+}
+
+model BodyPart {
+  id   String @id @default(cuid())
+  name String @unique
+  exercises ExerciseBodyPart[]
+  @@map("body_parts")
+}
+
+model Equipment {
+  id   String @id @default(cuid())
+  name String @unique
+  exercises ExerciseEquipment[]
+  @@map("equipments")
+}
+
+model Muscle {
+  id   String @id @default(cuid())
+  name String @unique
+  exercises ExerciseMuscle[]
+  @@map("muscles")
+}
+
+// Join tables for many-to-many
+model ExerciseBodyPart {
+  id         String   @id @default(cuid())
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  exerciseId String   @map("exercise_id")
+  bodyPart   BodyPart @relation(fields: [bodyPartId], references: [id], onDelete: Cascade)
+  bodyPartId String   @map("body_part_id")
+  @@unique([exerciseId, bodyPartId])
+  @@map("exercise_body_parts")
+}
+
+model ExerciseEquipment {
+  id         String   @id @default(cuid())
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  exerciseId String   @map("exercise_id")
+  equipment  Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  equipmentId String  @map("equipment_id")
+  @@unique([exerciseId, equipmentId])
+  @@map("exercise_equipments")
+}
+
+model ExerciseMuscle {
+  id         String   @id @default(cuid())
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  exerciseId String   @map("exercise_id")
+  muscle     Muscle   @relation(fields: [muscleId], references: [id], onDelete: Cascade)
+  muscleId   String   @map("muscle_id")
+  isPrimary  Boolean  @default(false)
+  @@unique([exerciseId, muscleId])
+  @@map("exercise_muscles")
 }
 
 model WorkoutTemplateExercise {
