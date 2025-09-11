@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
     const muscleId = searchParams.get("muscleId")
     const equipmentId = searchParams.get("equipmentId")
     const limit = parseInt(searchParams.get("limit") || "50")
+    const offset = parseInt(searchParams.get("offset") || "0")
 
     // Get user's custom exercises
     const userExercises = await prisma.exercise.findMany({
@@ -62,6 +63,8 @@ export async function GET(request: NextRequest) {
       orderBy: {
         updatedAt: "desc",
       },
+      take: limit,
+      skip: offset,
     })
 
     // Build where clause for predefined exercises
@@ -124,6 +127,7 @@ export async function GET(request: NextRequest) {
         name: "asc",
       },
       take: limit,
+      skip: offset,
     })
 
     return NextResponse.json({

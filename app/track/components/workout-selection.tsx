@@ -170,7 +170,7 @@ export function WorkoutSelection({
                 className="w-[98vw] sm:w-[98vw] md:w-[96vw] lg:w-[95vw] xl:w-[92vw] 2xl:w-[1600px]
                            h-[96vh]
                            max-w-none sm:max-w-[98vw] md:max-w-[96vw] lg:max-w-[95vw] xl:max-w-[92vw] 2xl:max-w-[1600px]
-                           overflow-y-auto p-0 rounded-none"
+                           overflow-y-auto p-0 rounded-xl"
               >
 
                 <CustomWorkoutForm

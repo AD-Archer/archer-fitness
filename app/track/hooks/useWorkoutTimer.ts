@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import type { WorkoutSession } from "../types/workout"
 
 export interface WorkoutTimerState {
@@ -16,7 +16,23 @@ export function useWorkoutTimer(session: WorkoutSession | null, initialState?: P
   const [isTimerRunning, setIsTimerRunning] = useState(initialState?.isTimerRunning || false)
   const [restTimer, setRestTimer] = useState(initialState?.restTimer || 0)
   const [isResting, setIsResting] = useState(initialState?.isResting || false)
-  const [currentExerciseIndex, setCurrentExerciseIndex] = useState(initialState?.currentExerciseIndex || 0)
+  const [currentExerciseIndex, setCurrentExerciseIndex] = useState(() => {
+    const initial = initialState?.currentExerciseIndex || 0
+    const maxIndex = session?.exercises.length ? Math.max(0, session.exercises.length - 1) : 0
+    return Math.min(initial, maxIndex)
+  })
+
+  const sessionRef = useRef(session)
+  useEffect(() => {
+    sessionRef.current = session
+  }, [session])
+
+  // Adjust currentExerciseIndex if it's out of bounds when session changes
+  useEffect(() => {
+    if (session && currentExerciseIndex >= session.exercises.length) {
+      setCurrentExerciseIndex(Math.max(0, session.exercises.length - 1))
+    }
+  }, [session, currentExerciseIndex])
 
   // Auto-start timer when a session starts (if not already restored from saved state)
   useEffect(() => {
@@ -87,7 +103,7 @@ export function useWorkoutTimer(session: WorkoutSession | null, initialState?: P
   }
 
   const nextExercise = () => {
-    if (currentExerciseIndex < (session?.exercises.length || 0) - 1) {
+    if (currentExerciseIndex < (sessionRef.current?.exercises.length || 0) - 1) {
       setCurrentExerciseIndex((prev) => prev + 1)
     }
   }
@@ -99,7 +115,9 @@ export function useWorkoutTimer(session: WorkoutSession | null, initialState?: P
   }
 
   const switchToExercise = (index: number) => {
-    setCurrentExerciseIndex(index)
+    const maxIndex = (sessionRef.current?.exercises.length || 0) - 1
+    const clampedIndex = Math.min(Math.max(0, index), maxIndex)
+    setCurrentExerciseIndex(clampedIndex)
   }
 
   const reset = () => {

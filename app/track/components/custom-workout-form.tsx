@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -60,6 +60,20 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
   )
   const [showExerciseSelector, setShowExerciseSelector] = useState(false)
 
+  // Prevent body scrolling when modal is open
+  useEffect(() => {
+    if (showExerciseSelector) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [showExerciseSelector])
+
   const addExercise = () => {
     setShowExerciseSelector(true)
   }
@@ -112,19 +126,19 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
   return (
     <div className="space-y-8 w-full px-4 sm:px-6 md:px-8 lg:px-10 pb-8">
       {/* Workout Details Section */}
-      <Card className="p-6 md:p-6 lg:p-6 shadow-md border-2">
-        <h2 className="text-2xl font-semibold mb-6">Workout Details</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-3">
-            <Label htmlFor="workout-name" className="text-base font-medium">Workout Name</Label>
-            <Input
-              id="workout-name"
-              placeholder="My Custom Workout"
-              value={workoutName}
-              onChange={(e) => setWorkoutName(e.target.value)}
-              className="w-full h-12 text-base"
-            />
-          </div>
+      <Card className="p-6 md:p-6 lg:p-6 shadow-md border-2 rounded-xl">
+      <h2 className="text-2xl font-semibold mb-6 mt-2">Workout Details</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-3">
+        <Label htmlFor="workout-name" className="text-base font-medium">Workout Name</Label>
+        <Input
+          id="workout-name"
+          placeholder="My Custom Workout"
+          value={workoutName}
+          onChange={(e) => setWorkoutName(e.target.value)}
+          className="w-full h-12 text-base"
+        />
+        </div>
           <div className="space-y-3">
             <Label htmlFor="estimated-duration" className="text-base font-medium">Estimated Duration (minutes)</Label>
             <Input
@@ -151,9 +165,9 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
       </Card>
 
       {/* Exercises Section */}
-      <Card className="p-6 md:p-6 lg:p-6 shadow-md border-2">
+      <Card className="p-6 md:p-6 lg:p-6 shadow-md border-2 rounded-xl">
         <div className="space-y-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <h3 className="text-xl font-medium">Exercises ({exercises.length})</h3>
             <Button 
               onClick={addExercise} 
@@ -163,7 +177,8 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
               <Plus className="w-5 h-5 mr-2" />
               Add Exercise
             </Button>
-          </div>
+            </div>
+
 
           {exercises.length === 0 ? (
             <div className="flex flex-col items-center justify-center bg-muted/30 border border-dashed rounded-lg p-12 md:p-12 lg:p-12 text-center">
@@ -178,7 +193,7 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
           ) : (
             <div className="space-y-6">
               {exercises.map((exercise, index) => (
-                <Card key={exercise.id} className="p-6 md:p-6 border-l-4 border-l-blue-500 shadow-sm">
+                <Card key={exercise.id} className="p-6 md:p-6 border-l-4 border-l-blue-500 shadow-sm rounded-xl">
                   <div className="space-y-6">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -255,7 +270,7 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
       </Card>
 
       {/* Action Buttons */}
-      <Card className="p-6 md:p-6 lg:p-6 shadow-md border-2">
+      <Card className="p-6 md:p-6 lg:p-6 shadow-md border-2 rounded-xl">
         <div className="flex flex-col lg:flex-row gap-4 justify-end">
           <Button 
             onClick={onCancel} 
@@ -275,14 +290,12 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
       </Card>
 
       {showExerciseSelector && (
-        <div className="fixed inset-0 z-[60] bg-black/60 overscroll-none">
-          <div className="w-full h-full flex items-start justify-center p-0 sm:p-0 md:p-0">
-            <div className="w-screen h-screen overflow-hidden bg-background rounded-none shadow-2xl border-0 sm:rounded-none">
-              <ExerciseSelector
-                onSelect={handleExerciseSelect}
-                onClose={() => setShowExerciseSelector(false)}
-              />
-            </div>
+        <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center">
+          <div className="w-full h-full max-w-full max-h-full bg-background shadow-2xl">
+            <ExerciseSelector
+              onSelect={handleExerciseSelect}
+              onClose={() => setShowExerciseSelector(false)}
+            />
           </div>
         </div>
       )}

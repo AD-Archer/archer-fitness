@@ -1,5 +1,6 @@
 "use client"
 
+import { useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -80,6 +81,15 @@ export function WorkoutSession({
   getWorkoutProgress,
 }: WorkoutSessionProps) {
   const currentExercise = session.exercises[currentExerciseIndex]
+  const workoutHeaderRef = useRef<HTMLDivElement>(null)
+
+  // Handle add exercise with scroll to top
+  const handleAddExercise = () => {
+    if (workoutHeaderRef.current) {
+      workoutHeaderRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+    onAddExercise()
+  }
 
   // Get last set data for pre-filling the form
   const getLastSetData = () => {
@@ -119,7 +129,7 @@ export function WorkoutSession({
   return (
     <div className="space-y-6">
       {/* Workout Header */}
-      <Card>
+      <Card ref={workoutHeaderRef}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -197,7 +207,7 @@ export function WorkoutSession({
       <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 rounded-lg p-4 sm:p-6 border-2 border-dashed border-blue-200 dark:border-blue-800">
         <div className="text-center">
           <p className="text-sm text-muted-foreground mb-3">Need to add another exercise?</p>
-          <Button onClick={onAddExercise} className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto">
+          <Button onClick={handleAddExercise} className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto">
             <Target className="w-4 h-4 mr-2" />
             Add Exercise
           </Button>

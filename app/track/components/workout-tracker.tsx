@@ -4,7 +4,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { WorkoutSelection } from "./workout-selection"
 import { WorkoutSession as WorkoutSessionView } from "./workout-session"
 import { AddExerciseModal } from "./add-exercise-modal"
@@ -34,6 +34,11 @@ export function WorkoutTracker() {
     deleteWorkout,
     backToSelection,
   } = useWorkoutSession()
+
+  const sessionRef = useRef(session)
+  useEffect(() => {
+    sessionRef.current = session
+  }, [session])
 
   const {
     timer,
@@ -319,7 +324,7 @@ export function WorkoutTracker() {
     startRest(90) // 90 seconds rest
 
     // Reset exercise timer for next set (for timed exercises)
-    if (session?.exercises.find((ex: any) => ex.id === exerciseId)?.targetType === "time") {
+    if (sessionRef.current?.exercises.find((ex: any) => ex.id === exerciseId)?.targetType === "time") {
       // The exercise timer will be reset by the useEffect in the timer hook
     }
   }
@@ -333,7 +338,10 @@ export function WorkoutTracker() {
   const handleAddExercise = async (exercise: { name: string; id?: string; instructions?: string }, targetType?: "reps" | "time") => {
     await addExercise(exercise.name, targetType, exercise.id)
     // Switch to the newly added exercise (it will be at the end)
-    switchToExercise(session!.exercises.length)
+    setTimeout(() => {
+      const newLength = sessionRef.current?.exercises.length || 0
+      switchToExercise(newLength - 1)
+    }, 0)
   }
 
   // Handle removing exercise from workout

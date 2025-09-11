@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -38,15 +38,16 @@ interface Muscle {
 interface ExerciseSelectorProps {
   onSelect: (exercise: Exercise) => void
   onClose: () => void
-  embedded?: boolean
 }
 
-export function ExerciseSelector({ onSelect, onClose, embedded = false }: ExerciseSelectorProps) {
+export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [bodyParts, setBodyParts] = useState<BodyPart[]>([])
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [muscles, setMuscles] = useState<Muscle[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedBodyPart, setSelectedBodyPart] = useState<string>("all")
   const [selectedEquipment, setSelectedEquipment] = useState<string>("all")
@@ -55,10 +56,17 @@ export function ExerciseSelector({ onSelect, onClose, embedded = false }: Exerci
   const [newExerciseName, setNewExerciseName] = useState("")
   const [newExerciseDescription, setNewExerciseDescription] = useState("")
   const [savingCustomExercise, setSavingCustomExercise] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [scrollContainerRef, setScrollContainerRef] = useState<HTMLDivElement | null>(null)
 
   // Function to fetch exercises with search parameters
-  const fetchExercises = async (params: Record<string, string> = {}) => {
-    setLoading(true)
+  const fetchExercises = async (params: Record<string, string> = {}, page: number = 1, append: boolean = false) => {
+    if (page === 1 && !append) {
+      setLoading(true)
+    } else if (append) {
+      setLoadingMore(true)
+    }
+
     try {
       // Build query string from params
       const queryString = Object.entries(params)
@@ -66,22 +74,34 @@ export function ExerciseSelector({ onSelect, onClose, embedded = false }: Exerci
         .map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`)
         .join("&")
 
-      // Only use a higher limit when filters are applied
-      const hasFilters = Object.keys(params).some(key => 
-        key !== 'limit' && params[key] !== 'all' && params[key] !== '');
-      const limit = hasFilters ? 100 : 30; // Limit to 30 when no filters are applied
+      const limit = 20 // Smaller page size for infinite scroll
+      const offset = (page - 1) * limit
       
-      const url = `/api/workout-tracker/exercises?${queryString}&limit=${limit}`
+      const url = `/api/workout-tracker/exercises?${queryString}&limit=${limit}&offset=${offset}`
       
       const response = await fetch(url)
       const data = await response.json()
       
       // Combine user exercises and predefined exercises
-      setExercises([...data.userExercises, ...data.predefinedExercises])
+      const newExercises = [...data.userExercises, ...data.predefinedExercises]
+      
+      if (append) {
+        setExercises(prev => [...prev, ...newExercises])
+      } else {
+        setExercises(newExercises)
+      }
+      
+      // Check if there are more exercises to load
+      setHasMore(newExercises.length === limit)
+      
+      if (page === 1) {
+        setCurrentPage(1)
+      }
     } catch (error) {
       console.error("Error fetching exercises:", error)
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
   }
 
@@ -107,6 +127,48 @@ export function ExerciseSelector({ onSelect, onClose, embedded = false }: Exerci
     }
   }
 
+  // Function to handle scroll for infinite loading
+  const handleScroll = useCallback(() => {
+    if (!scrollContainerRef || loadingMore || !hasMore) return
+
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef
+    const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100 // 100px threshold
+
+    if (isNearBottom) {
+      const nextPage = currentPage + 1
+      setCurrentPage(nextPage)
+      
+      const params: Record<string, string> = {}
+      
+      if (searchTerm) {
+        params.search = searchTerm
+      }
+      
+      if (selectedBodyPart !== "all") {
+        params.bodyPartId = selectedBodyPart
+      }
+      
+      if (selectedEquipment !== "all") {
+        params.equipmentId = selectedEquipment
+      }
+      
+      if (selectedMuscle !== "all") {
+        params.muscleId = selectedMuscle
+      }
+
+      fetchExercises(params, nextPage, true)
+    }
+  }, [scrollContainerRef, loadingMore, hasMore, currentPage, searchTerm, selectedBodyPart, selectedEquipment, selectedMuscle])
+
+  // Add scroll event listener
+  useEffect(() => {
+    const container = scrollContainerRef
+    if (container) {
+      container.addEventListener('scroll', handleScroll)
+      return () => container.removeEventListener('scroll', handleScroll)
+    }
+  }, [scrollContainerRef, handleScroll])
+
   // Initial data load
   useEffect(() => {
     fetchFilterOptions()
@@ -115,6 +177,10 @@ export function ExerciseSelector({ onSelect, onClose, embedded = false }: Exerci
 
   // Fetch exercises when search parameters change
   useEffect(() => {
+    // Reset pagination when filters change
+    setCurrentPage(1)
+    setHasMore(true)
+    
     // Debounce the search to avoid too many requests
     const debounceTimer = setTimeout(() => {
       const params: Record<string, string> = {}
@@ -135,7 +201,7 @@ export function ExerciseSelector({ onSelect, onClose, embedded = false }: Exerci
         params.muscleId = selectedMuscle
       }
 
-      fetchExercises(params)
+      fetchExercises(params, 1, false)
     }, 300) // 300ms debounce
 
     return () => clearTimeout(debounceTimer)
@@ -143,7 +209,6 @@ export function ExerciseSelector({ onSelect, onClose, embedded = false }: Exerci
 
   // Since we're doing server-side filtering, we don't need to filter exercises on client
   // but we'll keep this variable for consistency
-  const filteredExercises = exercises;
 
   const handleCreateCustomExercise = async () => {
     if (!newExerciseName.trim()) return
@@ -207,7 +272,7 @@ export function ExerciseSelector({ onSelect, onClose, embedded = false }: Exerci
 
   if (loading) {
     return (
-      <Card className={embedded ? "w-full h-full flex items-center justify-center border-0 shadow-none" : "w-full h-full flex items-center justify-center"}>
+      <Card className="w-full h-full flex items-center justify-center">
         <div className="flex flex-col items-center justify-center py-12">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-4"></div>
           <p className="text-muted-foreground">Loading exercises...</p>
@@ -217,18 +282,19 @@ export function ExerciseSelector({ onSelect, onClose, embedded = false }: Exerci
   }
 
   return (
-    <div className={embedded ? "w-full h-full flex flex-col" : "w-full h-full flex flex-col"}>
-      {!embedded && (
-        <div className="flex items-center justify-between p-6 border-b flex-shrink-0">
-          <h2 className="text-xl md:text-2xl font-semibold">Select Exercise</h2>
-          <Button onClick={onClose} variant="outline" size="lg" className="h-11 px-6">
-            Cancel
-          </Button>
-        </div>
-      )}
+    <div className="w-full h-full flex flex-col">
+      <div className="flex items-center justify-between p-6 border-b flex-shrink-0">
+        <h2 className="text-xl md:text-2xl font-semibold">Select Exercise</h2>
+        <Button onClick={onClose} variant="outline" size="lg" className="h-11 px-6">
+          Cancel
+        </Button>
+      </div>
 
       {/* Scrollable Content Area */}
-      <div className="flex-1 overflow-y-auto">
+      <div 
+        className="flex-1 overflow-y-auto" 
+        ref={setScrollContainerRef}
+      >
         <div className="p-6 space-y-6">
           {/* Create Custom Exercise Button/Form - Always Visible */}
           <div className="bg-background">
@@ -361,7 +427,7 @@ export function ExerciseSelector({ onSelect, onClose, embedded = false }: Exerci
 
           {/* Exercise List */}
           <div className="space-y-4">
-            {filteredExercises.map((exercise) => (
+            {exercises.map((exercise) => (
               <Card
                 key={exercise.id}
                 className={`p-6 hover:bg-muted/50 transition-all duration-200 border-2 hover:border-blue-200 hover:shadow-md ${isCustomExercise(exercise) ? 'border-purple-200 bg-purple-50/30' : 'border-muted'}`}
@@ -436,15 +502,31 @@ export function ExerciseSelector({ onSelect, onClose, embedded = false }: Exerci
             ))}
 
             {/* Message when results are limited */}
-            {filteredExercises.length === 30 && !searchTerm && selectedBodyPart === "all" && selectedEquipment === "all" && selectedMuscle === "all" && (
-              <div className="text-center py-8 bg-amber-50 border-2 border-amber-200 rounded-lg">
-                <p className="text-amber-700 font-semibold text-lg mb-2">Showing limited results</p>
-                <p className="text-amber-600 text-base">Use the search or filters above to narrow down exercises and see more specific results.</p>
+            {exercises.length >= 20 && hasMore === false && !searchTerm && selectedBodyPart === "all" && selectedEquipment === "all" && selectedMuscle === "all" && (
+              <div className="text-center py-8 bg-green-50 border-2 border-green-200 rounded-lg">
+                <p className="text-green-700 font-semibold text-lg mb-2">All exercises loaded</p>
+                <p className="text-green-600 text-base">You&apos;ve reached the end of the exercise database.</p>
+              </div>
+            )}
+
+            {/* Message when results are limited with filters */}
+            {exercises.length >= 20 && hasMore === false && (searchTerm || selectedBodyPart !== "all" || selectedEquipment !== "all" || selectedMuscle !== "all") && (
+              <div className="text-center py-8 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                <p className="text-blue-700 font-semibold text-lg mb-2">All matching exercises loaded</p>
+                <p className="text-blue-600 text-base">No more exercises match your current search and filter criteria.</p>
+              </div>
+            )}
+
+            {/* Loading more indicator */}
+            {loadingMore && (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Loading more exercises...</p>
               </div>
             )}
           </div>
 
-          {filteredExercises.length === 0 && (
+          {exercises.length === 0 && (
             <div className="text-center py-16 flex flex-col items-center gap-6">
               <div className="text-muted-foreground text-lg">
                 No exercises found matching your search criteria.
