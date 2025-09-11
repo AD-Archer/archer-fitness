@@ -1,18 +1,29 @@
-# Docker Compose for Archer Fitness
-# This configuration pulls the image from DockerHub and runs it in production
-# Database is hosted externally, so it's not included here
+
+# Archer Fitness Docker Compose
+#
+# This file runs the app and (optionally) a local PostgreSQL database.
+#
+# By default, the app expects an external database (see .env or environment).
+# To use a local database, uncomment the 'db' service and update DATABASE_URL.
 
 services:
   archer-fitness:
-    image: ad-archer/archer-fitness:latest
+    image: adarcher/archer-fitness:latest
     container_name: archer-fitness
-    network_mode: host
+    # Use host networking for local dev, or expose ports for production
+    # network_mode: host
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
     env_file:
       - .env
     environment:
       - NODE_ENV=production
       - PORT=${PORT:-3000}
+      # Uncomment below if using the local db service
+      # DATABASE_URL=postgresql://postgres:postgres@db:5432/archer_fitness?schema=public
     restart: unless-stopped
+    # depends_on:
+      # - db  # Uncomment if using the local db service
     # Health check using the configured port
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${PORT:-3000}/api/health"]
@@ -20,3 +31,33 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  # --- OPTIONAL: Local PostgreSQL Database ---
+  # Uncomment to run a local db for dev/testing
+  # db:
+  #   image: postgres:15
+  #   container_name: archer-fitness-db
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_DB: archer_fitness
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+  #   # To auto-create the database if it doesn't exist:
+  #   # command: ["postgres", "-c", "listen_addresses=*", "-c", "fsync=off"]
+
+volumes:
+  pgdata:
+    driver: local
+
+# --- Usage ---
+# 1. Copy .env.example to .env and fill in your secrets
+# 2. Run: docker-compose up -d
+# 3. App will be available at http://localhost:3000
+# 4. Database will be available at localhost:5432 (user: postgres, pass: postgres)
+#
+# To create the database manually (if needed):
+#   docker-compose exec db psql -U postgres -c 'CREATE DATABASE archer_fitness;'

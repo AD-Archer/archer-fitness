@@ -9,9 +9,9 @@ Speical thanks to the https://www.exercisedb.dev/ for their amazing api
 
 Official image (example):
 
-  docker pull ad-archer/archer-fitness:latest
+  docker pull adarcher/archer-fitness:latest
 
-Replace `ad-archer/archer-fitness:latest` with the tag you need.
+Replace `adarcher/archer-fitness:latest` with the tag you need.
 
 ## Quickstart — run with Docker
 
@@ -22,12 +22,12 @@ Replace `ad-archer/archer-fitness:latest` with the tag you need.
 docker run -d \
   --name archer-fitness \
   --env-file .env \
-  -p 3000:3000 \
+  -p ${PORT:-3000}:${PORT:-3000} \
   --restart unless-stopped \
-  ad-archer/archer-fitness:latest
+  adarcher/archer-fitness:latest
 ```
 
-The web app will be available on http://localhost:3000
+The web app will be available on http://localhost:${PORT:-3000}
 
 Notes:
 - The container expects the database to be reachable from inside the container via `DATABASE_URL`.
@@ -39,46 +39,45 @@ Example `docker-compose.yml` snippet (minimal):
 
 ```yaml
 services:
-  db:
-    image: postgres:15
-    container_name: archer-fitness-db
-    environment:
-      POSTGRES_DB: archer_fitness
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    volumes:
-      - db-data:/var/lib/postgresql/data
-    networks:
-      - archer-net
-
-  web:
+  archer-fitness:
+    image: adarcher/archer-fitness:latest
     container_name: archer-fitness
-    image: ad-archer/archer-fitness:latest
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
     env_file:
       - .env
     environment:
       - NODE_ENV=production
-      # Expose PORT from .env (dotenv). The healthcheck below relies on this value.
       - PORT=${PORT:-3000}
-  # Ensure the server binds to all interfaces so the internal healthcheck (and other
-  # containers on the same network) can reach it. Next.js standalone/server.js will
-  # bind to the provided host if set; use 0.0.0.0 inside containers.
-  - HOST=0.0.0.0
+      # Uncomment below if using the local db service
+      # DATABASE_URL=postgresql://postgres:postgres@db:5432/archer_fitness?schema=public
+    restart: unless-stopped
+    # depends_on:
+    #   - db  # Uncomment if using the local db service
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:${PORT:-3000}/ || exit 1"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${PORT:-3000}/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-    depends_on:
-      - db
-    networks:
-      - archer-net
+      start_period: 40s
+
+  # --- OPTIONAL: Local PostgreSQL Database ---
+  # Uncomment to run a local db for dev/testing
+  # db:
+  #   image: postgres:15
+  #   container_name: archer-fitness-db
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_DB: archer_fitness
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - db-data:/var/lib/postgresql/data
 
 volumes:
   db-data: {}
-
-networks:
-  archer-net: {}
 ```
 
 After creating `.env` and the compose file:
@@ -94,14 +93,14 @@ Notes on ports vs healthchecks:
 - `EXPOSE` and publishing (`ports:`) only affect host accessibility; they are not required for
   an internal healthcheck to work.
 - If you want to reach the app from your host machine (browser), you still need to publish a port
-  with `ports: - "3000:3000"` (or set `-p` with `docker run`).
+  with `ports: - "${PORT:-3000}:${PORT:-3000}"` (or set `-p` with `docker run`).
 
 Example: publish port to host (optional):
 
 ```yaml
   web:
     ports:
-      - "3000:3000"
+      - "${PORT:-3000}:${PORT:-3000}"
 ```
 
 ## Environment variables
@@ -145,7 +144,7 @@ Then run with the `arche-fitness:local` tag as above.
 
 ## Ports
 
-- 3000 — Next.js application port (mapped to host in examples)
+- ${PORT:-3000} — Next.js application port (mapped to host in examples)
 
 ## Volumes
 
