@@ -112,8 +112,8 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
   return (
     <div className="space-y-8 w-full px-4 sm:px-6 md:px-8 lg:px-10 pb-8">
       {/* Workout Details Section */}
-      <Card className="p-6 md:p-8 lg:p-10 shadow-md border-2">
-        <h2 className="text-2xl md:text-3xl font-semibold mb-6">Workout Details</h2>
+      <Card className="p-6 md:p-6 lg:p-6 shadow-md border-2">
+        <h2 className="text-2xl font-semibold mb-6">Workout Details</h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-3">
             <Label htmlFor="workout-name" className="text-base font-medium">Workout Name</Label>
@@ -122,7 +122,7 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
               placeholder="My Custom Workout"
               value={workoutName}
               onChange={(e) => setWorkoutName(e.target.value)}
-              className="w-full h-12 md:h-14 text-base"
+              className="w-full h-12 text-base"
             />
           </div>
           <div className="space-y-3">
@@ -133,7 +133,7 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
               placeholder="45"
               value={estimatedDuration}
               onChange={(e) => setEstimatedDuration(e.target.value)}
-              className="w-full h-12 md:h-14 text-base"
+              className="w-full h-12 text-base"
             />
           </div>
           <div className="lg:col-span-2 space-y-3">
@@ -144,21 +144,21 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
               value={workoutDescription}
               onChange={(e) => setWorkoutDescription(e.target.value)}
               rows={4}
-              className="w-full resize-none text-base md:text-lg"
+              className="w-full resize-none text-base"
             />
           </div>
         </div>
       </Card>
 
       {/* Exercises Section */}
-      <Card className="p-6 md:p-8 lg:p-10 shadow-md border-2">
+      <Card className="p-6 md:p-6 lg:p-6 shadow-md border-2">
         <div className="space-y-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <h3 className="text-xl font-medium">Exercises ({exercises.length})</h3>
             <Button 
               onClick={addExercise} 
               variant="outline"
-              className="bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 w-full lg:w-auto h-12 md:h-14 px-6"
+              className="bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 w-full lg:w-auto h-12 px-6"
             >
               <Plus className="w-5 h-5 mr-2" />
               Add Exercise
@@ -166,7 +166,7 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
           </div>
 
           {exercises.length === 0 ? (
-            <div className="flex flex-col items-center justify-center bg-muted/30 border border-dashed rounded-lg p-12 md:p-16 lg:p-20 text-center">
+            <div className="flex flex-col items-center justify-center bg-muted/30 border border-dashed rounded-lg p-12 md:p-12 lg:p-12 text-center">
               <span className="mb-6 text-5xl">💪</span>
               <h3 className="text-xl font-medium mb-3">No Exercises Added Yet</h3>
               <p className="text-muted-foreground mb-8 max-w-md text-lg">Add exercises to create your custom workout</p>
@@ -178,7 +178,7 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
           ) : (
             <div className="space-y-6">
               {exercises.map((exercise, index) => (
-                <Card key={exercise.id} className="p-6 md:p-8 border-l-4 border-l-blue-500 shadow-sm">
+                <Card key={exercise.id} className="p-6 md:p-6 border-l-4 border-l-blue-500 shadow-sm">
                   <div className="space-y-6">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -205,7 +205,7 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
                           placeholder="3"
                           value={exercise.targetSets}
                           onChange={(e) => updateExercise(index, "targetSets", Number.parseInt(e.target.value) || 3)}
-                          className="w-full h-12 md:h-14 text-base"
+                          className="w-full h-12 text-base"
                         />
                       </div>
                       <div className="space-y-3">
@@ -214,7 +214,7 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
                           value={exercise.targetType}
                           onValueChange={(value: "reps" | "time") => updateExercise(index, "targetType", value)}
                         >
-                          <SelectTrigger className="w-full h-12 md:h-14 text-base">
+                          <SelectTrigger className="w-full h-12 text-base">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -231,7 +231,7 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
                           placeholder={exercise.targetType === "reps" ? "8-12" : "30s"}
                           value={exercise.targetReps}
                           onChange={(e) => updateExercise(index, "targetReps", e.target.value)}
-                          className="w-full h-12 md:h-14 text-base"
+                          className="w-full h-12 text-base"
                         />
                       </div>
                     </div>
@@ -243,7 +243,7 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
                         value={exercise.instructions}
                         onChange={(e) => updateExercise(index, "instructions", e.target.value)}
                         rows={3}
-                        className="w-full resize-none text-base md:text-lg"
+                        className="w-full resize-none text-base"
                       />
                     </div>
                   </div>
@@ -255,19 +255,19 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
       </Card>
 
       {/* Action Buttons */}
-      <Card className="p-6 md:p-8 lg:p-10 shadow-md border-2">
+      <Card className="p-6 md:p-6 lg:p-6 shadow-md border-2">
         <div className="flex flex-col lg:flex-row gap-4 justify-end">
           <Button 
             onClick={onCancel} 
             variant="outline" 
-            className="w-full lg:w-auto h-12 md:h-14 px-8 text-base order-2 lg:order-1"
+            className="w-full lg:w-auto h-12 px-8 text-base order-2 lg:order-1"
           >
             Cancel
           </Button>
           <Button 
             onClick={handleSave} 
             disabled={!workoutName.trim() || exercises.length === 0}
-            className="w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white h-12 md:h-14 px-8 text-base order-1 lg:order-2"
+            className="w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white h-12 px-8 text-base order-1 lg:order-2"
           >
             {initialWorkout?.id ? 'Update Workout' : 'Save Workout'}
           </Button>
