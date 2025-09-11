@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Save } from "lucide-react"
+import { Plus } from "lucide-react"
 import { formatTime } from "../utils"
 
 interface LastSetData {
@@ -22,7 +22,6 @@ interface AddSetFormProps {
   currentExerciseTimer?: number
   lastSetData?: LastSetData
   onAddSet: (exerciseId: string, reps: number, weight?: number) => void
-  onSaveWorkout?: () => void
 }
 
 export function AddSetForm({ 
@@ -31,8 +30,7 @@ export function AddSetForm({
   targetType = "reps", 
   currentExerciseTimer = 0, 
   lastSetData,
-  onAddSet,
-  onSaveWorkout
+  onAddSet
 }: AddSetFormProps) {
   const [reps, setReps] = useState("")
   const [weight, setWeight] = useState("")
@@ -144,19 +142,6 @@ export function AddSetForm({
           Add Set
         </Button>
       </form>
-
-      {/* Save Workout Button */}
-      {onSaveWorkout && (
-        <Button 
-          onClick={onSaveWorkout}
-          variant="outline" 
-          size="sm" 
-          className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200"
-        >
-          <Save className="w-3 h-3 mr-2" />
-          Save & Exit Workout
-        </Button>
-      )}
     </div>
   )
 }

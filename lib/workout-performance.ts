@@ -15,8 +15,6 @@ interface WorkoutSessionExercise {
 interface WorkoutSession {
   id: string
   exercises: WorkoutSessionExercise[]
-  status: string
-  endTime?: Date | null
 }
 
 export type WorkoutPerformanceStatus = "completed" | "unfinished" | "perfect"
@@ -37,16 +35,27 @@ export interface WorkoutPerformanceAnalysis {
  * Parse target reps string to get the minimum expected reps
  * Examples: "8-12" -> 8, "15" -> 15, "30s" -> 30 (for time-based)
  */
-function parseTargetReps(targetReps: string, targetType: string): number {
+function parseTargetReps(targetReps: string, targetType: string): { min: number; max: number } {
   if (targetType === "time") {
     // For time-based exercises, extract seconds
     const match = targetReps.match(/(\d+)/)
-    return match ? parseInt(match[1]) : 30
+    const value = match ? parseInt(match[1]) : 30
+    return { min: value, max: value }
   }
   
-  // For rep-based exercises
-  const match = targetReps.match(/(\d+)/)
-  return match ? parseInt(match[1]) : 8
+  // For rep-based exercises, handle ranges like "8-12" or single values like "15"
+  const rangeMatch = targetReps.match(/(\d+)-(\d+)/)
+  if (rangeMatch) {
+    return {
+      min: parseInt(rangeMatch[1]),
+      max: parseInt(rangeMatch[2])
+    }
+  }
+  
+  // Single value
+  const singleMatch = targetReps.match(/(\d+)/)
+  const value = singleMatch ? parseInt(singleMatch[1]) : 8
+  return { min: value, max: value }
 }
 
 /**
@@ -58,7 +67,7 @@ function calculateExerciseScore(exercise: WorkoutSessionExercise): number {
   
   if (completedSets.length === 0) return 0
   
-  const targetRepsNum = parseTargetReps(targetReps, targetType)
+  const targetRange = parseTargetReps(targetReps, targetType)
   
   // Base score for completing sets
   const setCompletionRatio = completedSets.length / targetSets
@@ -72,16 +81,17 @@ function calculateExerciseScore(exercise: WorkoutSessionExercise): number {
     const reps = set.reps || 0
     if (targetType === "time") {
       // For time-based exercises, longer duration = better
-      return reps / targetRepsNum
+      return reps / targetRange.min
     } else {
       // For rep-based exercises, more reps = better
-      return reps / targetRepsNum
+      // Use minimum target as baseline, award extra points for reaching/exceeding max
+      return reps / targetRange.min
     }
   })
   
   const avgPerformanceRatio = performanceRatios.reduce((sum, ratio) => sum + ratio, 0) / performanceRatios.length
   
-  // Award bonus points for exceeding targets
+  // Award bonus points for exceeding minimum targets
   if (avgPerformanceRatio > 1.0) {
     bonusScore = Math.min((avgPerformanceRatio - 1.0) * 30, 30) // Max 30 bonus points
   }
@@ -91,6 +101,14 @@ function calculateExerciseScore(exercise: WorkoutSessionExercise): number {
     bonusScore += Math.min((completedSets.length - targetSets) * 10, 20) // Max 20 extra points
   }
   
+  // Special bonus for hitting the upper range of target reps
+  if (targetRange.max > targetRange.min) {
+    const avgReps = completedSets.reduce((sum, set) => sum + (set.reps || 0), 0) / completedSets.length
+    if (avgReps >= targetRange.max) {
+      bonusScore += 10 // Bonus for consistently hitting max target
+    }
+  }
+  
   return Math.min(baseScore + bonusScore, 100)
 }
 
@@ -98,7 +116,7 @@ function calculateExerciseScore(exercise: WorkoutSessionExercise): number {
  * Calculate overall workout performance
  */
 export function calculateWorkoutPerformance(session: WorkoutSession): WorkoutPerformanceAnalysis {
-  const { exercises, status, endTime } = session
+  const { exercises } = session
   
   if (exercises.length === 0) {
     return {
@@ -134,9 +152,8 @@ export function calculateWorkoutPerformance(session: WorkoutSession): WorkoutPer
   // Determine performance status
   let performanceStatus: WorkoutPerformanceStatus
   
-  if (status !== "completed" || !endTime) {
-    performanceStatus = "unfinished"
-  } else if (perfectionScore >= 85 && completionRate >= 90) {
+  // Base status determination on actual performance, not just workout status
+  if (perfectionScore >= 85 && completionRate >= 90) {
     // Perfect: High performance score and near-complete workout
     performanceStatus = "perfect"
   } else if (completionRate >= 70) {

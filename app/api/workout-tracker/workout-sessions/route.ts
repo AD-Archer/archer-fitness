@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { calculateWorkoutPerformance } from "@/lib/workout-performance"
 
 export async function GET(request: NextRequest) {
   try {
@@ -41,7 +42,41 @@ export async function GET(request: NextRequest) {
       take: limit,
     })
 
-    return NextResponse.json(workoutSessions)
+    // Calculate performance metrics for each workout session
+    const workoutSessionsWithPerformance = workoutSessions.map(session => {
+      // If the session already has performance data stored, use it
+      if (session.performanceStatus && session.completionRate !== null && session.perfectionScore !== null) {
+        return session
+      }
+
+      // Otherwise, calculate performance metrics on-the-fly
+      // Transform the data to match our performance calculation interface
+      const transformedSession = {
+        ...session,
+        exercises: session.exercises.map(ex => ({
+          id: ex.id,
+          targetSets: ex.targetSets,
+          targetReps: ex.targetReps,
+          targetType: ex.targetType,
+          completed: ex.completed,
+          completedSets: ex.sets.filter(set => set.completed).length,
+          sets: ex.sets
+        }))
+      }
+      
+      
+      const performance = calculateWorkoutPerformance(transformedSession)
+      
+      // Return session with calculated performance data
+      return {
+        ...session,
+        performanceStatus: performance.performanceStatus,
+        completionRate: performance.completionRate,
+        perfectionScore: performance.perfectionScore,
+      }
+    })
+
+    return NextResponse.json(workoutSessionsWithPerformance)
   } catch (error) {
     console.error("Error fetching workout sessions:", error)
     return NextResponse.json(

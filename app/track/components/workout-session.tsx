@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Check, Pause, Play, Square, Target, Timer } from "lucide-react"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Check, Pause, Play, Square, Target, Timer, Save, X } from "lucide-react"
 import { AddSetForm } from "./add-set-form"
 import { RestTimer } from "./rest-timer"
 import { ExerciseTimer } from "./exercise-timer"
@@ -148,10 +149,41 @@ export function WorkoutSession({
               {isTimerRunning ? <Pause className="w-4 h-4 mr-1" /> : <Play className="w-4 h-4 mr-1" />}
               {isTimerRunning ? "Pause" : "Resume"}
             </Button>
-            <Button onClick={onStopWorkout} variant="outline" className="bg-transparent text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950">
-              <Square className="w-4 h-4" />
-              Stop
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="bg-transparent text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950">
+                  <Square className="w-4 h-4 mr-1" />
+                  Stop
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Stop Workout</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    What would you like to do with your current workout progress?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="flex-col sm:flex-col gap-2">
+                  <AlertDialogAction
+                    onClick={onSaveWorkout}
+                    className="bg-green-600 hover:bg-green-700 text-white w-full"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Save & Exit Workout
+                  </AlertDialogAction>
+                  <AlertDialogAction
+                    onClick={onStopWorkout}
+                    className="bg-red-600 hover:bg-red-700 text-white w-full"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Discard & Exit
+                  </AlertDialogAction>
+                  <AlertDialogCancel className="w-full">
+                    Continue Workout
+                  </AlertDialogCancel>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <Button onClick={onBackToSelection} variant="outline" className="bg-transparent">
               Back to Selection
             </Button>
@@ -256,7 +288,6 @@ export function WorkoutSession({
               currentExerciseTimer={exerciseTimer}
               lastSetData={getLastSetData()}
               onAddSet={onAddSet}
-              onSaveWorkout={onSaveWorkout}
             />
           </div>
 

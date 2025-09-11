@@ -186,19 +186,7 @@ export function WorkoutTracker() {
     switchToExercise(session!.exercises.length)
   }
 
-  // Debug logging (simplified to avoid runtime errors)
-  const debugInfo = {
-    availableWorkouts: availableWorkouts?.length || 0,
-    showWorkoutSelection,
-    isLoading,
-    hasSession: !!session,
-    timer,
-    isTimerRunning
-  }
   
-  if (process.env.NODE_ENV === 'development') {
-    console.log("WorkoutTracker:", debugInfo)
-  }
 
   if (isLoading) {
     return (

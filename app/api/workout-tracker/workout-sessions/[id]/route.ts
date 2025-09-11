@@ -41,7 +41,34 @@ export async function GET(
       return NextResponse.json({ error: "Workout session not found" }, { status: 404 })
     }
 
-    return NextResponse.json(workoutSession)
+    // Calculate performance metrics if not already stored
+    let sessionWithPerformance = workoutSession
+    if (!workoutSession.performanceStatus || workoutSession.completionRate === null || workoutSession.perfectionScore === null) {
+      // Transform the data to match our performance calculation interface
+      const transformedSession = {
+        ...workoutSession,
+        exercises: workoutSession.exercises.map(ex => ({
+          id: ex.id,
+          targetSets: ex.targetSets,
+          targetReps: ex.targetReps,
+          targetType: ex.targetType,
+          completed: ex.completed,
+          completedSets: ex.sets.filter(set => set.completed).length,
+          sets: ex.sets
+        }))
+      }
+      
+      const performance = calculateWorkoutPerformance(transformedSession)
+      
+      sessionWithPerformance = {
+        ...workoutSession,
+        performanceStatus: performance.performanceStatus,
+        completionRate: performance.completionRate,
+        perfectionScore: performance.perfectionScore,
+      }
+    }
+
+    return NextResponse.json(sessionWithPerformance)
   } catch (error) {
     console.error("Error fetching workout session:", error)
     return NextResponse.json(
