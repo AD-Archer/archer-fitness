@@ -8,6 +8,7 @@ import { useState } from "react"
 import { WorkoutSelection } from "./workout-selection"
 import { WorkoutSession as WorkoutSessionView } from "./workout-session"
 import { AddExerciseModal } from "./add-exercise-modal"
+import { SaveWorkoutDialog } from "./save-workout-dialog"
 import { useWorkoutSession, useWorkoutTimer, useWorkoutActions } from "../hooks"
 import { getWorkoutProgress } from "../utils"
 
@@ -16,6 +17,8 @@ import type { WorkoutTimerState } from "../hooks"
 
 export function WorkoutTracker() {
   const [showAddExerciseModal, setShowAddExerciseModal] = useState(false)
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [isSavingWorkout, setIsSavingWorkout] = useState(false)
 
   // Use the custom hooks
   const {
@@ -57,7 +60,14 @@ export function WorkoutTracker() {
   // Enhanced save workout that includes timer state
   const saveWorkout = async () => {
     if (!session) return
+    setShowSaveDialog(true)
+  }
 
+  // Save only the session progress
+  const saveSessionOnly = async () => {
+    if (!session) return
+
+    setIsSavingWorkout(true)
     try {
       // Save workout state to the server with current timer values
       await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
@@ -94,8 +104,148 @@ export function WorkoutTracker() {
       reset()
       setSession(null)
       backToSelection()
+      setShowSaveDialog(false)
     } catch (e) {
       console.error("Failed to save workout state", e)
+      alert("Failed to save workout. Please try again.")
+    } finally {
+      setIsSavingWorkout(false)
+    }
+  }
+
+  // Save as a new workout template
+  const saveAsNewWorkout = async (name: string, description?: string) => {
+    if (!session) return
+
+    setIsSavingWorkout(true)
+    try {
+      // First save the session progress
+      await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentExerciseIndex,
+          timer,
+          exerciseTimer,
+          isTimerRunning,
+          isResting,
+          restTimer,
+        }),
+      })
+
+      // Create new workout template
+      const exercisesForTemplate = session.exercises.map((ex, index) => ({
+        name: ex.name,
+        exerciseId: ex.id,
+        targetSets: ex.targetSets,
+        targetReps: ex.targetReps,
+        targetType: ex.targetType || "reps",
+        order: index,
+      }))
+
+      const response = await fetch("/api/workout-tracker/workout-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          description,
+          estimatedDuration: Math.ceil(timer / 60), // Convert seconds to minutes
+          exercises: exercisesForTemplate,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to create workout template")
+      }
+
+      // Update session status to paused
+      await fetch(`/api/workout-tracker/workout-sessions/${session.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "paused",
+          duration: timer,
+        }),
+      })
+
+      // Reset everything and go back to selection
+      reset()
+      setSession(null)
+      backToSelection()
+      setShowSaveDialog(false)
+      alert(`Workout "${name}" saved successfully!`)
+    } catch (e) {
+      console.error("Failed to save workout template", e)
+      alert("Failed to save workout template. Please try again.")
+    } finally {
+      setIsSavingWorkout(false)
+    }
+  }
+
+  // Update existing workout template
+  const updateExistingWorkout = async () => {
+    if (!session || !(session as any).workoutTemplateId) return
+
+    setIsSavingWorkout(true)
+    try {
+      // First save the session progress
+      await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentExerciseIndex,
+          timer,
+          exerciseTimer,
+          isTimerRunning,
+          isResting,
+          restTimer,
+        }),
+      })
+
+      // Update existing workout template
+      const exercisesForTemplate = session.exercises.map((ex, index) => ({
+        name: ex.name,
+        exerciseId: ex.id,
+        targetSets: ex.targetSets,
+        targetReps: ex.targetReps,
+        targetType: ex.targetType || "reps",
+        order: index,
+      }))
+
+      const response = await fetch(`/api/workout-tracker/workout-templates/${(session as any).workoutTemplateId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: session.name,
+          exercises: exercisesForTemplate,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to update workout template")
+      }
+
+      // Update session status to paused
+      await fetch(`/api/workout-tracker/workout-sessions/${session.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "paused",
+          duration: timer,
+        }),
+      })
+
+      // Reset everything and go back to selection
+      reset()
+      setSession(null)
+      backToSelection()
+      setShowSaveDialog(false)
+      alert(`Workout "${session.name}" updated successfully!`)
+    } catch (e) {
+      console.error("Failed to update workout template", e)
+      alert("Failed to update workout template. Please try again.")
+    } finally {
+      setIsSavingWorkout(false)
     }
   }
 
@@ -298,6 +448,15 @@ export function WorkoutTracker() {
         onClose={() => setShowAddExerciseModal(false)}
         onAddExercise={handleAddExercise}
         isLoading={isAddingExercise}
+      />
+      <SaveWorkoutDialog
+        isOpen={showSaveDialog}
+        onClose={() => setShowSaveDialog(false)}
+        onSaveSessionOnly={saveSessionOnly}
+        onSaveAsNew={saveAsNewWorkout}
+        onUpdateExisting={updateExistingWorkout}
+        session={session}
+        isSaving={isSavingWorkout}
       />
     </>
   )

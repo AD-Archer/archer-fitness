@@ -149,7 +149,7 @@ export function WorkoutSession({
           <div className="flex gap-2">
             <Button onClick={onPauseWorkout} variant="outline" className="bg-transparent">
               {isTimerRunning ? <Pause className="w-4 h-4 mr-1" /> : <Play className="w-4 h-4 mr-1" />}
-              {isTimerRunning ? "Pause" : "Resume"}
+              {isTimerRunning ? "Resume" : "Pause"}
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>

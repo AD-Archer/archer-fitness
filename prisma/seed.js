@@ -244,20 +244,46 @@ async function main() {
   console.log("Seeding workout templates...")
 
   for (const template of workoutTemplates) {
-    const exercisePromises = template.exercises.map(async (ex) => {
-      const exercise = await prisma.exercise.findFirst({
-        where: { name: ex.exerciseName, isPredefined: true },
+    try {
+      // Check if workout template already exists
+      const existingTemplate = await prisma.workoutTemplate.findFirst({
+        where: {
+          name: template.name,
+          isPredefined: true
+        },
+        include: {
+          exercises: {
+            include: {
+              exercise: true
+            }
+          }
+        }
       })
-      return exercise ? { ...ex, exerciseId: exercise.id } : null
-    })
 
-    const exercisesWithIds = (await Promise.all(exercisePromises)).filter(Boolean)
+      if (existingTemplate) {
+        console.log(`Workout template "${template.name}" already exists, skipping...`)
+        continue
+      }
 
-    if (exercisesWithIds.length > 0) {
-      try {
+      // Get exercise IDs for the template
+      const exercisePromises = template.exercises.map(async (ex) => {
+        const exercise = await prisma.exercise.findFirst({
+          where: { name: ex.exerciseName, isPredefined: true },
+        })
+        return exercise ? { ...ex, exerciseId: exercise.id } : null
+      })
+
+      const exercisesWithIds = (await Promise.all(exercisePromises)).filter(Boolean)
+
+      if (exercisesWithIds.length > 0) {
         await prisma.workoutTemplate.create({
           data: {
-            ...template,
+            name: template.name,
+            description: template.description,
+            estimatedDuration: template.estimatedDuration,
+            category: template.category,
+            difficulty: template.difficulty,
+            isPredefined: template.isPredefined,
             exercises: {
               create: exercisesWithIds.map((ex, index) => ({
                 exerciseId: ex.exerciseId,
@@ -269,9 +295,12 @@ async function main() {
             },
           },
         })
-      } catch (e) {
-        console.log(`Workout template ${template.name} already exists, skipping...`)
+        console.log(`Created workout template: ${template.name}`)
+      } else {
+        console.log(`Skipping workout template "${template.name}" - no valid exercises found`)
       }
+    } catch (e) {
+      console.log(`Error processing workout template ${template.name}:`, e.message)
     }
   }
 
