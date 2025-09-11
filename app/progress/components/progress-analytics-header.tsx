@@ -10,10 +10,6 @@ interface ProgressAnalyticsHeaderProps {
 export function ProgressAnalyticsHeader({ timeRange, setTimeRange }: ProgressAnalyticsHeaderProps) {
   return (
     <div className="flex items-center justify-between">
-      <div>
-        <h2 className="text-2xl font-bold">Progress Analytics</h2>
-        <p className="text-muted-foreground">Track your fitness journey and performance trends</p>
-      </div>
       <Select value={timeRange} onValueChange={setTimeRange}>
         <SelectTrigger className="w-40">
           <SelectValue />

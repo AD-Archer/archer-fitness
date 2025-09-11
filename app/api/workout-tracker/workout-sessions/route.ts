@@ -41,7 +41,15 @@ export async function GET(request: NextRequest) {
         workoutTemplate: true,
         exercises: {
           include: {
-            exercise: true,
+            exercise: {
+              include: {
+                muscles: {
+                  include: {
+                    muscle: true
+                  }
+                }
+              }
+            },
             sets: {
               orderBy: {
                 setNumber: "asc",
@@ -216,7 +224,15 @@ export async function POST(request: NextRequest) {
         workoutTemplate: true,
         exercises: {
           include: {
-            exercise: true,
+            exercise: {
+              include: {
+                muscles: {
+                  include: {
+                    muscle: true
+                  }
+                }
+              }
+            },
             sets: { orderBy: { setNumber: "asc" } },
           },
           orderBy: { order: "asc" },

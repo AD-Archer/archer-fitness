@@ -10,6 +10,7 @@ import { NutritionAnalytics } from "./nutrition-analytics"
 import { DistributionAnalytics } from "./distribution-analytics"
 import { BodyCompositionAnalytics } from "./body-composition-analytics"
 import { AchievementsAnalytics } from "./achievements-analytics"
+import { FitnessOverview } from "./fitness-overview"
 
 export function ProgressAnalytics() {
   const [timeRange, setTimeRange] = useState("6weeks")
@@ -23,8 +24,9 @@ export function ProgressAnalytics() {
       <KeyMetricsCards />
 
       {/* Main Analytics Tabs */}
-      <Tabs defaultValue="strength" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6">
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-7">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="strength">Strength</TabsTrigger>
           <TabsTrigger value="volume">Volume</TabsTrigger>
           <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
@@ -32,6 +34,11 @@ export function ProgressAnalytics() {
           <TabsTrigger value="distribution">Distribution</TabsTrigger>
           <TabsTrigger value="achievements">Achievements</TabsTrigger>
         </TabsList>
+
+        {/* Fitness Overview Tab */}
+        <TabsContent value="overview">
+          <FitnessOverview />
+        </TabsContent>
 
         {/* Strength Progress Tab */}
         <TabsContent value="strength">
