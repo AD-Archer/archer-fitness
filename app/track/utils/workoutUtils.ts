@@ -7,8 +7,12 @@ export const formatTime = (seconds: number): string => {
 }
 
 export const getWorkoutProgress = (session: WorkoutSession): number => {
-  const exercisesWithSets = session.exercises.filter((ex: TrackedExercise) => ex.sets.length > 0).length
-  return session.exercises.length > 0 ? (exercisesWithSets / session.exercises.length) * 100 : 0
+  if (session.exercises.length === 0) return 0
+  
+  const totalSets = session.exercises.reduce((total, ex) => total + ex.targetSets, 0)
+  const completedSets = session.exercises.reduce((total, ex) => total + ex.sets.length, 0)
+  
+  return totalSets > 0 ? Math.min((completedSets / totalSets) * 100, 100) : 0
 }
 
 export const getExerciseProgress = (exercise: TrackedExercise): number => {

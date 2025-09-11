@@ -30,7 +30,6 @@ export function useWorkoutSession() {
           const activeSessions = await activeSessionsRes.json()
           if (activeSessions.length > 0) {
             activeSession = activeSessions[0]
-            console.log("Found active session:", activeSession)
           }
         }
 
@@ -39,7 +38,6 @@ export function useWorkoutSession() {
           const pausedSessions = await pausedSessionsRes.json()
           if (pausedSessions.length > 0) {
             activeSession = pausedSessions[0]
-            console.log("Found paused session:", activeSession)
           }
         }
 
@@ -52,10 +50,9 @@ export function useWorkoutSession() {
             if (savedStateRes.ok) {
               const state = await savedStateRes.json()
               setSavedState(state)
-              console.log("Restored saved workout state:", state)
             }
           } catch {
-            console.log("No saved state found for active session")
+            // No saved state found for active session
           }
 
           setSession(workoutSession)
@@ -67,12 +64,9 @@ export function useWorkoutSession() {
         const res = await fetch("/api/workout-tracker/workout-templates?limit=20")
         if (!res.ok) throw new Error("Failed to load templates")
         const data = await res.json()
-        console.log("API Response:", data)
 
         const all = [...(data.userTemplates || []), ...(data.predefinedTemplates || [])]
-        console.log("All templates:", all)
         const transformed = transformTemplateFromAPI(all)
-        console.log("Transformed templates:", transformed)
 
         if (active) {
           setAvailableWorkouts(transformed)
@@ -95,10 +89,7 @@ export function useWorkoutSession() {
 
   const startWorkout = async (workoutTemplate: WorkoutTemplate) => {
     try {
-      console.log("Starting workout with template:", workoutTemplate)
-
       const payload = createWorkoutPayload(workoutTemplate)
-      console.log("Exercises payload:", payload.exercises)
 
       const res = await fetch("/api/workout-tracker/workout-sessions", {
         method: "POST",
@@ -113,7 +104,6 @@ export function useWorkoutSession() {
       }
 
       const created = await res.json()
-      console.log("Created session:", created)
 
       const workoutSession = transformSessionFromAPI(created)
 
@@ -123,10 +113,9 @@ export function useWorkoutSession() {
         if (savedStateRes.ok) {
           const state = await savedStateRes.json()
           setSavedState(state)
-          console.log("Restored saved workout state:", state)
         }
       } catch {
-        console.log("No saved state found, starting fresh")
+        // No saved state found, starting fresh
       }
 
       setSession(workoutSession)

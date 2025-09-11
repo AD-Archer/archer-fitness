@@ -18,6 +18,13 @@ export function useWorkoutTimer(session: WorkoutSession | null, initialState?: P
   const [isResting, setIsResting] = useState(initialState?.isResting || false)
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(initialState?.currentExerciseIndex || 0)
 
+  // Auto-start timer when a session starts (if not already restored from saved state)
+  useEffect(() => {
+    if (session && session.isActive && !initialState) {
+      setIsTimerRunning(true)
+    }
+  }, [session, initialState])
+
   // Main workout timer effect
   useEffect(() => {
     let interval: NodeJS.Timeout

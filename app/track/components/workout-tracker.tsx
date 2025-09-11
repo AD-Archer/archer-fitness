@@ -46,7 +46,7 @@ export function WorkoutTracker() {
     previousExercise,
     switchToExercise,
     reset,
-  } = useWorkoutTimer(session, savedState ?? undefined as Partial<WorkoutTimerState> | undefined)
+  } = useWorkoutTimer(session, savedState as Partial<WorkoutTimerState> | undefined)
 
   const {
     isAddingExercise,
@@ -120,7 +120,7 @@ export function WorkoutTracker() {
           method: "DELETE",
         })
       } catch {
-        console.log("No saved state to clear")
+        // No saved state to clear
       }
     } catch (e) {
       console.error("Failed to complete session", e)
@@ -151,7 +151,7 @@ export function WorkoutTracker() {
           method: "DELETE",
         })
       } catch {
-        console.log("No saved state to clear")
+        // No saved state to clear
       }
     } catch (e) {
       console.error("Failed to stop session", e)
@@ -186,12 +186,19 @@ export function WorkoutTracker() {
     switchToExercise(session!.exercises.length)
   }
 
-  // Debug logging
-  console.log("Available workouts:", availableWorkouts)
-  console.log("Available workouts length:", availableWorkouts.length)
-  console.log("Show workout selection:", showWorkoutSelection)
-  console.log("Is loading:", isLoading)
-  console.log("Session:", session)
+  // Debug logging (simplified to avoid runtime errors)
+  const debugInfo = {
+    availableWorkouts: availableWorkouts?.length || 0,
+    showWorkoutSelection,
+    isLoading,
+    hasSession: !!session,
+    timer,
+    isTimerRunning
+  }
+  
+  if (process.env.NODE_ENV === 'development') {
+    console.log("WorkoutTracker:", debugInfo)
+  }
 
   if (isLoading) {
     return (

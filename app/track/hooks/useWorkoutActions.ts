@@ -141,7 +141,7 @@ export function useWorkoutActions(
 
     try {
       // Create exercise
-      const createdRes = await fetch("/api/exercises", {
+      const createdRes = await fetch("/api/workout-tracker/exercises", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),

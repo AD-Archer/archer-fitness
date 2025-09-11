@@ -1,9 +1,7 @@
 "use client"
-// used to add a new exercise to the current workout session
 import { useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Target } from "lucide-react"
@@ -25,17 +23,9 @@ interface AddExerciseModalProps {
 }
 
 export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = false }: AddExerciseModalProps) {
-  const [exerciseName, setExerciseName] = useState("")
   const [targetType, setTargetType] = useState<"reps" | "time">("reps")
-  const [activeTab, setActiveTab] = useState<"manual" | "selector">("manual")
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (exerciseName.trim()) {
-      onAddExercise({ name: exerciseName.trim() }, targetType)
-      resetForm()
-    }
-  }
+  // Only selector tab is needed now
+  const [activeTab, setActiveTab] = useState<"selector">("selector")
 
   const handleSelectExercise = (selectedExercise: Exercise) => {
     onAddExercise({
@@ -47,9 +37,8 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
   }
 
   const resetForm = () => {
-    setExerciseName("")
     setTargetType("reps")
-    setActiveTab("manual")
+    setActiveTab("selector")
     onClose()
   }
 
@@ -68,49 +57,16 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
           </DialogHeader>
 
           <div className="flex-1 overflow-hidden">
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "manual" | "selector")} className="h-full flex flex-col">
+            <Tabs value={activeTab} onValueChange={() => {}} className="h-full flex flex-col">
               <div className="px-4 sm:px-6 md:px-8 pt-3 md:pt-6">
-                <TabsList className="grid w-full grid-cols-2 h-12">
-                  <TabsTrigger value="manual" className="text-sm md:text-base">Manual Entry</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-1 h-12">
                   <TabsTrigger value="selector" className="text-sm md:text-base">Exercise Database</TabsTrigger>
                 </TabsList>
               </div>
 
-              <TabsContent value="manual" className="flex-1 overflow-y-auto mt-0 px-4 sm:px-6 md:px-8">
-                <form onSubmit={handleSubmit} className="py-6 md:py-8">
-                  <div className="space-y-6 max-w-2xl">
-                    <div className="space-y-3">
-                      <Label htmlFor="exercise-name" className="text-base font-medium">Exercise Name</Label>
-                      <Input
-                        id="exercise-name"
-                        placeholder="e.g., Push-ups, Squats, Bench Press"
-                        value={exerciseName}
-                        onChange={(e) => setExerciseName(e.target.value)}
-                        autoFocus
-                        disabled={isLoading}
-                        className="h-12 text-base"
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      <Label htmlFor="exercise-type" className="text-base font-medium">Exercise Type</Label>
-                      <Select value={targetType} onValueChange={(value: "reps" | "time") => setTargetType(value)} disabled={isLoading}>
-                        <SelectTrigger className="h-12 text-base">
-                          <SelectValue placeholder="Select exercise type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="reps" className="text-base">Reps-based (count repetitions)</SelectItem>
-                          <SelectItem value="time" className="text-base">Time-based (timed exercise)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </form>
-              </TabsContent>
-
-        <TabsContent value="selector" className="flex-1 overflow-hidden mt-0">
+              <TabsContent value="selector" className="flex-1 overflow-hidden mt-0">
                 <div className="h-full flex flex-col">
-          <div className="px-4 sm:px-6 md:px-8 py-3 md:py-4 border-b bg-muted/30">
+                  <div className="px-4 sm:px-6 md:px-8 py-3 md:py-4 border-b bg-muted/30">
                     <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
                       <h3 className="text-sm md:text-base font-medium text-muted-foreground">Select an exercise from the database or create a custom one</h3>
                       <div className="flex items-center gap-2">
@@ -127,10 +83,10 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
                       </div>
                     </div>
                   </div>
-          <div className="flex-1 overflow-hidden">
+                  <div className="flex-1 overflow-hidden">
                     <ExerciseSelector
                       onSelect={handleSelectExercise}
-                      onClose={() => setActiveTab("manual")}
+                      onClose={onClose}
                       embedded={true}
                     />
                   </div>
@@ -146,20 +102,10 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
                 variant="outline"
                 onClick={onClose}
                 disabled={isLoading}
-                className="w-full sm:w-auto h-12 text-base order-2 sm:order-1"
+                className="w-full sm:w-auto h-12 text-base"
               >
                 Cancel
               </Button>
-              {activeTab === "manual" && (
-                <Button
-                  type="submit"
-                  disabled={!exerciseName.trim() || isLoading}
-                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 h-12 text-base order-1 sm:order-2"
-                  onClick={handleSubmit}
-                >
-                  {isLoading ? "Adding..." : "Add Exercise"}
-                </Button>
-              )}
             </DialogFooter>
           </div>
         </div>

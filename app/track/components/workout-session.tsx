@@ -145,7 +145,8 @@ export function WorkoutSession({
 
           <div className="flex gap-2">
             <Button onClick={onPauseWorkout} variant="outline" className="bg-transparent">
-              {isTimerRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              {isTimerRunning ? <Pause className="w-4 h-4 mr-1" /> : <Play className="w-4 h-4 mr-1" />}
+              {isTimerRunning ? "Pause" : "Resume"}
             </Button>
             <Button onClick={onStopWorkout} variant="outline" className="bg-transparent text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950">
               <Square className="w-4 h-4" />
