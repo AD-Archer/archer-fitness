@@ -14,11 +14,28 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get("limit") || "20")
     const status = searchParams.get("status") // "active", "completed", "paused"
+    const date = searchParams.get("date") // YYYY-MM-DD format
+
+    let dateFilter = {}
+    if (date) {
+      const startOfDay = new Date(date)
+      startOfDay.setHours(0, 0, 0, 0)
+      const endOfDay = new Date(date)
+      endOfDay.setHours(23, 59, 59, 999)
+      
+      dateFilter = {
+        startTime: {
+          gte: startOfDay,
+          lte: endOfDay,
+        }
+      }
+    }
 
     const workoutSessions = await prisma.workoutSession.findMany({
       where: {
-  userId: session.user.id,
+        userId: session.user.id,
         ...(status && { status }),
+        ...dateFilter,
       },
       include: {
         workoutTemplate: true,
