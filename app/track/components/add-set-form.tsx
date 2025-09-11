@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Save } from "lucide-react"
+import { formatTime } from "../utils"
 
 interface LastSetData {
   reps?: number
@@ -61,12 +62,6 @@ export function AddSetForm({
         // Don't clear the form so values persist for next set
       }
     }
-  }
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
   return (

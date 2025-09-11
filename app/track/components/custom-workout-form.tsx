@@ -9,9 +9,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Plus, Trash2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ExerciseSelector } from "./exercise-selector"
 
 interface TrackedExercise {
   id: string
+  exerciseId: string
   name: string
   targetSets: number
   targetReps: string
@@ -30,6 +32,7 @@ interface WorkoutTemplate {
 
 interface InitialExercise {
   id: string
+  exerciseId: string
   name: string
   targetSets: number
   targetReps: string
@@ -55,17 +58,24 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
       targetType: ex.targetType || "reps"
     })) ?? []
   )
+  const [showExerciseSelector, setShowExerciseSelector] = useState(false)
 
   const addExercise = () => {
+    setShowExerciseSelector(true)
+  }
+
+  const handleExerciseSelect = (selectedExercise: { id: string; name: string; instructions?: string }) => {
     const newExercise: Omit<TrackedExercise, "sets" | "completed"> = {
       id: Date.now().toString(),
-      name: "",
+      exerciseId: selectedExercise.id,
+      name: selectedExercise.name,
       targetSets: 3,
       targetReps: "8-12",
       targetType: "reps",
-      instructions: "",
+      instructions: selectedExercise.instructions || "",
     }
     setExercises((prev) => [...prev, newExercise])
+    setShowExerciseSelector(false)
   }
 
   const updateExercise = (index: number, field: string, value: string | number) => {
@@ -86,12 +96,13 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
       estimatedDuration: Number.parseInt(estimatedDuration) || 30,
       exercises: exercises.map((ex) => ({
         ...ex,
-        name: ex.name.trim() || "Push-ups",
+        exerciseId: ex.exerciseId,
+        name: ex.name,
         targetSets: ex.targetSets || 3,
         targetReps: ex.targetReps || "8-12",
         targetType: ex.targetType || "reps",
         instructions: ex.instructions || "",
-      })).filter((ex) => ex.name.trim()),
+      })),
       isCustom: true,
     }
 
@@ -153,12 +164,10 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
 
               <div className="grid gap-3">
                 <div>
-                  <Label>Exercise Name</Label>
-                  <Input
-                    placeholder="Push-ups"
-                    value={exercise.name}
-                    onChange={(e) => updateExercise(index, "name", e.target.value)}
-                  />
+                  <Label>Exercise</Label>
+                  <div className="p-3 bg-muted rounded-md">
+                    <span className="font-medium">{exercise.name}</span>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -217,7 +226,7 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
         <div className="flex justify-center pt-4">
           <Button onClick={addExercise} variant="outline" className="bg-transparent">
             <Plus className="w-4 h-4 mr-1" />
-            Add Exercise
+            Select Exercise from Database
           </Button>
         </div>
       </div>
@@ -230,6 +239,13 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
           Cancel
         </Button>
       </div>
+
+      {showExerciseSelector && (
+        <ExerciseSelector
+          onSelect={handleExerciseSelect}
+          onClose={() => setShowExerciseSelector(false)}
+        />
+      )}
     </div>
   )
 }

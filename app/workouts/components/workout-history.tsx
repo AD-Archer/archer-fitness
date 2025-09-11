@@ -63,7 +63,7 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
   useEffect(() => {
     const fetchWorkoutHistory = async () => {
       try {
-        const response = await fetch('/api/workout-sessions?limit=10')
+        const response = await fetch('/api/workout-tracker/workout-sessions?limit=10')
         if (response.ok) {
           const data = await response.json()
           // Transform API data to match component expectations
@@ -140,7 +140,7 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
 
   const handleDeleteWorkout = async (workoutId: string) => {
     try {
-      const response = await fetch(`/api/workout-sessions/${workoutId}`, {
+      const response = await fetch(`/api/workout-tracker/workout-sessions/${workoutId}`, {
         method: 'DELETE',
       })
 
@@ -158,7 +158,7 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
 
   const handleRepeatWorkout = async (workoutId: string) => {
     try {
-      const response = await fetch(`/api/workout-sessions/${workoutId}/repeat`, {
+      const response = await fetch(`/api/workout-tracker/workout-sessions/${workoutId}/repeat`, {
         method: 'POST',
       })
 

@@ -20,7 +20,27 @@ export async function GET(request: NextRequest) {
         where: { userId: session.user.id },
         include: {
           exercises: {
-            include: { exercise: true },
+            include: { 
+              exercise: {
+                include: {
+                  bodyParts: {
+                    include: {
+                      bodyPart: true
+                    }
+                  },
+                  muscles: {
+                    include: {
+                      muscle: true
+                    }
+                  },
+                  equipments: {
+                    include: {
+                      equipment: true
+                    }
+                  }
+                }
+              }
+            },
             orderBy: { order: "asc" },
           },
         },
@@ -37,7 +57,27 @@ export async function GET(request: NextRequest) {
       },
       include: {
         exercises: {
-          include: { exercise: true },
+          include: { 
+            exercise: {
+              include: {
+                bodyParts: {
+                  include: {
+                    bodyPart: true
+                  }
+                },
+                muscles: {
+                  include: {
+                    muscle: true
+                  }
+                },
+                equipments: {
+                  include: {
+                    equipment: true
+                  }
+                }
+              }
+            }
+          },
           orderBy: { order: "asc" },
         },
       },
@@ -166,7 +206,25 @@ export async function POST(request: NextRequest) {
       include: {
         exercises: {
           include: {
-            exercise: true,
+            exercise: {
+              include: {
+                bodyParts: {
+                  include: {
+                    bodyPart: true
+                  }
+                },
+                muscles: {
+                  include: {
+                    muscle: true
+                  }
+                },
+                equipments: {
+                  include: {
+                    equipment: true
+                  }
+                }
+              }
+            }
           },
           orderBy: {
             order: "asc",

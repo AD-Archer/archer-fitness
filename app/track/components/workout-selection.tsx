@@ -14,25 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { Dumbbell, Play, Plus, Trash2, Zap, User, Settings } from "lucide-react"
 import { CustomWorkoutForm } from "./custom-workout-form"
-
-interface TrackedExercise {
-  id: string
-  name: string
-  targetSets: number
-  targetReps: string
-  targetType?: "reps" | "time"
-  instructions?: string
-}
-
-interface WorkoutTemplate {
-  id: string
-  name: string
-  description?: string
-  estimatedDuration: number
-  exercises: Omit<TrackedExercise, "sets" | "completed">[]
-  isCustom: boolean
-  isAIGenerated?: boolean // Add this to identify AI-generated workouts
-}
+import type { WorkoutTemplate } from "../types/workout"
 
 interface WorkoutSelectionProps {
   availableWorkouts: WorkoutTemplate[]
@@ -193,8 +175,13 @@ export function WorkoutSelection({
                       ? {
                           ...editingWorkout,
                           exercises: editingWorkout.exercises.map((ex) => ({
-                            ...ex,
+                            id: ex.id,
+                            exerciseId: ex.id, // Map id to exerciseId for the form
+                            name: ex.name,
+                            targetSets: ex.targetSets,
+                            targetReps: ex.targetReps,
                             targetType: ex.targetType ?? "reps", // default to "reps" if undefined
+                            instructions: ex.instructions,
                           })),
                         }
                       : undefined

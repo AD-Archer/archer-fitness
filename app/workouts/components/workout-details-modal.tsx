@@ -53,7 +53,7 @@ export function WorkoutDetailsModal({ workout, onRepeat, trigger }: WorkoutDetai
 
   const handleRepeatWorkout = async () => {
     try {
-      const response = await fetch(`/api/workout-sessions/${workout.id}/repeat`, {
+      const response = await fetch(`/api/workout-tracker/workout-sessions/${workout.id}/repeat`, {
         method: 'POST',
       })
 

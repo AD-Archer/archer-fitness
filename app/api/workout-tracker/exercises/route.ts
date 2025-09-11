@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,18 +35,92 @@ export async function GET(request: NextRequest) {
       where: {
         userId: session.user.id,
       },
+      include: {
+        bodyParts: {
+          include: {
+            bodyPart: true
+          }
+        },
+        muscles: {
+          include: {
+            muscle: true
+          }
+        },
+        equipments: {
+          include: {
+            equipment: true
+          }
+        }
+      },
       orderBy: {
         updatedAt: "desc",
       },
     })
 
-    // Get predefined exercises
+    // Build where clause for predefined exercises
+    const whereClause: Prisma.ExerciseFindManyArgs['where'] = {
+      isPredefined: true,
+    }
+
+    // Add filters based on the new schema relationships
+    if (category) {
+      whereClause.bodyParts = {
+        some: {
+          bodyPart: {
+            name: {
+              contains: category,
+              mode: 'insensitive'
+            }
+          }
+        }
+      }
+    }
+
+    if (muscleGroup) {
+      whereClause.muscles = {
+        some: {
+          muscle: {
+            name: {
+              contains: muscleGroup,
+              mode: 'insensitive'
+            }
+          }
+        }
+      }
+    }
+
+    if (equipment) {
+      whereClause.equipments = {
+        some: {
+          equipment: {
+            name: {
+              contains: equipment,
+              mode: 'insensitive'
+            }
+          }
+        }
+      }
+    }
+
+    // Get predefined exercises with relationships
     const predefinedExercises = await prisma.exercise.findMany({
-      where: {
-        isPredefined: true,
-        ...(category && { category }),
-        ...(muscleGroup && { muscleGroup }),
-        ...(equipment && { equipment }),
+      where: whereClause,
+      include: {
+        bodyParts: {
+          include: {
+            bodyPart: true
+          }
+        },
+        muscles: {
+          include: {
+            muscle: true
+          }
+        },
+        equipments: {
+          include: {
+            equipment: true
+          }
+        }
       },
       orderBy: {
         name: "asc",
@@ -87,7 +162,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, description, category, muscleGroup, equipment, instructions } = body
+    const { name, description, instructions, bodyParts, muscles, equipments } = body
 
     if (!name) {
       return NextResponse.json(
@@ -96,16 +171,54 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Create exercise with relationships
     const exercise = await prisma.exercise.create({
       data: {
         userId: session.user.id,
         name,
         description,
-        category,
-        muscleGroup,
-        equipment,
         instructions,
+        // Create relationships if provided
+        ...(bodyParts && bodyParts.length > 0 && {
+          bodyParts: {
+            create: bodyParts.map((bodyPartId: string) => ({
+              bodyPartId
+            }))
+          }
+        }),
+        ...(muscles && muscles.length > 0 && {
+          muscles: {
+            create: muscles.map((muscle: { muscleId: string, isPrimary?: boolean }) => ({
+              muscleId: muscle.muscleId,
+              isPrimary: muscle.isPrimary || false
+            }))
+          }
+        }),
+        ...(equipments && equipments.length > 0 && {
+          equipments: {
+            create: equipments.map((equipmentId: string) => ({
+              equipmentId
+            }))
+          }
+        })
       },
+      include: {
+        bodyParts: {
+          include: {
+            bodyPart: true
+          }
+        },
+        muscles: {
+          include: {
+            muscle: true
+          }
+        },
+        equipments: {
+          include: {
+            equipment: true
+          }
+        }
+      }
     })
 
     return NextResponse.json(exercise, { status: 201 })

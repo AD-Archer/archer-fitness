@@ -8,6 +8,7 @@ import { Check, Pause, Play, Square, Target, Timer } from "lucide-react"
 import { AddSetForm } from "./add-set-form"
 import { RestTimer } from "./rest-timer"
 import { ExerciseTimer } from "./exercise-timer"
+import { formatTime, getExerciseProgress, isExerciseCompleted, getCompletedExercisesCount } from "../utils"
 
 interface ExerciseSet {
   reps: number
@@ -52,7 +53,6 @@ interface WorkoutSessionProps {
   onSkipRest: () => void
   onSwitchToExercise: (index: number) => void
   onSaveWorkout?: () => void
-  formatTime: (seconds: number) => string
   getWorkoutProgress: () => number
 }
 
@@ -74,7 +74,6 @@ export function WorkoutSession({
   onSkipRest,
   onSwitchToExercise,
   onSaveWorkout,
-  formatTime,
   getWorkoutProgress,
 }: WorkoutSessionProps) {
   const currentExercise = session.exercises[currentExerciseIndex]
@@ -139,7 +138,7 @@ export function WorkoutSession({
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span>Workout Progress</span>
-              <span>{Math.round(getWorkoutProgress())}% • {session.exercises.filter(ex => ex.completed).length}/{session.exercises.length} exercises</span>
+              <span>{Math.round(getWorkoutProgress())}% • {getCompletedExercisesCount(session)}/{session.exercises.length} exercises</span>
             </div>
             <Progress value={getWorkoutProgress()} className="h-2" />
           </div>
@@ -175,7 +174,6 @@ export function WorkoutSession({
         <RestTimer
           restTimer={restTimer}
           onSkipRest={onSkipRest}
-          formatTime={formatTime}
         />
       )}
 
@@ -184,7 +182,6 @@ export function WorkoutSession({
         <ExerciseTimer
           exerciseTimer={exerciseTimer}
           targetTime={currentExercise.targetReps}
-          formatTime={formatTime}
         />
       )}
 
@@ -205,19 +202,19 @@ export function WorkoutSession({
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Progress</span>
-                      <span>{currentExercise.sets.length} sets completed</span>
+                      <span>{currentExercise.sets.length}/{currentExercise.targetSets} sets completed</span>
                     </div>
-                    <Progress value={currentExercise.sets.length > 0 ? 100 : 0} className="h-2" />
+                    <Progress value={getExerciseProgress(currentExercise)} className="h-2" />
                   </div>
                 </div>
               </CardDescription>
             </div>
-            {currentExercise.completed && (
+            {currentExercise.completed || isExerciseCompleted(currentExercise) ? (
               <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                 <Check className="w-3 h-3 mr-1" />
                 Complete
               </Badge>
-            )}
+            ) : null}
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -299,7 +296,7 @@ export function WorkoutSession({
                   className={`p-3 rounded-lg border ${
                     idx === currentExerciseIndex
                       ? "bg-blue-50 dark:bg-blue-950 border-blue-200"
-                      : ex.completed
+                      : isExerciseCompleted(ex)
                       ? "bg-green-50 dark:bg-green-950 border-green-200"
                       : "bg-muted/50"
                   }`}
@@ -307,7 +304,7 @@ export function WorkoutSession({
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
                       <Badge variant={idx === currentExerciseIndex ? "default" : "secondary"}>
-                        {idx === currentExerciseIndex ? "Current" : ex.completed ? "Done" : "Upcoming"}
+                        {idx === currentExerciseIndex ? "Current" : isExerciseCompleted(ex) ? "Done" : "Upcoming"}
                       </Badge>
                       <span className="font-medium">{ex.name}</span>
                     </div>
@@ -321,11 +318,11 @@ export function WorkoutSession({
                     </Button>
                   </div>
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <span>{ex.sets.length} sets</span>
+                    <span>{ex.sets.length}/{ex.targetSets} sets</span>
                     <div className="flex-1">
-                      <Progress value={ex.sets.length > 0 ? 100 : 0} className="h-1" />
+                      <Progress value={getExerciseProgress(ex)} className="h-1" />
                     </div>
-                    <span>{ex.sets.length > 0 ? "Done" : "Not started"}</span>
+                    <span>{isExerciseCompleted(ex) ? "Done" : "In progress"}</span>
                     {ex.targetType === "time" && <span className="text-xs">({ex.targetReps})</span>}
                   </div>
                 </div>

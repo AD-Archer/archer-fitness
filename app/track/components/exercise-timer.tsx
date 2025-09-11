@@ -3,26 +3,14 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Timer, Target } from "lucide-react"
+import { formatTime, parseTimeToSeconds } from "../utils"
 
 interface ExerciseTimerProps {
   exerciseTimer: number
   targetTime: string
-  formatTime: (seconds: number) => string
 }
 
-export function ExerciseTimer({ exerciseTimer, targetTime, formatTime }: ExerciseTimerProps) {
-  // Parse target time to seconds
-  const parseTimeToSeconds = (timeStr: string): number => {
-    if (timeStr.includes(":")) {
-      const [mins, secs] = timeStr.split(":").map(Number)
-      return (mins || 0) * 60 + (secs || 0)
-    } else if (timeStr.includes("s")) {
-      return Number.parseInt(timeStr.replace("s", ""))
-    } else {
-      return Number.parseInt(timeStr) || 0
-    }
-  }
-
+export function ExerciseTimer({ exerciseTimer, targetTime }: ExerciseTimerProps) {
   const targetSeconds = parseTimeToSeconds(targetTime)
   const isOverTarget = exerciseTimer > targetSeconds
 

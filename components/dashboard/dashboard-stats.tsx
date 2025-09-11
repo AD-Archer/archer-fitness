@@ -76,7 +76,7 @@ export function DashboardStats() {
         setError(null)
 
         // Fetch workout sessions
-        const sessionsResponse = await fetch('/api/workout-sessions?limit=50')
+        const sessionsResponse = await fetch('/api/workout-tracker/workout-sessions?limit=50')
         if (sessionsResponse.ok) {
           const sessionsData = await sessionsResponse.json()
           setWorkoutSessions(sessionsData)

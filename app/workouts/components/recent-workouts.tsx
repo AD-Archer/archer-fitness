@@ -100,7 +100,7 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
     const fetchData = async () => {
       try {
         // Fetch recent workout sessions
-        const sessionsResponse = await fetch('/api/workout-sessions?limit=3')
+        const sessionsResponse = await fetch('/api/workout-tracker/workout-sessions?limit=3')
         let sessionsData: ApiWorkoutSession[] = []
         if (sessionsResponse.ok) {
           sessionsData = await sessionsResponse.json()
@@ -188,7 +188,7 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
 
   const handleDeleteWorkout = async (workoutId: string) => {
     try {
-      const response = await fetch(`/api/workout-sessions/${workoutId}`, {
+      const response = await fetch(`/api/workout-tracker/workout-sessions/${workoutId}`, {
         method: 'DELETE',
       })
 
@@ -206,7 +206,7 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
 
   const handleRepeatWorkout = async (workoutId: string) => {
     try {
-      const response = await fetch(`/api/workout-sessions/${workoutId}/repeat`, {
+      const response = await fetch(`/api/workout-tracker/workout-sessions/${workoutId}/repeat`, {
         method: 'POST',
       })
 

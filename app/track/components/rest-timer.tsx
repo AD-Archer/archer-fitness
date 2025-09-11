@@ -2,14 +2,14 @@
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { formatTime } from "../utils"
 
 interface RestTimerProps {
   restTimer: number
   onSkipRest: () => void
-  formatTime: (seconds: number) => string
 }
 
-export function RestTimer({ restTimer, onSkipRest, formatTime }: RestTimerProps) {
+export function RestTimer({ restTimer, onSkipRest }: RestTimerProps) {
   return (
     <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
       <CardContent className="pt-6">
