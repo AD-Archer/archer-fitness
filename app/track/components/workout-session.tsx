@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Check, Pause, Play, Square, Target, Timer, Save, X } from "lucide-react"
+import { Check, Pause, Play, Square, Target, Timer, Save, X, Trash2 } from "lucide-react"
 import { AddSetForm } from "./add-set-form"
 import { RestTimer } from "./rest-timer"
 import { ExerciseTimer } from "./exercise-timer"
@@ -49,6 +49,7 @@ interface WorkoutSessionProps {
   onBackToSelection: () => void
   onAddSet: (exerciseId: string, reps: number, weight?: number) => void
   onAddExercise: () => void
+  onRemoveExercise: (exerciseId: string) => void
   onNextExercise: () => void
   onPreviousExercise: () => void
   onSkipRest: () => void
@@ -70,6 +71,7 @@ export function WorkoutSession({
   onBackToSelection,
   onAddSet,
   onAddExercise,
+  onRemoveExercise,
   onNextExercise,
   onPreviousExercise,
   onSkipRest,
@@ -242,12 +244,22 @@ export function WorkoutSession({
                 </div>
               </CardDescription>
             </div>
-            {currentExercise.completed || isExerciseCompleted(currentExercise) ? (
-              <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                <Check className="w-3 h-3 mr-1" />
-                Complete
-              </Badge>
-            ) : null}
+            <div className="flex items-center gap-2">
+              {currentExercise.completed || isExerciseCompleted(currentExercise) ? (
+                <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                  <Check className="w-3 h-3 mr-1" />
+                  Complete
+                </Badge>
+              ) : null}
+              <Button
+                onClick={() => onRemoveExercise(currentExercise.id)}
+                variant="outline"
+                size="sm"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">

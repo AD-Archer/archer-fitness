@@ -59,3 +59,51 @@ export async function PUT(
     )
   }
 }
+
+// DELETE remove an exercise from a session
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string; exerciseId: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const prismaAny = prisma as any
+
+    // Verify session ownership and exercise exists
+    const workoutSessionExercise = await prismaAny.workoutSessionExercise.findFirst({
+      where: {
+        id: params.exerciseId,
+        workoutSessionId: params.id,
+        workoutSession: { userId: session.user.id },
+      },
+    })
+
+    if (!workoutSessionExercise) {
+      return NextResponse.json({ error: "Exercise not found" }, { status: 404 })
+    }
+
+    // Delete all sets for this exercise first
+    await prismaAny.exerciseSet.deleteMany({
+      where: {
+        workoutSessionExerciseId: params.exerciseId,
+      },
+    })
+
+    // Delete the exercise from the session
+    await prismaAny.workoutSessionExercise.delete({
+      where: { id: params.exerciseId },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("Error removing session exercise:", error)
+    return NextResponse.json(
+      { error: "Failed to remove session exercise", details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    )
+  }
+}

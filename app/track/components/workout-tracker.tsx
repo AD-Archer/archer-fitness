@@ -181,12 +181,63 @@ export function WorkoutTracker() {
 
   // Handle adding exercise from modal
   const handleAddExercise = async (exercise: { name: string; id?: string; instructions?: string }, targetType?: "reps" | "time") => {
-    await addExercise(exercise.name, targetType)
+    await addExercise(exercise.name, targetType, exercise.id)
     // Switch to the newly added exercise (it will be at the end)
     switchToExercise(session!.exercises.length)
   }
 
-  
+  // Handle removing exercise from workout
+  const removeExercise = async (exerciseId: string) => {
+    if (!session) return
+    
+    try {
+      // Remove from server first
+      const response = await fetch(`/api/workout-tracker/workout-sessions/${session.id}/exercises/${exerciseId}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to remove exercise')
+      }
+
+      // Find the exercise in the session
+      const exerciseIndex = session.exercises.findIndex(ex => ex.id === exerciseId)
+      if (exerciseIndex === -1) return
+
+      // If we're removing the current exercise and it's not the first one, switch to previous
+      let newCurrentIndex = currentExerciseIndex
+      if (exerciseIndex === currentExerciseIndex && currentExerciseIndex > 0) {
+        newCurrentIndex = currentExerciseIndex - 1
+        previousExercise()
+      } else if (exerciseIndex < currentExerciseIndex) {
+        // If we're removing an exercise before the current one, adjust the index
+        newCurrentIndex = currentExerciseIndex - 1
+      }
+
+      // Remove from session state
+      const updatedExercises = session.exercises.filter(ex => ex.id !== exerciseId)
+      setSession({
+        ...session,
+        exercises: updatedExercises
+      })
+
+      // If no exercises left, go back to selection
+      if (updatedExercises.length === 0) {
+        stopWorkoutWithTimer()
+        return
+      }
+
+      // If the current exercise index is now out of bounds, adjust it
+      if (newCurrentIndex >= updatedExercises.length) {
+        switchToExercise(updatedExercises.length - 1)
+      }
+
+    } catch (error) {
+      console.error("Failed to remove exercise:", error)
+      alert(`Failed to remove exercise: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -234,6 +285,7 @@ export function WorkoutTracker() {
         }}
         onAddSet={addSetWithRest}
         onAddExercise={addExerciseMidWorkout}
+        onRemoveExercise={removeExercise}
         onNextExercise={nextExercise}
         onPreviousExercise={previousExercise}
         onSkipRest={skipRest}

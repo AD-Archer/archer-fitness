@@ -44,7 +44,7 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-screen h-screen max-w-[100vw] max-h-[100vh] p-0 overflow-hidden rounded-none sm:rounded-none">
+      <DialogContent className="w-screen h-screen max-w-[100vw] max-h-[100vh] p-0 overflow-hidden rounded-none sm:rounded-none lg:max-w-5xl xl:max-w-6xl">
         <div className="flex flex-col h-full">
           <DialogHeader className="px-6 py-4 md:px-8 md:py-6 border-b">
             <DialogTitle className="flex items-center gap-3 text-xl md:text-2xl">
@@ -56,16 +56,16 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-hidden">
-            <Tabs value={activeTab} onValueChange={() => {}} className="h-full flex flex-col">
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <Tabs value={activeTab} onValueChange={() => {}} className="h-full flex flex-col min-h-0">
               <div className="px-4 sm:px-6 md:px-8 pt-3 md:pt-6">
                 <TabsList className="grid w-full grid-cols-1 h-12">
                   <TabsTrigger value="selector" className="text-sm md:text-base">Exercise Database</TabsTrigger>
                 </TabsList>
               </div>
 
-              <TabsContent value="selector" className="flex-1 overflow-hidden mt-0">
-                <div className="h-full flex flex-col">
+              <TabsContent value="selector" className="flex-1 min-h-0 flex flex-col overflow-hidden mt-0">
+                <div className="h-full flex flex-col min-h-0">
                   <div className="px-4 sm:px-6 md:px-8 py-3 md:py-4 border-b bg-muted/30">
                     <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
                       <h3 className="text-sm md:text-base font-medium text-muted-foreground">Select an exercise from the database or create a custom one</h3>
@@ -83,7 +83,7 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
                       </div>
                     </div>
                   </div>
-                  <div className="flex-1 overflow-hidden">
+                  <div className="flex-1 min-h-0 overflow-y-auto">
                     <ExerciseSelector
                       onSelect={handleSelectExercise}
                       onClose={onClose}

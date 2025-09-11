@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Search, Plus, Trash2 } from "lucide-react"
 
 interface Exercise {
@@ -179,7 +178,7 @@ export function ExerciseSelector({ onSelect, onClose, embedded = false }: Exerci
   }
 
   const handleDeleteExercise = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this custom exercise?")) return
+    if (!confirm("Are you sure you want to delete this custom exercise? This will permanently remove it from your exercise library and you won't be able to use it in future workouts.")) return
     
     try {
       const response = await fetch(`/api/workout-tracker/exercises/custom/${id}`, {
@@ -218,7 +217,7 @@ export function ExerciseSelector({ onSelect, onClose, embedded = false }: Exerci
   }
 
   return (
-    <Card className={embedded ? "w-full border-0 shadow-none h-full flex flex-col" : "w-full h-full border-0 shadow-none flex flex-col"}>
+    <div className={embedded ? "w-full h-full flex flex-col" : "w-full h-full flex flex-col"}>
       {!embedded && (
         <div className="flex items-center justify-between p-6 border-b flex-shrink-0">
           <h2 className="text-xl md:text-2xl font-semibold">Select Exercise</h2>
@@ -229,7 +228,7 @@ export function ExerciseSelector({ onSelect, onClose, embedded = false }: Exerci
       )}
 
       {/* Scrollable Content Area */}
-      <ScrollArea className="flex-1 min-h-0">
+      <div className="flex-1 overflow-y-auto">
         <div className="p-6 space-y-6">
           {/* Create Custom Exercise Button/Form - Always Visible */}
           <div className="bg-background">
@@ -466,7 +465,7 @@ export function ExerciseSelector({ onSelect, onClose, embedded = false }: Exerci
             </div>
           )}
         </div>
-      </ScrollArea>
-    </Card>
+      </div>
+    </div>
   )
 }

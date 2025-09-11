@@ -135,41 +135,46 @@ export function useWorkoutActions(
     }
   }
 
-  const addExercise = async (name: string, targetType: "reps" | "time" = "reps") => {
+  const addExercise = async (name: string, targetType: "reps" | "time" = "reps", exerciseId?: string) => {
     if (!session) return
     setIsAddingExercise(true)
 
     try {
-      // Create exercise
-      const createdRes = await fetch("/api/workout-tracker/exercises", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      })
+      let exerciseToUse = { id: exerciseId, name }
 
-      if (createdRes.status === 401) {
-        const errorData = await createdRes.json()
-        if (errorData.error?.includes("User session is invalid")) {
-          alert("Your session has expired. Please refresh the page and sign in again.")
-          window.location.reload()
-          return
+      // If no exerciseId provided, create a new custom exercise
+      if (!exerciseId) {
+        const createdRes = await fetch("/api/workout-tracker/exercises", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        })
+
+        if (createdRes.status === 401) {
+          const errorData = await createdRes.json()
+          if (errorData.error?.includes("User session is invalid")) {
+            alert("Your session has expired. Please refresh the page and sign in again.")
+            window.location.reload()
+            return
+          }
         }
-      }
 
-      if (!createdRes.ok) {
-        const errorData = await createdRes.json()
-        throw new Error(errorData.error || "Failed to create exercise")
-      }
+        if (!createdRes.ok) {
+          const errorData = await createdRes.json()
+          throw new Error(errorData.error || "Failed to create exercise")
+        }
 
-      const created = await createdRes.json()
+        const created = await createdRes.json()
+        exerciseToUse = created
+      }
 
       // Attach to session
       const attachRes = await fetch(`/api/workout-tracker/workout-sessions/${session.id}/exercises`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          exerciseId: created.id,
-          targetSets: 999,
+          exerciseId: exerciseToUse.id,
+          targetSets: 3,
           targetReps: targetType === "time" ? "30s" : "8-12",
           targetType
         }),
@@ -182,7 +187,7 @@ export function useWorkoutActions(
       const newTracked: TrackedExercise = {
         id: attached.id,
         name: attached.exercise?.name || name,
-        targetSets: 999,
+        targetSets: 3,
         targetReps: attached.targetReps,
         targetType: targetType,
         instructions: attached.exercise?.instructions,
