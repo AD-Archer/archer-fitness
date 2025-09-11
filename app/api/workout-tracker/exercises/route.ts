@@ -25,15 +25,22 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const category = searchParams.get("category")
-    const muscleGroup = searchParams.get("muscleGroup")
-    const equipment = searchParams.get("equipment")
+    const search = searchParams.get("search")
+    const bodyPartId = searchParams.get("bodyPartId")
+    const muscleId = searchParams.get("muscleId")
+    const equipmentId = searchParams.get("equipmentId")
     const limit = parseInt(searchParams.get("limit") || "50")
 
     // Get user's custom exercises
     const userExercises = await prisma.exercise.findMany({
       where: {
         userId: session.user.id,
+        ...(search && {
+          name: {
+            contains: search,
+            mode: 'insensitive'
+          }
+        }),
       },
       include: {
         bodyParts: {
@@ -60,44 +67,35 @@ export async function GET(request: NextRequest) {
     // Build where clause for predefined exercises
     const whereClause: Prisma.ExerciseFindManyArgs['where'] = {
       isPredefined: true,
+      ...(search && {
+        name: {
+          contains: search,
+          mode: 'insensitive'
+        }
+      }),
     }
 
     // Add filters based on the new schema relationships
-    if (category) {
+    if (bodyPartId) {
       whereClause.bodyParts = {
         some: {
-          bodyPart: {
-            name: {
-              contains: category,
-              mode: 'insensitive'
-            }
-          }
+          bodyPartId: bodyPartId
         }
       }
     }
 
-    if (muscleGroup) {
+    if (muscleId) {
       whereClause.muscles = {
         some: {
-          muscle: {
-            name: {
-              contains: muscleGroup,
-              mode: 'insensitive'
-            }
-          }
+          muscleId: muscleId
         }
       }
     }
 
-    if (equipment) {
+    if (equipmentId) {
       whereClause.equipments = {
         some: {
-          equipment: {
-            name: {
-              contains: equipment,
-              mode: 'insensitive'
-            }
-          }
+          equipmentId: equipmentId
         }
       }
     }

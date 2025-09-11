@@ -7,9 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Dumbbell, Play, Plus, Trash2, Zap, User, Settings } from "lucide-react"
@@ -65,7 +62,7 @@ export function WorkoutSelection({
   }
 
   return (
-    <div className="space-y-6">
+  <div className="space-y-6 xl:space-y-8">
       <Card>
         <CardHeader className="text-center">
           <CardTitle className="flex items-center justify-center gap-2">
@@ -94,35 +91,40 @@ export function WorkoutSelection({
                             {typeInfo.label}
                           </Badge>
                         </div>
-                        <CardTitle className="text-base">{workout.name}</CardTitle>
+                        <CardTitle className="text-base flex items-center">
+                          {workout.name}
+                          {workout.isCustom && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (confirm("Are you sure you want to delete this workout?")) {
+                                  onDeleteWorkout(workout.id)
+                                }
+                              }}
+                              className="ml-2 h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              title="Delete workout"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </CardTitle>
                         <CardDescription className="text-sm">{workout.description}</CardDescription>
                       </div>
                       {workout.isCustom && (
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setEditingWorkout(workout)
-                              setShowCustomWorkoutDialog(true)
-                            }}
-                            className="h-8 w-8 p-0"
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onDeleteWorkout(workout.id)
-                            }}
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEditingWorkout(workout)
+                            setShowCustomWorkoutDialog(true)
+                          }}
+                          className="h-7 px-2 text-xs"
+                        >
+                          Edit
+                        </Button>
                       )}
                     </div>
                   </CardHeader>
@@ -164,11 +166,13 @@ export function WorkoutSelection({
                   Create Custom Workout
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>{editingWorkout ? "Edit Custom Workout" : "Create Custom Workout"}</DialogTitle>
-                  <DialogDescription>Design your own workout with custom exercises and targets</DialogDescription>
-                </DialogHeader>
+              <DialogContent
+                className="w-[98vw] sm:w-[98vw] md:w-[96vw] lg:w-[95vw] xl:w-[92vw] 2xl:w-[1600px]
+                           h-[96vh]
+                           max-w-none sm:max-w-[98vw] md:max-w-[96vw] lg:max-w-[95vw] xl:max-w-[92vw] 2xl:max-w-[1600px]
+                           overflow-y-auto p-0 rounded-none"
+              >
+
                 <CustomWorkoutForm
                   initialWorkout={
                     editingWorkout

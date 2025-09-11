@@ -180,8 +180,8 @@ export function WorkoutTracker() {
   }
 
   // Handle adding exercise from modal
-  const handleAddExercise = async (name: string, targetType: "reps" | "time" = "reps") => {
-    await addExercise(name, targetType)
+  const handleAddExercise = async (exercise: { name: string; id?: string; instructions?: string }, targetType?: "reps" | "time") => {
+    await addExercise(exercise.name, targetType)
     // Switch to the newly added exercise (it will be at the end)
     switchToExercise(session!.exercises.length)
   }
