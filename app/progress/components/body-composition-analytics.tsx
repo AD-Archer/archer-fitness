@@ -94,7 +94,7 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
         }),
       })
 
-      logger.info('Add weight response:', response.status, response.statusText)
+  logger.info('Add weight response:', { status: response.status, statusText: response.statusText })
 
       if (response.ok) {
         const result = await response.json()
@@ -132,7 +132,7 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
         method: 'DELETE',
       })
 
-      logger.info('Delete weight response:', response.status, response.statusText)
+  logger.info('Delete weight response:', { status: response.status, statusText: response.statusText })
 
       if (response.ok) {
         const result = await response.json()
@@ -232,7 +232,7 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
           setNutritionProgressData([])
         }
       } else {
-        logger.error('Weight API request failed:', weightRes.status, weightRes.statusText)
+  logger.error('Weight API request failed:', { status: weightRes.status, statusText: weightRes.statusText })
         throw new Error('Failed to fetch weight data')
       }
       

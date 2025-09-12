@@ -133,19 +133,29 @@ export function WeeklyProgress() {
     const currentlyCompleted = isDayCompleted(selectedDay.date)
 
     try {
+      // Compute local-midnight for the selected day to avoid UTC/local timezone drift
+      const localMidnight = new Date(
+        selectedDay.date.getFullYear(),
+        selectedDay.date.getMonth(),
+        selectedDay.date.getDate(),
+        0, 0, 0, 0
+      )
+      const dateMsLocal = localMidnight.getTime()
+
       if (currentlyCompleted) {
         // Mark as incomplete - delete the completed day record
-        const deleteResponse = await fetch('/api/completed-days', {
+        const deleteResponse = await fetch('/api/schedule/completed-days', {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            date: selectedDay.date.toISOString().split('T')[0], // Store as YYYY-MM-DD format
+            // Send the user's local midnight timestamp to ensure correct day selection on server
+            dateMsLocal,
           }),
         })
 
         if (deleteResponse.ok) {
           // Re-fetch completed days to ensure UI is in sync
-          const refreshResponse = await fetch('/api/completed-days')
+          const refreshResponse = await fetch('/api/schedule/completed-days')
           if (refreshResponse.ok) {
             const refreshedData: CompletedDay[] = await refreshResponse.json()
             setCompletedDays(refreshedData)
@@ -178,21 +188,22 @@ export function WeeklyProgress() {
         await Promise.all(updatePromises)
 
         // Create a completed day record in the database
-        const completedDayResponse = await fetch('/api/completed-days', {
+        const completedDayResponse = await fetch('/api/schedule/completed-days', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            date: selectedDay.date.toISOString().split('T')[0], // Store as YYYY-MM-DD format
+            // Send the user's local midnight timestamp to ensure correct day selection on server
+            dateMsLocal,
             status: 'completed',
             notes: `Marked complete from weekly progress on ${new Date().toLocaleDateString()}`
           }),
         })
 
-        logger.info(`Marking day as completed: ${selectedDay.day} - Date: ${selectedDay.date.toDateString()} - ISO: ${selectedDay.date.toISOString().split('T')[0]}`)
+        logger.info(`Marking day as completed: ${selectedDay.day} - Date: ${selectedDay.date.toDateString()} - localMidnightMs: ${dateMsLocal}`)
 
         if (completedDayResponse.ok) {
           // Re-fetch completed days to ensure UI is in sync
-          const refreshResponse = await fetch('/api/completed-days')
+          const refreshResponse = await fetch('/api/schedule/completed-days')
           if (refreshResponse.ok) {
             const refreshedData: CompletedDay[] = await refreshResponse.json()
             setCompletedDays(refreshedData)
@@ -232,7 +243,7 @@ export function WeeklyProgress() {
         }
 
         // Fetch completed days
-        const completedDaysResponse = await fetch('/api/completed-days')
+        const completedDaysResponse = await fetch('/api/schedule/completed-days')
         if (completedDaysResponse.ok) {
           const completedDaysData: CompletedDay[] = await completedDaysResponse.json()
           setCompletedDays(completedDaysData)

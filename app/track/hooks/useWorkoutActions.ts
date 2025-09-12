@@ -198,7 +198,7 @@ export function useWorkoutActions(
 
       setSession((prev) => (prev ? { ...prev, exercises: [...prev.exercises, newTracked] } : prev))
     } catch (e) {
-      logger.error(e)
+      logger.error("Failed to add exercise", e)
       alert(`Failed to add exercise: ${e instanceof Error ? e.message : 'Unknown error'}`)
     } finally {
       setIsAddingExercise(false)

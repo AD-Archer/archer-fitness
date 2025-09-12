@@ -100,7 +100,7 @@ export function useWorkoutSession() {
 
       if (!res.ok) {
         const errorText = await res.text()
-        logger.error("Failed to create session:", res.status, errorText)
+  logger.error("Failed to create session:", { status: res.status, errorText })
         throw new Error("Failed to create session")
       }
 

@@ -36,15 +36,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { date, status, notes } = await request.json()
+    const { date, dateMsLocal, status, notes } = await request.json()
 
-    if (!date) {
+    if (!date && !dateMsLocal) {
       return NextResponse.json({ error: 'Date is required' }, { status: 400 })
     }
 
     // Check if this day is already marked as completed
     // Normalize the date to start of day to ensure proper matching
-    const searchDate = new Date(date)
+    // Prefer local-midnight epoch from client to avoid UTC drift; fallback to provided date string
+    const searchDate = dateMsLocal
+      ? new Date(Number(dateMsLocal))
+      : new Date(date)
+    // Ensure we use local midnight
     searchDate.setHours(0, 0, 0, 0)
 
     const existingCompletedDay = await (prisma as any).completedDay.findFirst({
@@ -97,15 +101,17 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { date } = await request.json()
+    const { date, dateMsLocal } = await request.json()
 
-    if (!date) {
+    if (!date && !dateMsLocal) {
       return NextResponse.json({ error: 'Date is required' }, { status: 400 })
     }
 
     // Find and delete the completed day record
     // Normalize the date to start of day to ensure proper matching
-    const searchDate = new Date(date)
+    const searchDate = dateMsLocal
+      ? new Date(Number(dateMsLocal))
+      : new Date(date)
     searchDate.setHours(0, 0, 0, 0)
 
     const existingCompletedDay = await (prisma as any).completedDay.findFirst({

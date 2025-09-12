@@ -13,7 +13,7 @@
     }
   },
   "scripts": {
-    "build": "npx prisma generate && next build",
+  "build": "pnpm run lint && pnpm run typecheck && npx prisma generate && next build",
     "dev": "next dev -p ${PORT:-3000}",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "start": "node scripts/notify-startup.js && pnpm run seed && next start -p ${PORT:-3000}",
