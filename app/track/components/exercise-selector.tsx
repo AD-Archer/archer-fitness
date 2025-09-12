@@ -1,13 +1,14 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, Plus, Trash2 } from "lucide-react"
+import Fuse from 'fuse.js'
 
 interface Exercise {
   id: string
@@ -18,6 +19,10 @@ interface Exercise {
   muscles?: Array<{ muscle: { id: string; name: string }; isPrimary: boolean }>
   equipments?: Array<{ equipment: { id: string; name: string } }>
   isCustom?: boolean
+  // Additional possible fields for debugging
+  bodyPartId?: string
+  bodyPartIds?: string[]
+  [key: string]: unknown // Allow additional properties
 }
 
 interface BodyPart {
@@ -33,6 +38,7 @@ interface Equipment {
 interface Muscle {
   id: string
   name: string
+  bodyPartId?: string // Add bodyPartId to the muscle interface
 }
 
 interface ExerciseSelectorProps {
@@ -42,13 +48,14 @@ interface ExerciseSelectorProps {
 
 export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
   const [exercises, setExercises] = useState<Exercise[]>([])
+  const [allExercises, setAllExercises] = useState<Exercise[]>([]) // Store all exercises for client-side search
   const [bodyParts, setBodyParts] = useState<BodyPart[]>([])
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [muscles, setMuscles] = useState<Muscle[]>([])
   const [loading, setLoading] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("")
   const [selectedBodyPart, setSelectedBodyPart] = useState<string>("all")
   const [selectedEquipment, setSelectedEquipment] = useState<string>("all")
   const [selectedMuscle, setSelectedMuscle] = useState<string>("all")
@@ -56,54 +63,156 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
   const [newExerciseName, setNewExerciseName] = useState("")
   const [newExerciseDescription, setNewExerciseDescription] = useState("")
   const [savingCustomExercise, setSavingCustomExercise] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [scrollContainerRef, setScrollContainerRef] = useState<HTMLDivElement | null>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const [isSearching, setIsSearching] = useState(false)
 
-  // Function to fetch exercises with search parameters
-  const fetchExercises = async (params: Record<string, string> = {}, page: number = 1, append: boolean = false) => {
-    if (page === 1 && !append) {
-      setLoading(true)
-    } else if (append) {
-      setLoadingMore(true)
+  // Create Fuse instance with all exercises - memoized with stable options
+  const fuse = useMemo(() => {
+    if (allExercises.length === 0) return null
+    
+    const fuseOptions = {
+      keys: [
+        { name: 'name', weight: 0.7 },
+        { name: 'description', weight: 0.3 },
+        { name: 'bodyParts.bodyPart.name', weight: 0.1 },
+        { name: 'muscles.muscle.name', weight: 0.1 },
+        { name: 'equipments.equipment.name', weight: 0.1 }
+      ],
+      threshold: 0.4,
+      distance: 100,
+      minMatchCharLength: 2,
+      includeScore: true,
+      ignoreLocation: true,
+      findAllMatches: true
     }
+    return new Fuse(allExercises, fuseOptions)
+  }, [allExercises])
 
+  // Function to fetch ALL exercises initially (for client-side search)
+  const fetchAllExercises = async () => {
+    setLoading(true)
     try {
-      // Build query string from params
-      const queryString = Object.entries(params)
-        .filter(([, value]) => value !== "all" && value !== "")
-        .map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`)
-        .join("&")
-
-      const limit = 20 // Smaller page size for infinite scroll
-      const offset = (page - 1) * limit
-      
-      const url = `/api/workout-tracker/exercises?${queryString}&limit=${limit}&offset=${offset}`
-      
-      const response = await fetch(url)
+      // Fetch a large number of exercises initially
+      const response = await fetch(`/api/workout-tracker/exercises?limit=1000&offset=0`)
       const data = await response.json()
       
-      // Combine user exercises and predefined exercises
-      const newExercises = [...data.userExercises, ...data.predefinedExercises]
+      const allExercisesList = [...data.userExercises, ...data.predefinedExercises]
       
-      if (append) {
-        setExercises(prev => [...prev, ...newExercises])
-      } else {
-        setExercises(newExercises)
-      }
+      // Debug: Log the structure of the first few exercises
+      console.log('Raw exercise data sample:', allExercisesList.slice(0, 3))
+      console.log('First exercise complete structure:', JSON.stringify(allExercisesList[0], null, 2))
       
-      // Check if there are more exercises to load
-      setHasMore(newExercises.length === limit)
-      
-      if (page === 1) {
-        setCurrentPage(1)
-      }
+      setAllExercises(allExercisesList)
+      setExercises(allExercisesList.slice(0, 20)) // Show first 20 initially
+      setHasMore(allExercisesList.length > 20)
     } catch (error) {
-      console.error("Error fetching exercises:", error)
+      console.error("Error fetching all exercises:", error)
     } finally {
       setLoading(false)
-      setLoadingMore(false)
     }
   }
+
+  // Function to filter exercises based on search and filters
+  const filterExercises = useCallback(() => {
+    if (allExercises.length === 0) return
+    
+    setIsSearching(true)
+    
+    // Use setTimeout to prevent blocking the UI during filtering
+    setTimeout(() => {
+      let filteredExercises = allExercises
+
+      console.log('Filtering exercises:', {
+        totalExercises: allExercises.length,
+        selectedEquipment,
+        selectedMuscle,
+        debouncedSearchTerm
+      })
+
+      // Apply filters first
+      if (selectedBodyPart !== "all") {
+        console.log('Filtering by body part:', selectedBodyPart)
+        console.log('Available muscles:', muscles)
+        
+        filteredExercises = filteredExercises.filter(exercise => {
+          // Filter by body part: show exercises that target muscles belonging to the selected body part
+          // First, check if the exercise has direct body part associations
+          const hasDirectBodyPart = 
+            exercise.bodyParts?.some(bp => bp.bodyPart?.id === selectedBodyPart)
+          
+          console.log(`Exercise "${exercise.name}" - Direct body part match:`, hasDirectBodyPart)
+          
+          // Since muscles don't have bodyPartId in the API, let's use a different approach
+          // We'll create a mapping based on common muscle-to-body-part relationships
+          const muscleToBodyPartMap: Record<string, string[]> = {
+            // Common muscle name patterns to body part mappings
+            'chest': ['chest', 'pectorals', 'pecs'],
+            'back': ['lats', 'latissimus', 'rhomboids', 'trapezius', 'traps', 'rear delt'],
+            'shoulders': ['deltoids', 'delts', 'front delt', 'side delt', 'rear delt'],
+            'arms': ['biceps', 'triceps', 'forearms'],
+            'legs': ['quadriceps', 'quads', 'hamstrings', 'calves', 'glutes'],
+            'core': ['abs', 'abdominals', 'obliques', 'core'],
+            // Add more mappings as needed
+          }
+          
+          // Find the selected body part name
+          const selectedBodyPartData = bodyParts.find(bp => bp.id === selectedBodyPart)
+          const selectedBodyPartName = selectedBodyPartData?.name?.toLowerCase() || ''
+          
+          // Check if any of the exercise's muscles belong to this body part
+          const hasMuscleInBodyPart = exercise.muscles?.some(exerciseMuscle => {
+            const muscleName = exerciseMuscle.muscle.name.toLowerCase()
+            console.log(`  Checking muscle "${exerciseMuscle.muscle.name}" for body part "${selectedBodyPartName}"`)
+            
+            // Get the muscle keywords for this body part
+            const bodyPartMuscles = muscleToBodyPartMap[selectedBodyPartName] || []
+            
+            // Check if the muscle name contains any of the body part keywords
+            const belongsToBodyPart = bodyPartMuscles.some(keyword => 
+              muscleName.includes(keyword.toLowerCase())
+            ) || muscleName.includes(selectedBodyPartName)
+            
+            console.log(`    Muscle "${muscleName}" belongs to "${selectedBodyPartName}":`, belongsToBodyPart)
+            return belongsToBodyPart
+          })
+          
+          console.log(`Exercise "${exercise.name}" - Muscle in body part match:`, hasMuscleInBodyPart)
+          const shouldInclude = hasDirectBodyPart || hasMuscleInBodyPart
+          console.log(`Exercise "${exercise.name}" - Final decision:`, shouldInclude)
+          
+          return shouldInclude
+        })
+      }
+
+      if (selectedEquipment !== "all") {
+        filteredExercises = filteredExercises.filter(exercise => 
+          exercise.equipments?.some(eq => eq.equipment.id === selectedEquipment)
+        )
+      }
+
+      if (selectedMuscle !== "all") {
+        filteredExercises = filteredExercises.filter(exercise => 
+          exercise.muscles?.some(m => m.muscle.id === selectedMuscle)
+        )
+      }
+
+      // Apply search if there's a search term
+      if (debouncedSearchTerm.trim() && fuse) {
+        const searchResults = fuse.search(debouncedSearchTerm)
+        const searchedExercises = searchResults.map(result => result.item)
+        
+        // Combine with filtered exercises (intersection)
+        filteredExercises = searchedExercises.filter(exercise => 
+          filteredExercises.some(filtered => filtered.id === exercise.id)
+        )
+      }
+
+      console.log('Final filtered exercises:', filteredExercises.length)
+      setExercises(filteredExercises.slice(0, 50)) // Show more results
+      setHasMore(filteredExercises.length > 50)
+      setIsSearching(false)
+    }, 0)
+  }, [allExercises, selectedBodyPart, selectedEquipment, selectedMuscle, debouncedSearchTerm, fuse, muscles, bodyParts])
 
   // Function to fetch filter options (body parts, equipment, muscles)
   const fetchFilterOptions = async () => {
@@ -121,94 +230,36 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
       setEquipment(equipmentData)
       
       const musclesData = await musclesRes.json()
+      console.log('Muscles from API:', musclesData)
+      console.log('Sample muscle structure:', JSON.stringify(musclesData[0], null, 2)) // Debug muscle structure
+      console.log('Total muscles loaded:', musclesData.length)
       setMuscles(musclesData)
     } catch (error) {
       console.error("Error fetching filter options:", error)
     }
   }
 
-  // Function to handle scroll for infinite loading
-  const handleScroll = useCallback(() => {
-    if (!scrollContainerRef || loadingMore || !hasMore) return
-
-    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef
-    const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100 // 100px threshold
-
-    if (isNearBottom) {
-      const nextPage = currentPage + 1
-      setCurrentPage(nextPage)
-      
-      const params: Record<string, string> = {}
-      
-      if (searchTerm) {
-        params.search = searchTerm
-      }
-      
-      if (selectedBodyPart !== "all") {
-        params.bodyPartId = selectedBodyPart
-      }
-      
-      if (selectedEquipment !== "all") {
-        params.equipmentId = selectedEquipment
-      }
-      
-      if (selectedMuscle !== "all") {
-        params.muscleId = selectedMuscle
-      }
-
-      fetchExercises(params, nextPage, true)
-    }
-  }, [scrollContainerRef, loadingMore, hasMore, currentPage, searchTerm, selectedBodyPart, selectedEquipment, selectedMuscle])
-
-  // Add scroll event listener
-  useEffect(() => {
-    const container = scrollContainerRef
-    if (container) {
-      container.addEventListener('scroll', handleScroll)
-      return () => container.removeEventListener('scroll', handleScroll)
-    }
-  }, [scrollContainerRef, handleScroll])
-
   // Initial data load
   useEffect(() => {
     fetchFilterOptions()
-    fetchExercises()
+    fetchAllExercises()
   }, [])
 
-  // Fetch exercises when search parameters change
+  // Separate debounced search effect
   useEffect(() => {
-    // Reset pagination when filters change
-    setCurrentPage(1)
-    setHasMore(true)
-    
-    // Debounce the search to avoid too many requests
     const debounceTimer = setTimeout(() => {
-      const params: Record<string, string> = {}
-      
-      if (searchTerm) {
-        params.search = searchTerm
-      }
-      
-      if (selectedBodyPart !== "all") {
-        params.bodyPartId = selectedBodyPart
-      }
-      
-      if (selectedEquipment !== "all") {
-        params.equipmentId = selectedEquipment
-      }
-      
-      if (selectedMuscle !== "all") {
-        params.muscleId = selectedMuscle
-      }
-
-      fetchExercises(params, 1, false)
-    }, 300) // 300ms debounce
+      setDebouncedSearchTerm(searchTerm)
+    }, 1000) // Increased back to 1 second
 
     return () => clearTimeout(debounceTimer)
-  }, [searchTerm, selectedBodyPart, selectedEquipment, selectedMuscle])
+  }, [searchTerm])
 
-  // Since we're doing server-side filtering, we don't need to filter exercises on client
-  // but we'll keep this variable for consistency
+  // Filter exercises when search parameters change (only when debouncedSearchTerm changes)
+  useEffect(() => {
+    filterExercises()
+  }, [debouncedSearchTerm, selectedBodyPart, selectedEquipment, selectedMuscle, filterExercises])
+
+  // Since we're doing client-side filtering, we don't need the old fetchExercises function
 
   const handleCreateCustomExercise = async () => {
     if (!newExerciseName.trim()) return
@@ -291,10 +342,7 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
       </div>
 
       {/* Scrollable Content Area */}
-      <div 
-        className="flex-1 overflow-y-auto" 
-        ref={setScrollContainerRef}
-      >
+      <div className="flex-1 overflow-y-auto">
         <div className="p-6 space-y-6">
           {/* Create Custom Exercise Button/Form - Always Visible */}
           <div className="bg-background">
@@ -362,13 +410,23 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
           {/* Search and Filters */}
           <div className="space-y-6">
             <div className="relative">
-              <Search className="absolute left-4 top-4 h-5 w-5 text-muted-foreground" />
+              <Search className={`absolute left-4 top-4 h-5 w-5 ${isSearching ? 'text-blue-500 animate-pulse' : 'text-muted-foreground'}`} />
               <Input
+                ref={searchInputRef}
+                key="exercise-search"
                 placeholder="Search exercises..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-12 h-14 text-base"
               />
+              <div className="text-sm text-muted-foreground">
+                notes: sometimes you may need to add a - for experiences like sit-ups or push-ups
+              </div>
+              {isSearching && (
+                <div className="absolute right-4 top-4">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -502,7 +560,7 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
             ))}
 
             {/* Message when results are limited */}
-            {exercises.length >= 20 && hasMore === false && !searchTerm && selectedBodyPart === "all" && selectedEquipment === "all" && selectedMuscle === "all" && (
+            {exercises.length >= 20 && hasMore === false && !debouncedSearchTerm && selectedBodyPart === "all" && selectedEquipment === "all" && selectedMuscle === "all" && (
               <div className="text-center py-8 bg-green-50 border-2 border-green-200 rounded-lg">
                 <p className="text-green-700 font-semibold text-lg mb-2">All exercises loaded</p>
                 <p className="text-green-600 text-base">You&apos;ve reached the end of the exercise database.</p>
@@ -510,18 +568,10 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
             )}
 
             {/* Message when results are limited with filters */}
-            {exercises.length >= 20 && hasMore === false && (searchTerm || selectedBodyPart !== "all" || selectedEquipment !== "all" || selectedMuscle !== "all") && (
+            {exercises.length >= 20 && hasMore === false && (debouncedSearchTerm || selectedBodyPart !== "all" || selectedEquipment !== "all" || selectedMuscle !== "all") && (
               <div className="text-center py-8 bg-blue-50 border-2 border-blue-200 rounded-lg">
                 <p className="text-blue-700 font-semibold text-lg mb-2">All matching exercises loaded</p>
                 <p className="text-blue-600 text-base">No more exercises match your current search and filter criteria.</p>
-              </div>
-            )}
-
-            {/* Loading more indicator */}
-            {loadingMore && (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Loading more exercises...</p>
               </div>
             )}
           </div>
@@ -535,14 +585,14 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
                 onClick={() => {
                   setShowCreateForm(true);
                   // Pre-fill with search term if available
-                  if (searchTerm) {
-                    setNewExerciseName(searchTerm);
+                  if (debouncedSearchTerm) {
+                    setNewExerciseName(debouncedSearchTerm);
                   }
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-6 text-base"
               >
                 <Plus className="w-5 h-5 mr-2" />
-                Create &quot;{searchTerm}&quot; as Custom Exercise
+                Create &quot;{debouncedSearchTerm}&quot; as Custom Exercise
               </Button>
             </div>
           )}
