@@ -124,112 +124,112 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
   }
 
   return (
-    <div className="space-y-8 w-full px-4 sm:px-6 md:px-8 lg:px-10 pb-8">
-      {/* Workout Details Section */}
-      <Card className="p-6 md:p-6 lg:p-6 shadow-md border-2 rounded-xl">
-      <h2 className="text-2xl font-semibold mb-6 mt-2">Workout Details</h2>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="space-y-3">
-        <Label htmlFor="workout-name" className="text-base font-medium">Workout Name</Label>
+  <div className="space-y-6 w-full max-w-3xl mx-auto px-0 sm:px-0 md:px-0 pb-6 relative">
+    {/* Workout Details Section */}
+  <Card className="p-5 md:p-6 pt-6 md:pt-8 border rounded-xl shadow-sm bg-card">
+    <h2 className="text-xl font-semibold tracking-tight mb-4 mt-1">Workout Details</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="space-y-2.5">
+        <Label htmlFor="workout-name" className="text-sm font-medium">Workout Name</Label>
         <Input
           id="workout-name"
           placeholder="My Custom Workout"
           value={workoutName}
           onChange={(e) => setWorkoutName(e.target.value)}
-          className="w-full h-12 text-base"
+          className="w-full h-9 md:h-10 text-sm"
         />
         </div>
-          <div className="space-y-3">
-            <Label htmlFor="estimated-duration" className="text-base font-medium">Estimated Duration (minutes)</Label>
+          <div className="space-y-2.5">
+            <Label htmlFor="estimated-duration" className="text-sm font-medium">Estimated Duration (minutes)</Label>
             <Input
               id="estimated-duration"
               type="number"
               placeholder="45"
               value={estimatedDuration}
               onChange={(e) => setEstimatedDuration(e.target.value)}
-              className="w-full h-12 text-base"
+              className="w-full h-9 md:h-10 text-sm"
             />
           </div>
-          <div className="lg:col-span-2 space-y-3">
-            <Label htmlFor="workout-description" className="text-base font-medium">Description</Label>
+          <div className="lg:col-span-2 space-y-2.5">
+            <Label htmlFor="workout-description" className="text-sm font-medium">Description</Label>
             <Textarea
               id="workout-description"
               placeholder="Brief description of the workout"
               value={workoutDescription}
               onChange={(e) => setWorkoutDescription(e.target.value)}
-              rows={4}
-              className="w-full resize-none text-base"
+              rows={3}
+              className="w-full resize-none text-sm"
             />
           </div>
         </div>
       </Card>
 
       {/* Exercises Section */}
-      <Card className="p-6 md:p-6 lg:p-6 shadow-md border-2 rounded-xl">
+      <Card className="p-5 md:p-6 border rounded-xl shadow-sm bg-card">
         <div className="space-y-6">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <h3 className="text-xl font-medium">Exercises ({exercises.length})</h3>
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <h3 className="text-lg font-medium">Exercises ({exercises.length})</h3>
             <Button 
               onClick={addExercise} 
               variant="outline"
-              className="bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 w-full lg:w-auto h-12 px-6"
+              className="w-full lg:w-auto h-9 md:h-10 px-3"
             >
-              <Plus className="w-5 h-5 mr-2" />
-              Add Exercise
+              <Plus className="w-4 h-4 mr-2" />
+              Add
             </Button>
             </div>
 
 
           {exercises.length === 0 ? (
-            <div className="flex flex-col items-center justify-center bg-muted/30 border border-dashed rounded-lg p-12 md:p-12 lg:p-12 text-center">
-              <span className="mb-6 text-5xl">💪</span>
-              <h3 className="text-xl font-medium mb-3">No Exercises Added Yet</h3>
-              <p className="text-muted-foreground mb-8 max-w-md text-lg">Add exercises to create your custom workout</p>
-              <Button onClick={addExercise} variant="outline" className="bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 h-12 px-6">
-                <Plus className="w-5 h-5 mr-2" />
-                Add Your First Exercise
+            <div className="flex flex-col items-center justify-center bg-muted/30 border border-dashed rounded-lg p-10 md:p-12 text-center">
+              <span className="mb-4 text-4xl">💪</span>
+              <h3 className="text-lg font-medium mb-2 tracking-tight">No Exercises Yet</h3>
+              <p className="text-muted-foreground mb-6 max-w-md text-sm">Add exercises to create your custom workout.</p>
+              <Button onClick={addExercise} variant="outline" className="h-9 md:h-10 px-4">
+                <Plus className="w-4 h-4 mr-2" />
+                Add your first exercise
               </Button>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-4">
               {exercises.map((exercise, index) => (
-                <Card key={exercise.id} className="p-6 md:p-6 border-l-4 border-l-blue-500 shadow-sm rounded-xl">
-                  <div className="space-y-6">
+                <Card key={exercise.id} className="p-4 md:p-5 border rounded-lg shadow-sm transition-colors hover:bg-muted/40">
+                  <div className="space-y-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <span className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-base font-medium flex-shrink-0">
+                        <span className="w-8 h-8 rounded-full bg-muted text-foreground/70 flex items-center justify-center text-sm font-medium flex-shrink-0">
                           {index + 1}
                         </span>
-                        <h4 className="font-semibold text-lg lg:text-xl truncate">{exercise.name}</h4>
+                        <h4 className="font-semibold tracking-tight text-base lg:text-lg truncate">{exercise.name}</h4>
                       </div>
                       <Button
                         onClick={() => removeExercise(index)}
                         variant="ghost"
-                        size="sm"
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50 flex-shrink-0 h-10 w-10 p-0"
+                        size="icon"
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 flex-shrink-0 h-8 w-8"
                       >
-                        <Trash2 className="w-5 h-5" />
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                      <div className="space-y-3">
-                        <Label className="text-base font-medium">Target Sets</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Target Sets</Label>
                         <Input
                           type="number"
                           placeholder="3"
                           value={exercise.targetSets}
                           onChange={(e) => updateExercise(index, "targetSets", Number.parseInt(e.target.value) || 3)}
-                          className="w-full h-12 text-base"
+                          className="w-full h-9 md:h-10 text-sm"
                         />
                       </div>
-                      <div className="space-y-3">
-                        <Label className="text-base font-medium">Exercise Type</Label>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Exercise Type</Label>
                         <Select
                           value={exercise.targetType}
                           onValueChange={(value: "reps" | "time") => updateExercise(index, "targetType", value)}
                         >
-                          <SelectTrigger className="w-full h-12 text-base">
+                          <SelectTrigger className="w-full h-9 md:h-10 text-sm">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -238,27 +238,27 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-3 md:col-span-2 xl:col-span-1">
-                        <Label className="text-base font-medium">
+                      <div className="space-y-2 md:col-span-2 xl:col-span-1">
+                        <Label className="text-sm font-medium">
                           Target {exercise.targetType === "reps" ? "Reps" : "Time"}
                         </Label>
                         <Input
                           placeholder={exercise.targetType === "reps" ? "8-12" : "30s"}
                           value={exercise.targetReps}
                           onChange={(e) => updateExercise(index, "targetReps", e.target.value)}
-                          className="w-full h-12 text-base"
+                          className="w-full h-9 md:h-10 text-sm"
                         />
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <Label className="text-base font-medium">Instructions (Optional)</Label>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Instructions (Optional)</Label>
                       <Textarea
                         placeholder="How to perform this exercise..."
                         value={exercise.instructions}
                         onChange={(e) => updateExercise(index, "instructions", e.target.value)}
                         rows={3}
-                        className="w-full resize-none text-base"
+                        className="w-full resize-none text-sm"
                       />
                     </div>
                   </div>
@@ -270,19 +270,19 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
       </Card>
 
       {/* Action Buttons */}
-      <Card className="p-6 md:p-6 lg:p-6 shadow-md border-2 rounded-xl">
+      <Card className="p-4 md:p-5 border rounded-xl shadow-sm bg-card">
         <div className="flex flex-col lg:flex-row gap-4 justify-end">
           <Button 
             onClick={onCancel} 
             variant="outline" 
-            className="w-full lg:w-auto h-12 px-8 text-base order-2 lg:order-1"
+            className="w-full lg:w-auto h-9 md:h-10 px-6 text-sm order-2 lg:order-1"
           >
             Cancel
           </Button>
           <Button 
             onClick={handleSave} 
             disabled={!workoutName.trim() || exercises.length === 0}
-            className="w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white h-12 px-8 text-base order-1 lg:order-2"
+            className="w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white h-9 md:h-10 px-6 text-sm order-1 lg:order-2"
           >
             {initialWorkout?.id ? 'Update Workout' : 'Save Workout'}
           </Button>
@@ -290,8 +290,8 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
       </Card>
 
       {showExerciseSelector && (
-        <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center">
-          <div className="w-full h-full max-w-full max-h-full bg-background shadow-2xl">
+        <div className="absolute inset-0 z-[60] bg-black/60 flex items-center justify-center">
+          <div className="w-full h-full max-w-full max-h-full bg-background shadow-2xl overflow-auto">
             <ExerciseSelector
               onSelect={handleExerciseSelect}
               onClose={() => setShowExerciseSelector(false)}
