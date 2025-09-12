@@ -2,15 +2,17 @@
 
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
-import { Settings } from "lucide-react"
+import { Settings, Loader2, Target, Dumbbell, User } from "lucide-react"
+import { useWorkoutOptions } from "../../hooks/use-workout-options"
+import { SearchableMultiSelect } from "../searchable-multi-select"
 
 interface WorkoutPreferences {
   fitnessLevel: string
   workoutType: string
   duration: string
   targetMuscles: string[]
+  targetBodyParts: string[]
   equipment: string[]
   notes: string
 }
@@ -21,25 +23,26 @@ interface WorkoutPreferencesFormProps {
 }
 
 export function WorkoutPreferencesForm({ preferences, onPreferencesChange }: WorkoutPreferencesFormProps) {
-  const handleMuscleToggle = (muscle: string) => {
-    const updatedMuscles = preferences.targetMuscles.includes(muscle)
-      ? preferences.targetMuscles.filter((m) => m !== muscle)
-      : [...preferences.targetMuscles, muscle]
+  const { options, isLoading, error } = useWorkoutOptions()
 
+  const handleMuscleSelectionChange = (selected: string[]) => {
     onPreferencesChange({
       ...preferences,
-      targetMuscles: updatedMuscles,
+      targetMuscles: selected,
     })
   }
 
-  const handleEquipmentToggle = (equipment: string) => {
-    const updatedEquipment = preferences.equipment.includes(equipment)
-      ? preferences.equipment.filter((e) => e !== equipment)
-      : [...preferences.equipment, equipment]
-
+  const handleBodyPartSelectionChange = (selected: string[]) => {
     onPreferencesChange({
       ...preferences,
-      equipment: updatedEquipment,
+      targetBodyParts: selected,
+    })
+  }
+
+  const handleEquipmentSelectionChange = (selected: string[]) => {
+    onPreferencesChange({
+      ...preferences,
+      equipment: selected,
     })
   }
 
@@ -109,55 +112,66 @@ export function WorkoutPreferencesForm({ preferences, onPreferencesChange }: Wor
       </div>
 
       <div className="space-y-3">
-        <Label>Target Muscle Groups (optional)</Label>
-        <div className="flex flex-wrap gap-2">
-          {["chest", "back", "shoulders", "arms", "legs", "glutes", "core"].map((muscle) => (
-            <div key={muscle} className="flex items-center space-x-2">
-              <Checkbox
-                id={muscle}
-                checked={preferences.targetMuscles.includes(muscle)}
-                onCheckedChange={() => handleMuscleToggle(muscle)}
-              />
-              <Label htmlFor={muscle} className="text-sm capitalize cursor-pointer">
-                {muscle}
-              </Label>
-            </div>
-          ))}
-        </div>
+        <Label className="flex items-center gap-2">
+          <User className="w-4 h-4" />
+          Target Body Parts (optional)
+        </Label>
+        {error && (
+          <div className="text-sm text-red-500 py-2">
+            Error loading body parts. Using default options.
+          </div>
+        )}
+        <SearchableMultiSelect
+          options={options.bodyParts}
+          selected={preferences.targetBodyParts || []}
+          onSelectionChange={handleBodyPartSelectionChange}
+          placeholder="Search body parts..."
+          maxDisplayed={8}
+          isLoading={isLoading}
+          className="w-full"
+        />
       </div>
 
       <div className="space-y-3">
         <Label className="flex items-center gap-2">
-          <Settings className="w-4 h-4" />
+          <Target className="w-4 h-4" />
+          Target Muscle Groups (optional)
+        </Label>
+        {error && (
+          <div className="text-sm text-red-500 py-2">
+            Error loading muscle groups. Using default options.
+          </div>
+        )}
+        <SearchableMultiSelect
+          options={options.muscles}
+          selected={preferences.targetMuscles}
+          onSelectionChange={handleMuscleSelectionChange}
+          placeholder="Search muscle groups..."
+          maxDisplayed={10}
+          isLoading={isLoading}
+          className="w-full"
+        />
+      </div>
+
+      <div className="space-y-3">
+        <Label className="flex items-center gap-2">
+          <Dumbbell className="w-4 h-4" />
           Available Equipment
         </Label>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {[
-            { id: "bodyweight", label: "Bodyweight Only" },
-            { id: "dumbbells", label: "Dumbbells" },
-            { id: "barbell", label: "Barbell" },
-            { id: "kettlebells", label: "Kettlebells" },
-            { id: "resistance-bands", label: "Resistance Bands" },
-            { id: "pull-up-bar", label: "Pull-up Bar" },
-            { id: "bench", label: "Weight Bench" },
-            { id: "cable-machine", label: "Cable Machine" },
-            { id: "treadmill", label: "Treadmill" },
-            { id: "stationary-bike", label: "Stationary Bike" },
-            { id: "rowing-machine", label: "Rowing Machine" },
-            { id: "yoga-mat", label: "Yoga Mat" },
-          ].map((equipment) => (
-            <div key={equipment.id} className="flex items-center space-x-2">
-              <Checkbox
-                id={equipment.id}
-                checked={preferences.equipment.includes(equipment.id)}
-                onCheckedChange={() => handleEquipmentToggle(equipment.id)}
-              />
-              <Label htmlFor={equipment.id} className="text-sm cursor-pointer">
-                {equipment.label}
-              </Label>
-            </div>
-          ))}
-        </div>
+        {error && (
+          <div className="text-sm text-red-500 py-2">
+            Error loading equipment options. Using default options.
+          </div>
+        )}
+        <SearchableMultiSelect
+          options={options.equipment}
+          selected={preferences.equipment}
+          onSelectionChange={handleEquipmentSelectionChange}
+          placeholder="Search equipment..."
+          maxDisplayed={12}
+          isLoading={isLoading}
+          className="w-full"
+        />
       </div>
 
       <div className="space-y-3">

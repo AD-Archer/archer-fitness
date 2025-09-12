@@ -95,6 +95,7 @@ model WorkoutTemplate {
   difficulty       String?  // "beginner", "intermediate", "advanced"
   isPublic         Boolean  @default(false)
   isPredefined     Boolean  @default(false)
+  isAiGenerated    Boolean  @default(false) // flag to track AI-generated templates
   usageCount       Int      @default(0)
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")

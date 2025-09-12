@@ -7,6 +7,15 @@ import { Separator } from "@/components/ui/separator"
 import { Target, Clock, Dumbbell, Play, RefreshCw, Zap } from "lucide-react"
 import { ExerciseCard } from "./exercise-card"
 import { WarmupCooldownSection } from "./warmup-cooldown-section"
+import { 
+  transformWorkoutPlanToTemplate, 
+  transformWorkoutPlanToSession,
+  saveWorkoutAsTemplate,
+  startWorkoutSession
+} from "@/lib/workout-utils"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
+import { toast } from "sonner"
 
 interface Exercise {
   name: string
@@ -33,6 +42,40 @@ interface WorkoutDisplayProps {
 }
 
 export function WorkoutDisplay({ workout, userNotes, onRegenerate }: WorkoutDisplayProps) {
+  const router = useRouter()
+  const [isSaving, setIsSaving] = useState(false)
+  const [isStarting, setIsStarting] = useState(false)
+
+  const handleSaveWorkout = async () => {
+    try {
+      setIsSaving(true)
+      const templateData = transformWorkoutPlanToTemplate(workout)
+      await saveWorkoutAsTemplate(templateData)
+      
+      toast.success("Workout saved as template with AI-generated flag.")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save workout")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleStartWorkout = async () => {
+    try {
+      setIsStarting(true)
+      const sessionData = transformWorkoutPlanToSession(workout)
+      const session = await startWorkoutSession(sessionData)
+      
+      toast.success("Workout started! Redirecting to workout tracker...")
+      
+      // Redirect to track page with the session ID
+      router.push(`/track?sessionId=${(session as { id: string }).id}`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to start workout")
+    } finally {
+      setIsStarting(false)
+    }
+  }
   return (
     <Card>
       <CardHeader>
@@ -54,9 +97,9 @@ export function WorkoutDisplay({ workout, userNotes, onRegenerate }: WorkoutDisp
               </div>
             </CardDescription>
           </div>
-          <Button className="bg-green-600 hover:bg-green-700">
+          <Button className="bg-green-600 hover:bg-green-700" onClick={handleStartWorkout} disabled={isStarting}>
             <Play className="w-4 h-4 mr-2" />
-            Start Workout
+            {isStarting ? "Starting..." : "Start Workout"}
           </Button>
         </div>
       </CardHeader>
@@ -102,9 +145,9 @@ export function WorkoutDisplay({ workout, userNotes, onRegenerate }: WorkoutDisp
           colorClass="text-purple-600"
         />
 
-        <div className="flex gap-3 pt-4">
-          <Button variant="outline" className="flex-1 bg-transparent">
-            Save Workout
+                <div className="flex gap-3 pt-4">
+          <Button variant="outline" className="flex-1 bg-transparent" onClick={handleSaveWorkout} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save Workout"}
           </Button>
           <Button variant="outline" className="flex-1 bg-transparent">
             Share

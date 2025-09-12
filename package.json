@@ -1,8 +1,17 @@
 {
   "name": "archer-fitness",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.5.0",
+  "private": false,
   "type": "module",
+  "author": {
+    "name": "Antonio Archer",
+    "email": "antonioarcher.dev@gmail.com",
+    "url": "https://antonioarcher.com",
+    "socials": {
+      "twitter": "https://twitter.com/@ad_archer_",
+      "linkedin": "https://linkedin.com/in/antonioarcher"
+    }
+  },
   "scripts": {
     "build": "npx prisma generate && next build",
     "dev": "next dev -p ${PORT:-3000}",

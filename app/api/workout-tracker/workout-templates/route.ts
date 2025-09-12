@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, description, estimatedDuration, category, difficulty, exercises } = body
+    const { name, description, estimatedDuration, category, difficulty, exercises, isAiGenerated } = body
 
     if (!name || !exercises || exercises.length === 0) {
       return NextResponse.json(
@@ -171,15 +171,18 @@ export async function POST(request: NextRequest) {
     }
 
 
-    // Create the workout template
+    // Create the workout template with proper relation syntax
     const workoutTemplate = await prisma.workoutTemplate.create({
       data: {
-        userId: session.user.id,
+        user: {
+          connect: { id: session.user.id }
+        },
         name,
-        description,
+        description: isAiGenerated ? `${description || ''} (AI Generated)`.trim() : description,
         estimatedDuration: estimatedDuration || 30,
         category,
         difficulty,
+        // TODO: Add isAiGenerated field when Prisma client is properly updated
         exercises: {
           create: resolvedExercises.map((ex: any, index: number) => ({
             exerciseId: ex.exerciseId,

@@ -65,13 +65,14 @@ interface ApiExercise {
 const loadExerciseDatabase = async (
   workoutType: string,
   targetMuscles: string[],
+  targetBodyParts: string[],
   equipment: string[],
   exerciseCount: number
 ): Promise<DatabaseExercise[]> => {
   try {
-    // Build query parameters
+    // Build query parameters - fetch more exercises to ensure better variety
     const params = new URLSearchParams()
-    params.append('limit', Math.max(50, exerciseCount * 5).toString()) // Fetch more exercises to ensure we have enough after filtering
+    params.append('limit', Math.max(100, exerciseCount * 10).toString()) // Fetch significantly more exercises for better randomization
 
     const queryString = params.toString()
     const url = `/api/workout-tracker/exercises${queryString ? `?${queryString}` : ''}`
@@ -105,7 +106,7 @@ const loadExerciseDatabase = async (
     }))
 
     // Apply frontend filtering
-    const filteredExercises = filterExercises(convertedExercises, workoutType, targetMuscles, equipment)
+    const filteredExercises = filterExercises(convertedExercises, workoutType, targetMuscles, targetBodyParts, equipment)
 
     // Return only the filtered exercises (no need to slice here, we'll do it in generateWorkout)
     return filteredExercises
@@ -120,10 +121,11 @@ const filterExercises = (
   exercises: DatabaseExercise[],
   workoutType: string,
   targetMuscles: string[],
+  targetBodyParts: string[],
   equipment: string[]
 ): DatabaseExercise[] => {
   // If no filters are applied, return all exercises
-  if (targetMuscles.length === 0 && equipment.length === 0) {
+  if (targetMuscles.length === 0 && targetBodyParts.length === 0 && equipment.length === 0) {
     return exercises
   }
 
@@ -220,97 +222,66 @@ const filterExercises = (
         return primaryMatch || bodyPartMatch || nameMatch || true // Allow exercise if muscle filter is applied but no match
       })
 
+    // Filter by target body parts if specified
+    const matchesTargetBodyParts = targetBodyParts.length === 0 ||
+      targetBodyParts.some(bodyPart => {
+        const bodyPartLower = bodyPart.toLowerCase()
+
+        // Check if exercise body parts match
+        const bodyPartMatch = exercise.bodyParts.some((exBodyPart: string) => {
+          const exBodyPartLower = exBodyPart.toLowerCase()
+          return exBodyPartLower.includes(bodyPartLower) || bodyPartLower.includes(exBodyPartLower)
+        })
+
+        // Check exercise name for body part clues
+        const nameMatch = exercise.name.toLowerCase().includes(bodyPartLower) ||
+                         (bodyPartLower.includes('upper') && (exercise.name.toLowerCase().includes('press') || exercise.name.toLowerCase().includes('pull') || exercise.name.toLowerCase().includes('row'))) ||
+                         (bodyPartLower.includes('lower') && (exercise.name.toLowerCase().includes('squat') || exercise.name.toLowerCase().includes('lunge') || exercise.name.toLowerCase().includes('calf'))) ||
+                         (bodyPartLower.includes('full') && (exercise.name.toLowerCase().includes('burpee') || exercise.name.toLowerCase().includes('deadlift')))
+
+        return bodyPartMatch || nameMatch || true // Allow exercise if body part filter is applied but no match
+      })
+
     // Filter by available equipment
     const matchesEquipment = equipment.length === 0 ||
       equipment.some(eq => {
         const exerciseEquipments = exercise.equipments || []
         const eqLower = eq.toLowerCase()
 
-        if (eqLower === 'bodyweight' || eqLower === 'body weight') {
-          // Include exercises with no equipment, bodyweight, or basic equipment
+        if (eqLower === 'bodyweight' || eqLower === 'body weight' || eqLower === 'body-weight') {
+          // Only include exercises that truly don't require equipment
           return exerciseEquipments.length === 0 ||
-                 exerciseEquipments.includes('body weight') ||
-                 exerciseEquipments.includes('bodyweight') ||
-                 exerciseEquipments.includes('none') ||
-                 exerciseEquipments.includes('') ||
-                 true // Allow any exercise for bodyweight
+                 exerciseEquipments.some(e => {
+                   const eLower = e.toLowerCase()
+                   return eLower.includes('body') || 
+                          eLower.includes('bodyweight') ||
+                          eLower === '' ||
+                          eLower === 'none' ||
+                          eLower === 'no equipment'
+                 })
         }
 
-        // Handle other equipment types with more flexible matching
-        if (eqLower === 'dumbbells' || eqLower === 'dumbbell') {
-          return exerciseEquipments.some(e =>
-            e.includes('dumbbell') || e.includes('weight') || e.includes('free weight')
-          ) || true // Allow any exercise for dumbbells
-        }
-
-        if (eqLower === 'barbell') {
-          return exerciseEquipments.some(e =>
-            e.includes('barbell') || e.includes('bar') || e.includes('free weight')
-          )
-        }
-
-        if (eqLower === 'kettlebells' || eqLower === 'kettlebell') {
-          return exerciseEquipments.some(e =>
-            e.includes('kettlebell') || e.includes('kettle')
-          )
-        }
-
-        if (eqLower === 'resistance-bands' || eqLower === 'resistance band') {
-          return exerciseEquipments.some(e =>
-            e.includes('band') || e.includes('resistance')
-          )
-        }
-
-        if (eqLower === 'pull-up-bar' || eqLower === 'pull up bar') {
-          return exerciseEquipments.some(e =>
-            e.includes('pull') || e.includes('bar')
-          ) || exercise.name.toLowerCase().includes('pull')
-        }
-
-        if (eqLower === 'cable-machine' || eqLower === 'cable machine') {
-          return exerciseEquipments.some(e =>
-            e.includes('cable') || e.includes('machine')
-          )
-        }
-
-        if (eqLower === 'bench' || eqLower === 'weight bench') {
-          return exerciseEquipments.some(e =>
-            e.includes('bench') || e.includes('weight bench')
-          )
-        }
-
-        if (eqLower === 'treadmill') {
-          return exerciseEquipments.some(e =>
-            e.includes('treadmill') || e.includes('cardio')
-          )
-        }
-
-        if (eqLower === 'stationary-bike' || eqLower === 'stationary bike') {
-          return exerciseEquipments.some(e =>
-            e.includes('bike') || e.includes('stationary')
-          )
-        }
-
-        if (eqLower === 'rowing-machine' || eqLower === 'rowing machine') {
-          return exerciseEquipments.some(e =>
-            e.includes('rowing') || e.includes('rower')
-          )
-        }
-
-        if (eqLower === 'yoga-mat' || eqLower === 'yoga mat') {
-          return exerciseEquipments.some(e =>
-            e.includes('mat') || e.includes('yoga')
-          )
-        }
-
-        // Default case - check if equipment name is contained
-        return exerciseEquipments.some(e =>
-          e.toLowerCase().includes(eqLower) ||
-          eqLower.includes(e.toLowerCase())
-        ) || true // Allow exercise if equipment filter is applied but no match
+        // For other equipment, check if the exercise requires that specific equipment
+        return exerciseEquipments.some(e => {
+          const eLower = e.toLowerCase()
+          const normalizedEq = eqLower.replace('-', ' ').replace('_', ' ')
+          const normalizedE = eLower.replace('-', ' ').replace('_', ' ')
+          
+          return normalizedE.includes(normalizedEq) || 
+                 normalizedEq.includes(normalizedE) ||
+                 // Handle common equipment variations
+                 (normalizedEq.includes('dumbbell') && normalizedE.includes('dumbbell')) ||
+                 (normalizedEq.includes('barbell') && normalizedE.includes('barbell')) ||
+                 (normalizedEq.includes('kettlebell') && normalizedE.includes('kettlebell')) ||
+                 (normalizedEq.includes('resistance') && normalizedE.includes('band')) ||
+                 (normalizedEq.includes('band') && normalizedE.includes('resistance')) ||
+                 (normalizedEq.includes('pull') && normalizedE.includes('bar')) ||
+                 (normalizedEq.includes('cable') && normalizedE.includes('machine')) ||
+                 (normalizedEq.includes('bench') && normalizedE.includes('bench'))
+        })
       })
 
-    return matchesWorkoutType && matchesTargetMuscles && matchesEquipment
+    return matchesWorkoutType && matchesTargetMuscles && matchesTargetBodyParts && matchesEquipment
   })
 }
 
@@ -357,6 +328,16 @@ const calculateWorkoutParameters = (workoutType: string, duration: number) => {
   }
 }
 
+// Better randomization: Use Fisher-Yates shuffle algorithm
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
+}
+
 // Convert database exercise to workout exercise
 const convertToWorkoutExercise = (
   dbExercise: DatabaseExercise,
@@ -380,6 +361,7 @@ export function AIWorkoutGenerator() {
     workoutType: "",
     duration: "",
     targetMuscles: [] as string[],
+    targetBodyParts: [] as string[],
     equipment: [] as string[],
     notes: "",
   })
@@ -390,7 +372,7 @@ export function AIWorkoutGenerator() {
     setIsGenerating(true)
 
     try {
-      const { workoutType, duration, targetMuscles, equipment } = preferences
+      const { workoutType, duration, targetMuscles, targetBodyParts, equipment } = preferences
       const durationNum = Number.parseInt(duration)
 
       // Calculate workout parameters first
@@ -400,18 +382,60 @@ export function AIWorkoutGenerator() {
       const exercises = await loadExerciseDatabase(
         workoutType,
         targetMuscles,
+        targetBodyParts || [],
         equipment,
         workoutParams.exerciseCount
       )
 
-      // Select exercises (shuffle and take the required count)
-      const shuffledExercises = exercises.sort(() => 0.5 - Math.random())
-      const selectedDbExercises = shuffledExercises.slice(0, workoutParams.exerciseCount)
-
       // If we don't have enough exercises, throw error to trigger fallback
-      if (selectedDbExercises.length === 0) {
+      if (exercises.length === 0) {
         throw new Error('No exercises match the selected criteria')
       }
+
+      // For better variety, try to distribute exercises across different muscle groups
+      const selectVariedExercises = (exercises: DatabaseExercise[], count: number): DatabaseExercise[] => {
+        if (exercises.length <= count) {
+          return shuffleArray(exercises)
+        }
+
+        // Group exercises by primary target muscle
+        const muscleGroups: { [key: string]: DatabaseExercise[] } = {}
+        exercises.forEach(exercise => {
+          const primaryMuscle = exercise.targetMuscles[0] || 'general'
+          if (!muscleGroups[primaryMuscle]) {
+            muscleGroups[primaryMuscle] = []
+          }
+          muscleGroups[primaryMuscle].push(exercise)
+        })
+
+        // Shuffle exercises within each muscle group
+        Object.keys(muscleGroups).forEach(muscle => {
+          muscleGroups[muscle] = shuffleArray(muscleGroups[muscle])
+        })
+
+        // Select exercises in round-robin fashion from different muscle groups
+        const selected: DatabaseExercise[] = []
+        const muscleKeys = Object.keys(muscleGroups)
+        let currentIndex = 0
+
+        while (selected.length < count && selected.length < exercises.length) {
+          const muscle = muscleKeys[currentIndex % muscleKeys.length]
+          if (muscleGroups[muscle].length > 0) {
+            selected.push(muscleGroups[muscle].shift()!)
+          }
+          currentIndex++
+          
+          // If we've gone through all muscle groups and still need more exercises
+          if (currentIndex >= muscleKeys.length * 10) { // Prevent infinite loop
+            break
+          }
+        }
+
+        return selected
+      }
+
+      // Select exercises with better variety
+      const selectedDbExercises = selectVariedExercises(exercises, workoutParams.exerciseCount)
 
       // Convert to workout exercises
       const selectedExercises = selectedDbExercises.map(dbExercise =>
@@ -420,10 +444,11 @@ export function AIWorkoutGenerator() {
 
       // Create workout name
       const equipmentText = equipment.length > 0 ? ` (${equipment.join(", ")})` : ""
-      const muscleText = targetMuscles.length > 0 ? ` - ${targetMuscles.join(", ")}` : ""
+      const bodyPartText = (targetBodyParts || []).length > 0 ? ` - ${(targetBodyParts || []).join(", ")}` : ""
+      const muscleText = targetMuscles.length > 0 && !(targetBodyParts || []).length ? ` - ${targetMuscles.join(", ")}` : ""
 
       const workout: WorkoutPlan = {
-        name: `${workoutType.charAt(0).toUpperCase() + workoutType.slice(1)} Workout${equipmentText}${muscleText}`,
+        name: `${workoutType.charAt(0).toUpperCase() + workoutType.slice(1)} Workout${equipmentText}${bodyPartText}${muscleText}`,
         duration: durationNum,
         difficulty: "Custom",
         exercises: selectedExercises,
@@ -443,7 +468,7 @@ export function AIWorkoutGenerator() {
     } catch (error) {
       console.error('Failed to generate workout:', error)
       // Fallback to a basic workout if database fails to load
-      const { workoutType, targetMuscles, equipment } = preferences
+      const { workoutType, targetMuscles, targetBodyParts, equipment } = preferences
       const durationNum = Number.parseInt(preferences.duration)
       const workoutParams = calculateWorkoutParameters(workoutType, durationNum)
 
@@ -593,7 +618,7 @@ export function AIWorkoutGenerator() {
       }
 
       const fallbackWorkout: WorkoutPlan = {
-        name: `${workoutType.charAt(0).toUpperCase() + workoutType.slice(1)} Workout${equipment.length > 0 ? ` (${equipment.join(", ")})` : ""}${targetMuscles.length > 0 ? ` - ${targetMuscles.join(", ")}` : ""}`,
+        name: `${workoutType.charAt(0).toUpperCase() + workoutType.slice(1)} Workout${equipment.length > 0 ? ` (${equipment.join(", ")})` : ""}${(targetBodyParts || []).length > 0 ? ` - ${(targetBodyParts || []).join(", ")}` : ""}${targetMuscles.length > 0 && !(targetBodyParts || []).length ? ` - ${targetMuscles.join(", ")}` : ""}`,
         duration: durationNum,
         difficulty: "Custom",
         exercises: fallbackExercises.slice(0, workoutParams.exerciseCount),
