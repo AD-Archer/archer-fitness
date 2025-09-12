@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Scale, TrendingUp, TrendingDown, Minus, Plus, Calendar } from "lucide-react"
 import { toast } from "sonner"
+import { formatWeight, formatWeightChange, getWeightUnitAbbr, weightToLbs } from "@/lib/weight-utils"
+import { useUserPreferences } from "@/hooks/use-user-preferences"
 
 interface WeightEntry {
   id: string
@@ -32,7 +34,7 @@ type WeightTrackerProps = Record<string, never> // Empty props
 export function WeightTracker({}: WeightTrackerProps) {
   const [entries, setEntries] = useState<WeightEntry[]>([])
   const [stats, setStats] = useState<WeightStats | null>(null)
-  const [units, setUnits] = useState<string>('imperial') // Default to imperial
+  const { units } = useUserPreferences()
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -42,26 +44,10 @@ export function WeightTracker({}: WeightTrackerProps) {
   const [notes, setNotes] = useState("")
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
 
-  // Load weight data and user preferences
+  // Load weight data
   useEffect(() => {
     loadWeightData()
-    loadUserPreferences()
   }, [])
-
-  const loadUserPreferences = async () => {
-    try {
-      const response = await fetch('/api/user/preferences')
-      if (response.ok) {
-        const data = await response.json()
-        if (data?.preferences?.app?.units) {
-          setUnits(data.preferences.app.units)
-        }
-      }
-    } catch (error) {
-      console.error('Error loading user preferences:', error)
-      // Keep default units if loading fails
-    }
-  }
 
   const loadWeightData = async () => {
     try {
@@ -94,7 +80,7 @@ export function WeightTracker({}: WeightTrackerProps) {
       
       // Convert weight to pounds for database storage (consistent unit)
       const weightValue = parseFloat(weight)
-      const weightInLbs = units === 'metric' ? kgToLbs(weightValue) : weightValue
+      const weightInLbs = weightToLbs(weightValue, units)
       
       const response = await fetch('/api/user/weight', {
         method: 'POST',
@@ -125,34 +111,7 @@ export function WeightTracker({}: WeightTrackerProps) {
     }
   }
 
-  // Helper functions for weight conversion
-  const lbsToKg = (lbs: number) => lbs * 0.453592
-  const kgToLbs = (kg: number) => kg / 0.453592
-
-  const formatWeight = (weightValue: number) => {
-    // weightValue is always stored in lbs in the database
-    if (units === 'imperial') {
-      return `${weightValue.toFixed(1)} lbs`
-    } else {
-      const kg = lbsToKg(weightValue)
-      return `${kg.toFixed(1)} kg`
-    }
-  }
-
-  const formatWeightChange = (change: number) => {
-    // change is always in lbs from the database
-    const absChange = Math.abs(change)
-    let formatted: string
-    
-    if (units === 'imperial') {
-      formatted = `${absChange.toFixed(1)} lbs`
-    } else {
-      const kgChange = lbsToKg(absChange)
-      formatted = `${kgChange.toFixed(1)} kg`
-    }
-    
-    return change > 0 ? `+${formatted}` : change < 0 ? `-${formatted}` : formatted
-  }
+  // Helper functions for weight conversion - now removed since we use lib/weight-utils
 
   const getTrendIcon = () => {
     if (!stats) return <Minus className="w-4 h-4" />
@@ -216,7 +175,7 @@ export function WeightTracker({}: WeightTrackerProps) {
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="weight">Weight ({units === 'imperial' ? 'lbs' : 'kg'})</Label>
+                <Label htmlFor="weight">Weight ({getWeightUnitAbbr(units)})</Label>
                 <Input
                   id="weight"
                   type="number"
@@ -274,7 +233,7 @@ export function WeightTracker({}: WeightTrackerProps) {
             {/* Current Weight */}
             <div className="text-center">
               <div className="text-2xl font-bold">
-                {formatWeight(stats.current)}
+                {formatWeight(stats.current, units)}
               </div>
               <p className="text-sm text-muted-foreground">Current Weight</p>
             </div>
@@ -284,14 +243,14 @@ export function WeightTracker({}: WeightTrackerProps) {
               <div className="text-center">
                 <div className={`font-semibold flex items-center justify-center gap-1 ${getTrendColor()}`}>
                   {getTrendIcon()}
-                  {formatWeightChange(stats.weekChange)}
+                  {formatWeightChange(stats.weekChange, units)}
                 </div>
                 <p className="text-muted-foreground">This Week</p>
               </div>
               <div className="text-center">
                 <div className={`font-semibold flex items-center justify-center gap-1 ${getTrendColor()}`}>
                   {getTrendIcon()}
-                  {formatWeightChange(stats.monthChange)}
+                  {formatWeightChange(stats.monthChange, units)}
                 </div>
                 <p className="text-muted-foreground">This Month</p>
               </div>
@@ -310,7 +269,7 @@ export function WeightTracker({}: WeightTrackerProps) {
                   {entries.slice(0, 3).map((entry) => (
                     <div key={entry.id} className="flex items-center justify-between text-sm p-2 rounded-md bg-muted/50">
                       <div>
-                        <span className="font-medium">{formatWeight(entry.weight)}</span>
+                        <span className="font-medium">{formatWeight(entry.weight, units)}</span>
                         {entry.notes && (
                           <span className="text-muted-foreground ml-2">• {entry.notes}</span>
                         )}

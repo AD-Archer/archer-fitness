@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
 import { Apple, Target } from "lucide-react"
 import { useEffect } from "react"
+import { useUserPreferences } from "@/hooks/use-user-preferences"
+import { getWeightUnitAbbr, weightFromLbs } from "@/lib/weight-utils"
 
 const nutritionProgressData = [
 	{ date: "Jan 1", calories: 2100, protein: 140, carbs: 220, fat: 75, water: 2200, weight: 75.2 },
@@ -23,22 +25,31 @@ const calorieAdherenceData = [
 	{ week: "Week 6", target: 2200, actual: 2300, adherence: 105 },
 ]
 
-const nutritionGoals = [
-	{ metric: "Daily Calories", current: 2300, target: 2200, unit: "cal", adherence: 105 },
-	{ metric: "Protein", current: 165, target: 150, unit: "g", adherence: 110 },
-	{ metric: "Water Intake", current: 2800, target: 2500, unit: "ml", adherence: 112 },
-	{ metric: "Weight Progress", current: 74.0, target: 72.0, unit: "kg", progress: 60 },
-]
-
 interface NutritionAnalyticsProps {
 	timeRange?: string
 }
 
 export function NutritionAnalytics({ timeRange = "3months" }: NutritionAnalyticsProps) {
+	const { units } = useUserPreferences()
+	
 	useEffect(() => {
 		console.log(`Time range selected: ${timeRange}`)
 		// Add logic here to filter or fetch data based on the timeRange
 	}, [timeRange])
+
+	// Dynamic nutrition goals based on user units
+	const nutritionGoals = [
+		{ metric: "Daily Calories", current: 2300, target: 2200, unit: "cal", adherence: 105 },
+		{ metric: "Protein", current: 165, target: 150, unit: "g", adherence: 110 },
+		{ metric: "Water Intake", current: 2800, target: 2500, unit: "ml", adherence: 112 },
+		{ 
+			metric: "Weight Progress", 
+			current: weightFromLbs(74.0, units), // Convert from lbs to user's units
+			target: weightFromLbs(72.0, units), // Convert from lbs to user's units
+			unit: getWeightUnitAbbr(units), 
+			progress: 60 
+		},
+	]
 
 	return (
 		<div className="space-y-6">

@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { TrendingUp, Award } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useUserPreferences } from "@/hooks/use-user-preferences"
+import { getWeightUnitAbbr } from "@/lib/weight-utils"
 
 interface StrengthProgress {
   date: string
@@ -44,6 +46,7 @@ export function StrengthAnalytics({ timeRange = "3months" }: StrengthAnalyticsPr
   const [strengthData, setStrengthData] = useState<StrengthProgress[]>([])
   const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const { units } = useUserPreferences()
 
   useEffect(() => {
     const fetchStrengthData = async () => {
@@ -119,7 +122,7 @@ export function StrengthAnalytics({ timeRange = "3months" }: StrengthAnalyticsPr
                 weight: recordData.maxWeight,
                 reps: recordData.maxReps,
                 date: new Date(recordData.lastWorkout).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                improvement: `Max: ${recordData.maxWeight}lbs × ${recordData.maxReps}`,
+                improvement: `Max: ${recordData.maxWeight} ${getWeightUnitAbbr(units)} × ${recordData.maxReps}`,
               }
             })
 
@@ -133,7 +136,7 @@ export function StrengthAnalytics({ timeRange = "3months" }: StrengthAnalyticsPr
     }
 
     fetchStrengthData()
-  }, [timeRange])
+  }, [timeRange, units])
 
   const getExerciseColor = (index: number) => {
     const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
@@ -254,13 +257,13 @@ export function StrengthAnalytics({ timeRange = "3months" }: StrengthAnalyticsPr
                     <p className="text-sm text-muted-foreground">{record.date}</p>
                   </div>
                   <div className="text-right">
-                    <div className="text-xl font-bold">{record.weight} lbs</div>
+                    <div className="text-xl font-bold">{record.weight} {getWeightUnitAbbr(units)}</div>
                     <div className="text-sm text-muted-foreground">{record.reps} reps</div>
                     <Badge
                       variant="secondary"
                       className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
                     >
-                      {record.improvement}
+                      Max: {record.weight} {getWeightUnitAbbr(units)} × {record.reps}
                     </Badge>
                   </div>
                 </div>

@@ -12,6 +12,8 @@ import { AddSetForm } from "./add-set-form"
 import { RestTimer } from "./rest-timer"
 import { ExerciseTimer } from "./exercise-timer"
 import { formatTime, getExerciseProgress, isExerciseCompleted, getCompletedExercisesCount } from "../utils"
+import { formatWeight } from "@/lib/weight-utils"
+import { useUserPreferences } from "@/hooks/use-user-preferences"
 
 interface ExerciseSet {
   reps: number
@@ -103,6 +105,7 @@ export function WorkoutSession({
 }: WorkoutSessionProps) {
   const currentExercise = session.exercises[currentExerciseIndex]
   const workoutHeaderRef = useRef<HTMLDivElement>(null)
+  const { units } = useUserPreferences()
 
   // Handle add exercise with scroll to top
   const handleAddExercise = () => {
@@ -432,7 +435,7 @@ export function WorkoutSession({
                   <span className="text-sm">
                     {currentExercise.targetType === "time"
                       ? `${Math.floor(set.reps / 60)}:${(set.reps % 60).toString().padStart(2, "0")}`
-                      : `${set.reps} reps × ${set.weight != null ? `${set.weight} lbs` : "bodyweight"}`
+                      : `${set.reps} reps × ${set.weight != null ? formatWeight(set.weight, units) : "bodyweight"}`
                     }
                   </span>
                 </div>

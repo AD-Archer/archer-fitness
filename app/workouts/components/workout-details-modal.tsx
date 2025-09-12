@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Clock, Dumbbell, Repeat } from "lucide-react"
 import { toast } from "sonner"
+import { useUserPreferences } from "@/hooks/use-user-preferences"
+import { formatWeight } from "@/lib/weight-utils"
 
 interface WorkoutSession {
   id: string
@@ -33,6 +35,8 @@ interface WorkoutDetailsModalProps {
 }
 
 export function WorkoutDetailsModal({ workout, onRepeat, trigger }: WorkoutDetailsModalProps) {
+  const { units } = useUserPreferences()
+  
   if (!workout) return null
 
   const formatDate = (date: Date | string) => {
@@ -132,7 +136,7 @@ export function WorkoutDetailsModal({ workout, onRepeat, trigger }: WorkoutDetai
                 </div>
                 <div className="text-center p-3 rounded-lg bg-muted/50">
                   <div className="text-2xl font-bold text-orange-600">
-                    {stats.avgWeight > 0 ? `${stats.avgWeight.toFixed(1)} lbs` : "Bodyweight"}
+                    {stats.avgWeight > 0 ? formatWeight(stats.avgWeight, units) : "Bodyweight"}
                   </div>
                   <div className="text-sm text-muted-foreground">Avg Weight</div>
                 </div>
@@ -168,7 +172,7 @@ export function WorkoutDetailsModal({ workout, onRepeat, trigger }: WorkoutDetai
                           <div className="flex items-center gap-3">
                             <Badge variant="outline">Set {setIndex + 1}</Badge>
                             <span className="text-sm">
-                              {set.reps} reps × {set.weight != null ? `${set.weight} lbs` : "bodyweight"}
+                              {set.reps} reps × {set.weight != null ? formatWeight(set.weight, units) : "bodyweight"}
                             </span>
                           </div>
                           {set.completed && (

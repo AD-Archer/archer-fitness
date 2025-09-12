@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { Dumbbell } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useUserPreferences } from "@/hooks/use-user-preferences"
+import { getWeightUnitAbbr } from "@/lib/weight-utils"
 
 interface VolumeData {
   week: string
@@ -31,6 +33,7 @@ export function VolumeAnalytics({ timeRange = "3months" }: VolumeAnalyticsProps)
   const [volumeData, setVolumeData] = useState<VolumeData[]>([])
   const [volumeStats, setVolumeStats] = useState<VolumeStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const { units } = useUserPreferences()
 
   useEffect(() => {
     const fetchVolumeData = async () => {
@@ -47,7 +50,7 @@ export function VolumeAnalytics({ timeRange = "3months" }: VolumeAnalyticsProps)
               const metric = volumeData as VolumeMetric
               return {
                 week: `Week ${index + 1}`,
-                volume: Math.round(metric.volume),
+                volume: metric.volume,
                 workouts: metric.workouts
               }
             })
@@ -58,8 +61,8 @@ export function VolumeAnalytics({ timeRange = "3months" }: VolumeAnalyticsProps)
           const stats = data.generalStats
           if (stats && chartData.length > 0) {
             const volumes = chartData.map(d => d.volume)
-            const averageVolume = Math.round(volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length)
-            const peakVolume = Math.max(...volumes)
+            const averageVolume = volumes.length > 0 ? volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length : 0
+            const peakVolume = volumes.length > 0 ? Math.max(...volumes) : 0
             const firstWeekVolume = chartData[0]?.volume || 0
             const lastWeekVolume = chartData[chartData.length - 1]?.volume || 0
             const volumeTrend = firstWeekVolume > 0 
@@ -127,8 +130,9 @@ export function VolumeAnalytics({ timeRange = "3months" }: VolumeAnalyticsProps)
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "8px",
                     }}
+                    formatter={(value: number) => [`${value.toLocaleString()} ${getWeightUnitAbbr(units)}`, 'Volume']}
                   />
-                  <Bar dataKey="volume" fill="#10b981" name="Volume (lbs)" />
+                  <Bar dataKey="volume" fill="#10b981" name={`Volume (${getWeightUnitAbbr(units)})`} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -149,11 +153,9 @@ export function VolumeAnalytics({ timeRange = "3months" }: VolumeAnalyticsProps)
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                {volumeStats.averageVolume > 1000 
-                  ? `${(volumeStats.averageVolume / 1000).toFixed(1)}K`
-                  : volumeStats.averageVolume}
+                {volumeStats.averageVolume.toLocaleString()} {getWeightUnitAbbr(units)}
               </div>
-              <p className="text-sm text-muted-foreground">lbs per week</p>
+              <p className="text-sm text-muted-foreground">{getWeightUnitAbbr(units)} per week</p>
             </CardContent>
           </Card>
 
@@ -163,9 +165,7 @@ export function VolumeAnalytics({ timeRange = "3months" }: VolumeAnalyticsProps)
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-600">
-                {volumeStats.peakVolume > 1000 
-                  ? `${(volumeStats.peakVolume / 1000).toFixed(1)}K`
-                  : volumeStats.peakVolume}
+                {volumeStats.peakVolume.toLocaleString()} {getWeightUnitAbbr(units)}
               </div>
               <p className="text-sm text-muted-foreground">highest week</p>
             </CardContent>

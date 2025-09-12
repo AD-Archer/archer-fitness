@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { useUserPreferences } from "@/hooks/use-user-preferences"
+import { formatWeight, getWeightUnitAbbr, weightToLbs } from "@/lib/weight-utils"
 
 
 interface WeightEntry {
@@ -40,13 +42,13 @@ interface BodyCompositionAnalyticsProps {
 export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyCompositionAnalyticsProps) {
   const [nutritionProgressData, setNutritionProgressData] = useState<WeightProgressEntry[]>([])
   const [macroDistributionData, setMacroDistributionData] = useState<MacroDistributionEntry[]>([])
-  const [units, setUnits] = useState<string>('imperial')
   const [loading, setLoading] = useState(true)
   const [isWeightModalOpen, setIsWeightModalOpen] = useState(false)
   const [allWeightEntries, setAllWeightEntries] = useState<WeightEntry[]>([])
   const [newWeight, setNewWeight] = useState('')
   const [newWeightDate, setNewWeightDate] = useState('')
   const [newWeightNotes, setNewWeightNotes] = useState('')
+  const { units } = useUserPreferences()
 
   // Helper function to get today's date in YYYY-MM-DD format
   const getTodayDateString = useCallback(() => {
@@ -62,17 +64,6 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
 
   console.log('BodyCompositionAnalytics rendered with timeRange:', timeRange)
 
-  // Helper functions for weight conversion
-  const lbsToKg = (lbs: number) => lbs * 0.453592
-  
-  const formatWeightDisplay = (weightInLbs: number) => {
-    if (units === 'imperial') {
-      return `${weightInLbs.toFixed(1)} lbs`
-    } else {
-      return `${lbsToKg(weightInLbs).toFixed(1)} kg`
-    }
-  }
-
   // Handle adding new weight entry
   const handleAddWeightEntry = async () => {
     if (!newWeight || isNaN(parseFloat(newWeight))) {
@@ -81,8 +72,11 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
     }
 
     try {
+      // Convert weight to pounds for database storage
+      const weightInLbs = weightToLbs(parseFloat(newWeight), units)
+      
       console.log('Adding weight entry:', {
-        weight: parseFloat(newWeight),
+        weight: weightInLbs,
         date: dateStringToISOString(newWeightDate),
         notes: newWeightNotes || null,
       })
@@ -93,7 +87,7 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          weight: parseFloat(newWeight),
+          weight: weightInLbs,
           date: dateStringToISOString(newWeightDate),
           notes: newWeightNotes || null,
         }),
@@ -162,23 +156,14 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
     setLoading(true)
     
     try {
-      // Load user preferences first
-      const prefsRes = await fetch('/api/user/preferences')
-      if (prefsRes.ok) {
-        const prefsData = await prefsRes.json()
-        if (prefsData?.preferences?.app?.units) {
-          setUnits(prefsData.preferences.app.units)
-        }
-      }
-
       // Convert timeRange to days for API call
       const getDaysFromTimeRange = (range: string) => {
         switch (range) {
-          case '7days': return 7
-          case '4weeks': return 28
-          case '3months': return 90
-          case '6months': return 180
-          case '1year': return 365
+          case "7days": return 7
+          case "4weeks": return 28
+          case "3months": return 90
+          case "6months": return 180
+          case "1year": return 365
           default: return 90
         }
       }
@@ -300,7 +285,7 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
         <div className="bg-background border rounded-lg p-3 shadow-md">
           <p className="font-medium">{label}</p>
           <p className="text-sm text-muted-foreground">
-            Weight: {formatWeightDisplay(data.weight)}
+            Weight: {formatWeight(data.weight, units)}
           </p>
           {data.entryCount && data.entryCount > 1 && (
             <p className="text-xs text-muted-foreground">
@@ -351,7 +336,7 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
                     <h3 className="font-semibold">Add New Weight Entry</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
-                        <Label htmlFor="weight">Weight ({units === 'imperial' ? 'lbs' : 'kg'})</Label>
+                        <Label htmlFor="weight">Weight ({getWeightUnitAbbr(units)})</Label>
                         <Input
                           id="weight"
                           type="number"
@@ -407,7 +392,7 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
                               <div className="flex-1">
                                 <div className="flex items-center gap-4">
                                   <span className="font-medium">
-                                    {formatWeightDisplay(entry.weight)}
+                                    {formatWeight(entry.weight, units)}
                                   </span>
                                   <span className="text-sm text-muted-foreground">
                                     {new Date(entry.date).toLocaleDateString('en-US', {
@@ -452,7 +437,7 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
                       stroke="#8b5cf6"
                       fill="#8b5cf6"
                       fillOpacity={0.3}
-                      name={`Weight (${units === 'imperial' ? 'lbs' : 'kg'})`}
+                      name={`Weight (${getWeightUnitAbbr(units)})`}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -538,7 +523,7 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
         <CardContent className="space-y-3">
           <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800">
             <p className="text-sm text-green-800 dark:text-green-200">
-              <strong>Excellent progress!</strong> You&apos;ve lost 1.2kg while maintaining high protein intake,
+              <strong>Excellent progress!</strong> You&apos;ve lost {formatWeight(2.64, units)} while maintaining high protein intake,
               indicating healthy fat loss.
             </p>
           </div>

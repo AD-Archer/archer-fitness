@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Dumbbell, Clock, Calendar, Target } from "lucide-react"
 import { ReactNode } from "react"
+import { formatWeight } from "@/lib/weight-utils"
+import { useUserPreferences } from "@/hooks/use-user-preferences"
 
 interface WorkoutSession {
   id: string
@@ -31,6 +33,8 @@ interface QuickViewModalProps {
 }
 
 export function QuickViewModal({ workout, trigger }: QuickViewModalProps) {
+  const { units } = useUserPreferences()
+  
   const formatDate = (date: string | Date) => {
     const dateObj = typeof date === 'string' ? new Date(date) : date
     return dateObj.toLocaleDateString("en-US", {
@@ -159,7 +163,7 @@ export function QuickViewModal({ workout, trigger }: QuickViewModalProps) {
                             {set.weight && (
                               <div className="flex items-center gap-1">
                                 <Dumbbell className="w-3 h-3" />
-                                <span>{set.weight} lbs</span>
+                                <span>{formatWeight(set.weight, units)}</span>
                               </div>
                             )}
                           </div>
@@ -170,7 +174,7 @@ export function QuickViewModal({ workout, trigger }: QuickViewModalProps) {
                     {stats.avgWeight && (
                       <div className="mt-3 pt-3 border-t">
                         <div className="text-sm text-muted-foreground text-center">
-                          Average weight: <span className="font-semibold text-foreground">{stats.avgWeight.toFixed(1)} lbs</span>
+                          Average weight: <span className="font-semibold text-foreground">{formatWeight(stats.avgWeight, units)}</span>
                         </div>
                       </div>
                     )}

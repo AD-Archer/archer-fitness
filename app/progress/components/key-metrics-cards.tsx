@@ -3,6 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar, Apple, Droplets, Scale } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useUserPreferences } from "@/hooks/use-user-preferences"
+import { formatWeight, formatWeightChange } from "@/lib/weight-utils"
 
 interface KeyMetrics {
   totalWorkouts: number
@@ -25,6 +27,7 @@ interface KeyMetricsCardsProps {
 export function KeyMetricsCards({ timeRange = "3months" }: KeyMetricsCardsProps) {
   const [metrics, setMetrics] = useState<KeyMetrics | null>(null)
   const [loading, setLoading] = useState(true)
+  const { units } = useUserPreferences()
 
 
 
@@ -196,10 +199,10 @@ export function KeyMetricsCards({ timeRange = "3months" }: KeyMetricsCardsProps)
           <Scale className="h-4 w-4 text-purple-600" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{metrics.totalWeight} lbs</div>
+          <div className="text-2xl font-bold">{formatWeight(metrics.totalWeight, units)}</div>
           <p className="text-xs text-muted-foreground">
             {metrics.weightChange !== 0 
-              ? `${metrics.weightChange > 0 ? '+' : ''}${metrics.weightChange} lbs this month`
+              ? `${formatWeightChange(metrics.weightChange, units)} this month`
               : 'Weight stable this month'}
           </p>
         </CardContent>

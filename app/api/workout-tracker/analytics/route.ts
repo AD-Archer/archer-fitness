@@ -3,6 +3,23 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
+// Weight conversion utilities
+const LBS_TO_KG_RATIO = 0.453592
+
+function lbsToKg(lbs: number): number {
+  return lbs * LBS_TO_KG_RATIO
+}
+
+function convertWeightToUserUnits(weightInLbs: number, userUnits: string): number {
+  const converted = userUnits === 'metric' ? lbsToKg(weightInLbs) : weightInLbs
+  return Math.round(converted * 100) / 100 // Round to 2 decimal places
+}
+
+function convertVolumeToUserUnits(volumeInLbs: number, userUnits: string): number {
+  const converted = userUnits === 'metric' ? lbsToKg(volumeInLbs) : volumeInLbs
+  return Math.round(converted * 100) / 100 // Round to 2 decimal places
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -14,6 +31,15 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get("type") // "strength", "volume", "records", "all"
     const limit = parseInt(searchParams.get("limit") || "100")
     const timeRange = searchParams.get("timeRange") // "7days", "4weeks", "3months", "6months", "1year"
+
+    // Get user preferences for unit conversion
+    const userPrefs = await prisma.userPreference.findUnique({
+      where: { userId: session.user.id },
+      select: { app: true }
+    })
+    
+    const appPrefs = userPrefs?.app as { units?: string } | null
+    const userUnits = appPrefs?.units || 'imperial'
 
     // Calculate date filter based on time range
     let dateFilter = {}
@@ -175,11 +201,11 @@ export async function GET(request: NextRequest) {
       Array.from(exerciseRecords.entries()).map(([name, data]) => [
         name,
         {
-          maxWeight: data.maxWeight,
+          maxWeight: convertWeightToUserUnits(data.maxWeight, userUnits),
           maxReps: data.maxReps,
-          maxVolume: data.maxVolume,
+          maxVolume: convertVolumeToUserUnits(data.maxVolume, userUnits),
           averageReps: data.totalSets > 0 ? Math.round(data.totalReps / data.totalSets) : 0,
-          averageVolume: data.totalSets > 0 ? Math.round(data.totalVolume / data.totalSets) : 0,
+          averageVolume: data.totalSets > 0 ? Math.round(convertVolumeToUserUnits(data.totalVolume / data.totalSets, userUnits) * 100) / 100 : 0,
           frequency: data.frequency,
           lastWorkout: data.lastWorkout,
           muscleGroups: data.muscleGroups
@@ -190,10 +216,10 @@ export async function GET(request: NextRequest) {
     analytics.generalStats = {
       totalWorkouts: workoutDates.size,
       totalSets: totalCompletedSets,
-      totalVolume,
+      totalVolume: convertVolumeToUserUnits(totalVolume, userUnits),
       averageWorkoutTime: workoutDates.size > 0 ? Math.round(totalWorkoutTime / workoutDates.size) : 0,
       averageSetsPerWorkout: workoutDates.size > 0 ? Math.round(totalCompletedSets / workoutDates.size) : 0,
-      averageVolumePerWorkout: workoutDates.size > 0 ? Math.round(totalVolume / workoutDates.size) : 0,
+      averageVolumePerWorkout: workoutDates.size > 0 ? Math.round(convertVolumeToUserUnits(totalVolume / workoutDates.size, userUnits) * 100) / 100 : 0,
       uniqueExercises: exerciseRecords.size,
       workoutFrequency: workoutDates.size // Could calculate per week if needed
     }
@@ -223,7 +249,7 @@ export async function GET(request: NextRequest) {
             }
             strengthProgress.get(exerciseName)!.push({
               date: new Date(sessionDate).toISOString(),
-              weight: bestSet.weight,
+              weight: convertWeightToUserUnits(bestSet.weight, userUnits),
               reps: bestSet.reps
             })
           }
@@ -264,7 +290,7 @@ export async function GET(request: NextRequest) {
 
         const current = weeklyVolume.get(weekKey) || { volume: 0, workouts: 0, sets: 0 }
         weeklyVolume.set(weekKey, {
-          volume: current.volume + sessionVolume,
+          volume: convertVolumeToUserUnits(current.volume + sessionVolume, userUnits),
           workouts: current.workouts + 1,
           sets: current.sets + sessionSets
         })

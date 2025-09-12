@@ -1,13 +1,15 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Plus } from "lucide-react"
 import { formatTime } from "../utils"
+import { getWeightUnitAbbr, weightToLbs, formatWeight } from "@/lib/weight-utils"
+import { useUserPreferences } from "@/hooks/use-user-preferences"
 
 interface LastSetData {
   reps?: number
@@ -35,15 +37,42 @@ export function AddSetForm({
   const [reps, setReps] = useState("")
   const [weight, setWeight] = useState("")
   const [isBodyweight, setIsBodyweight] = useState(false)
+  const { units } = useUserPreferences()
+  const weightInLbs = useRef<number | null>(null) // Store weight in lbs for conversion
 
   // Pre-fill form with last set data
   useEffect(() => {
     if (lastSetData && targetType === "reps") {
       if (lastSetData.reps) setReps(lastSetData.reps.toString())
-      if (lastSetData.weight) setWeight(lastSetData.weight.toString())
+      if (lastSetData.weight) {
+        weightInLbs.current = lastSetData.weight
+        setWeight(formatWeight(lastSetData.weight, units, false))
+      }
       if (lastSetData.isBodyweight) setIsBodyweight(lastSetData.isBodyweight)
     }
-  }, [lastSetData, targetType])
+  }, [lastSetData, targetType, units])
+
+  // Handle unit conversion when units change
+  useEffect(() => {
+    if (weight && !isBodyweight && weightInLbs.current !== null) {
+      const currentWeight = parseFloat(weight)
+      if (!isNaN(currentWeight)) {
+        const convertedWeight = formatWeight(weightInLbs.current, units, false)
+        setWeight(convertedWeight)
+      }
+    }
+  }, [units, isBodyweight, weight])
+
+  const handleWeightChange = (value: string) => {
+    setWeight(value)
+    if (value && !isBodyweight) {
+      const numericValue = parseFloat(value)
+      if (!isNaN(numericValue)) {
+        // Store the weight in lbs for consistency
+        weightInLbs.current = weightToLbs(numericValue, units)
+      }
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -52,10 +81,13 @@ export function AddSetForm({
       onAddSet(exerciseId, currentExerciseTimer)
     } else {
       if (reps && (isBodyweight || weight)) {
+        // Use the stored lbs value or convert current input
+        const weightValue = isBodyweight ? undefined : weightInLbs.current || weightToLbs(Number.parseFloat(weight), units)
+        
         onAddSet(
           exerciseId,
           Number.parseInt(reps),
-          isBodyweight ? undefined : Number.parseFloat(weight)
+          weightValue
         )
         // Don't clear the form so values persist for next set
       }
@@ -102,15 +134,15 @@ export function AddSetForm({
               </div>
               <div>
                 <Label htmlFor="weight" className="text-xs">
-                  Weight (lbs)
+                  Weight ({getWeightUnitAbbr(units)})
                 </Label>
                 <Input
                   id="weight"
                   type="number"
                   step="0.5"
-                  placeholder="25"
+                  placeholder={units === 'imperial' ? "25" : "11"}
                   value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
+                  onChange={(e) => handleWeightChange(e.target.value)}
                   disabled={isBodyweight}
                   className="h-8"
                 />
@@ -131,7 +163,7 @@ export function AddSetForm({
             {lastSetData && setNumber > 1 && (
               <div className="mb-3 p-2 rounded-md bg-muted/50 text-xs text-muted-foreground">
                 <span className="font-medium">Previous set:</span> {lastSetData.reps} reps 
-                {lastSetData.isBodyweight ? " (bodyweight)" : ` @ ${lastSetData.weight} lbs`}
+                {lastSetData.isBodyweight ? " (bodyweight)" : ` @ ${formatWeight(lastSetData.weight || 0, units)}`}
               </div>
             )}
           </>

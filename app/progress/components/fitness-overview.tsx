@@ -4,29 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { TrendingUp, Target, Clock, Zap, Trophy, Activity } from "lucide-react"
 import { useEffect, useState } from "react"
-
-interface WorkoutSession {
-  id: string
-  startTime: string
-  endTime?: string | Date | null
-  duration: number | null
-  status: string
-  exercises: Array<{
-    exercise: {
-      name: string
-      muscles: Array<{
-        muscle: {
-          name: string
-        }
-      }>
-    }
-    sets: Array<{
-      completed: boolean
-      weight?: number
-      reps?: number
-    }>
-  }>
-}
+import { getWeightUnitAbbr } from "@/lib/weight-utils"
+import { useUserPreferences } from "@/hooks/use-user-preferences"
 
 interface FitnessOverview {
   totalWorkouts: number
@@ -67,20 +46,7 @@ export function FitnessOverview({ timeRange = "3months" }: FitnessOverviewProps)
   const [overview, setOverview] = useState<FitnessOverview | null>(null)
   const [topPerformances, setTopPerformances] = useState<TopPerformance[]>([])
   const [loading, setLoading] = useState(true)
-
-  // Helper function to calculate effective duration with fallback
-  const calculateEffectiveDuration = (session: WorkoutSession) => {
-    let effectiveDuration = session.duration || 0
-    
-    // If duration is 0 but we have startTime and endTime, calculate it
-    if (effectiveDuration === 0 && session.endTime) {
-      const startTime = new Date(session.startTime)
-      const endTime = new Date(session.endTime)
-      effectiveDuration = Math.floor((endTime.getTime() - startTime.getTime()) / 1000) // Convert to seconds
-    }
-    
-    return effectiveDuration
-  }
+  const { units } = useUserPreferences()
 
   useEffect(() => {
     const fetchOverviewData = async () => {
@@ -89,48 +55,8 @@ export function FitnessOverview({ timeRange = "3months" }: FitnessOverviewProps)
         if (response.ok) {
           const data = await response.json()
           
-          // Calculate general stats with proper duration handling
-          const workoutSessions = data.workoutSessions || []
-          const workoutDates = new Set<string>()
-          let totalCompletedSets = 0
-          let totalWorkoutTime = 0
-          let totalVolume = 0
-          
-          workoutSessions.forEach((session: WorkoutSession) => {
-            const sessionDate = new Date(session.startTime).toISOString().split('T')[0]
-            workoutDates.add(sessionDate)
-            
-            // Use effective duration calculation
-            const effectiveDuration = calculateEffectiveDuration(session)
-            console.log(`Fitness Overview - Session ${session.id}: duration=${session.duration}, endTime=${session.endTime}, effectiveDuration=${effectiveDuration}`)
-            if (effectiveDuration > 0) {
-              totalWorkoutTime += effectiveDuration
-            }
-
-            session.exercises.forEach(exercise => {
-              const completedSets = exercise.sets.filter(set => set.completed)
-              totalCompletedSets += completedSets.length
-              
-              completedSets.forEach(set => {
-                if (set.weight && set.reps) {
-                  totalVolume += set.weight * set.reps
-                }
-              })
-            })
-          })
-          
-          // Update general stats with calculated values
-          const calculatedGeneralStats = {
-            ...data.generalStats,
-            totalWorkouts: workoutDates.size,
-            totalSets: totalCompletedSets,
-            totalVolume,
-            averageWorkoutTime: workoutDates.size > 0 ? Math.round(totalWorkoutTime / workoutDates.size) : 0,
-            averageSetsPerWorkout: workoutDates.size > 0 ? Math.round(totalCompletedSets / workoutDates.size) : 0,
-            averageVolumePerWorkout: workoutDates.size > 0 ? Math.round(totalVolume / workoutDates.size) : 0,
-          }
-          
-          setOverview(calculatedGeneralStats)
+          // Use the API's calculated general stats directly since they're already converted
+          setOverview(data.generalStats)
           
           // Extract top performances from personal records
           const performances: TopPerformance[] = []
@@ -144,7 +70,7 @@ export function FitnessOverview({ timeRange = "3months" }: FitnessOverviewProps)
                 exercise,
                 metric: 'Max Weight',
                 value: recordData.maxWeight,
-                unit: 'lbs',
+                unit: getWeightUnitAbbr(units),
                 category: 'strength'
               })
             }
@@ -166,7 +92,7 @@ export function FitnessOverview({ timeRange = "3months" }: FitnessOverviewProps)
                 exercise,
                 metric: 'Max Volume',
                 value: recordData.maxVolume,
-                unit: 'lbs',
+                unit: getWeightUnitAbbr(units),
                 category: 'volume'
               })
             }
@@ -198,14 +124,9 @@ export function FitnessOverview({ timeRange = "3months" }: FitnessOverviewProps)
     }
 
     fetchOverviewData()
-  }, [timeRange])
+  }, [timeRange, units])
 
-  const formatVolume = (volume: number) => {
-    if (volume >= 10000) {
-      return `${(volume / 1000).toFixed(1)}K`
-    }
-    return volume.toLocaleString()
-  }
+
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60)
@@ -290,12 +211,12 @@ export function FitnessOverview({ timeRange = "3months" }: FitnessOverviewProps)
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <TrendingUp className="w-4 h-4 text-purple-600" />
-              <Badge variant="secondary">{formatVolume(overview.averageVolumePerWorkout)}/workout</Badge>
+              <Badge variant="secondary">{overview.averageVolumePerWorkout.toLocaleString()} {getWeightUnitAbbr(units)}/workout</Badge>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatVolume(overview.totalVolume)}</div>
-            <p className="text-sm text-muted-foreground">Total Volume (lbs)</p>
+            <div className="text-2xl font-bold">{overview.totalVolume.toLocaleString()} {getWeightUnitAbbr(units)}</div>
+            <p className="text-sm text-muted-foreground">Total Volume ({getWeightUnitAbbr(units)})</p>
           </CardContent>
         </Card>
 
@@ -387,7 +308,7 @@ export function FitnessOverview({ timeRange = "3months" }: FitnessOverviewProps)
                           <div className="text-xs text-muted-foreground">{perf.metric}</div>
                         </div>
                         <div className="text-right">
-                          <div className="font-bold text-green-700 dark:text-green-300">{formatVolume(perf.value)} {perf.unit}</div>
+                          <div className="font-bold text-green-700 dark:text-green-300">{perf.value} {perf.unit}</div>
                         </div>
                       </div>
                     ))}

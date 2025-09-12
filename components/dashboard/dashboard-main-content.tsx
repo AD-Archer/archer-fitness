@@ -31,7 +31,7 @@ export function DashboardMainContent() {
           <TodaysFocus />
 
           {/* Weight Tracking */}
-                    <WeightTracker />
+            <WeightTracker />
 
           {/* Rest & Recovery */}
           <Card>
