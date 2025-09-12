@@ -75,6 +75,7 @@ model User {
   schedules     Schedule[]
   scheduleTemplates ScheduleTemplate[]
   pushSubscriptions PushSubscription[]
+  completedDays CompletedDay[]
 
   @@map("users")
 }
@@ -506,4 +507,21 @@ model PushSubscription {
   @@unique([userId, endpoint])
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+// Track completed workout days
+model CompletedDay {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  date      DateTime // The date that was completed (date only, time set to 00:00:00)
+  status    String   @default("completed") // "completed", "in_progress"
+  notes     String?  // Optional notes about the completion
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+  @@map("completed_days")
 }

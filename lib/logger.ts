@@ -8,30 +8,50 @@ const isDevelopment = process.env.NODE_ENV === 'development'
 export const logger = {
   error: (message: string, error?: unknown) => {
     if (isDevelopment) {
-      // eslint-disable-next-line no-console
-      console.error(message, error)
+      if (error !== undefined) {
+        // eslint-disable-next-line no-console
+        console.error(message, error)
+      } else {
+        // eslint-disable-next-line no-console
+        console.error(message)
+      }
     }
     // In production, you could send to external logging service here
   },
   
   warn: (message: string, data?: unknown) => {
     if (isDevelopment) {
-      // eslint-disable-next-line no-console
-      console.warn(message, data)
+      if (data !== undefined) {
+        // eslint-disable-next-line no-console
+        console.warn(message, data)
+      } else {
+        // eslint-disable-next-line no-console
+        console.warn(message)
+      }
     }
   },
   
   info: (message: string, data?: unknown) => {
     if (isDevelopment) {
-      // eslint-disable-next-line no-console
-      console.info(message, data)
+      if (data !== undefined) {
+        // eslint-disable-next-line no-console
+        console.info(message, data)
+      } else {
+        // eslint-disable-next-line no-console
+        console.info(message)
+      }
     }
   },
   
   debug: (message: string, data?: unknown) => {
     if (isDevelopment) {
-      // eslint-disable-next-line no-console
-      console.debug(message, data)
+      if (data !== undefined) {
+        // eslint-disable-next-line no-console
+        console.debug(message, data)
+      } else {
+        // eslint-disable-next-line no-console
+        console.debug(message)
+      }
     }
   }
 }

@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Clock, CheckCircle, Trash2, Eye, RotateCcw } from "lucide-react"
+import { Clock, CheckCircle, Trash2, Eye, RotateCcw, XCircle } from "lucide-react"
 import { useEffect, useState, useCallback } from "react"
 import { toast } from "sonner"
 import { WorkoutDetailsModal } from "./workout-details-modal"
@@ -134,7 +134,7 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
         }
 
         // Fetch workout templates
-        const templatesResponse = await fetch('/api/workout-templates?limit=10')
+        const templatesResponse = await fetch('/api/workout-tracker/workout-templates?limit=10')
         let templatesData: ApiTemplatesResponse = { userTemplates: [], predefinedTemplates: [] }
         if (templatesResponse.ok) {
           templatesData = await templatesResponse.json()
@@ -316,17 +316,28 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {recentWorkouts.map((workout) => {
+          {recentWorkouts.map((workout, idx) => {
             const template = getTemplateInfo(workout.templateId)
+            // Determine if a newer workout exists after this one in the list
+            // Assuming recentWorkouts is sorted desc by date (most recent first)
+            const hasNewerStarted = recentWorkouts.some((w, i) => i < idx && new Date(w.date).getTime() > new Date(workout.date).getTime())
+            const completionRate = calculateCompletionRate(workout.exercises)
+            const isCompleted = completionRate >= 100
             return (
-              <div key={workout.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 rounded-lg border bg-card/50 gap-3 sm:gap-4">
-                <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center flex-shrink-0">
-                    <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" />
+              <div key={workout.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2 sm:p-3 rounded-lg border bg-card/50 gap-2 sm:gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                  <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    isCompleted ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'
+                  }`}>
+                    {isCompleted ? (
+                      <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-600 dark:text-green-400" />
+                    ) : (
+                      <XCircle className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-medium truncate">{workout.name}</h3>
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-muted-foreground mt-1">
+                    <h3 className="font-medium truncate text-sm sm:text-base">{workout.name}</h3>
+                    <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground mt-1">
                       <span className="whitespace-nowrap">{formatDate(workout.date)}</span>
                       <div className="flex items-center gap-1 whitespace-nowrap">
                         <Clock className="w-3 h-3" />
@@ -337,7 +348,7 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 sm:gap-2 flex-wrap sm:flex-nowrap">
+                <div className="flex items-center gap-1 flex-wrap justify-end">
                   <Badge variant="outline" className="capitalize text-xs">
                     {template.difficulty}
                   </Badge>
@@ -345,17 +356,18 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
                     variant="ghost"
                     size="sm"
                     onClick={() => handleRepeatWorkout(workout.id)}
-                    className="text-xs px-2 py-1 h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    className="text-xs px-1 py-1 h-6 sm:h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                   >
-                    <RotateCcw className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                    <span className="hidden xs:inline">Repeat</span>
+                    <RotateCcw className="w-3 h-3 mr-1" />
+                    <span className="hidden sm:inline">Repeat</span>
                   </Button>
                   <QuickViewModal
                     workout={workout}
+                    hasNewerStarted={hasNewerStarted}
                     trigger={
-                      <Button variant="ghost" size="sm" className="text-xs px-2 py-1 h-8">
-                        <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                        <span className="hidden xs:inline">Quick View</span>
+                      <Button variant="ghost" size="sm" className="text-xs px-1 py-1 h-6 sm:h-8">
+                        <Eye className="w-3 h-3 mr-1" />
+                        <span className="hidden sm:inline">Quick View</span>
                       </Button>
                     }
                   />
@@ -363,17 +375,17 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
                     workout={selectedWorkout}
                     onRepeat={onRepeatWorkout}
                     trigger={
-                      <Button variant="ghost" size="sm" className="text-xs px-2 py-1 h-8" onClick={() => setSelectedWorkout(workout)}>
-                        <span className="hidden xs:inline">View Details</span>
-                        <span className="xs:hidden">Details</span>
+                      <Button variant="ghost" size="sm" className="text-xs px-1 py-1 h-6 sm:h-8" onClick={() => setSelectedWorkout(workout)}>
+                        <span className="hidden sm:inline">View Details</span>
+                        <span className="sm:hidden">Details</span>
                       </Button>
                     }
                   />
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs px-2 py-1 h-8">
-                        <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                        <span className="hidden xs:inline">Delete</span>
+                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs px-1 py-1 h-6 sm:h-8">
+                        <Trash2 className="w-3 h-3 mr-1" />
+                        <span className="hidden sm:inline">Delete</span>
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>

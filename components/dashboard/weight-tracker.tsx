@@ -240,20 +240,20 @@ export function WeightTracker({}: WeightTrackerProps) {
             </div>
 
             {/* Progress Stats */}
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="text-center">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div className="text-center p-2 rounded-lg bg-muted/30">
                 <div className={`font-semibold flex items-center justify-center gap-1 ${getTrendColor()}`}>
                   {getTrendIcon()}
                   {formatWeightChange(stats.weekChange, units)}
                 </div>
-                <p className="text-muted-foreground">This Week</p>
+                <p className="text-muted-foreground text-xs">This Week</p>
               </div>
-              <div className="text-center">
+              <div className="text-center p-2 rounded-lg bg-muted/30">
                 <div className={`font-semibold flex items-center justify-center gap-1 ${getTrendColor()}`}>
                   {getTrendIcon()}
                   {formatWeightChange(stats.monthChange, units)}
                 </div>
-                <p className="text-muted-foreground">This Month</p>
+                <p className="text-muted-foreground text-xs">This Month</p>
               </div>
             </div>
 

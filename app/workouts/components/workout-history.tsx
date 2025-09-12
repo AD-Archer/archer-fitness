@@ -232,8 +232,9 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
               <p>No workout history found. Start your first workout!</p>
             </div>
           ) : (
-            workoutHistory.map((workout) => {
+            workoutHistory.map((workout, idx) => {
               const stats = calculateWorkoutStats(workout)
+              const hasNewerStarted = workoutHistory.some((w, i) => i < idx && new Date(w.date).getTime() > new Date(workout.date).getTime())
               return (
                 <div key={workout.id} className="p-4 rounded-lg border bg-card/50 hover:bg-card/80 transition-colors">
                   <div className="flex items-start justify-between mb-3">
@@ -298,6 +299,7 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
                   <div className="flex gap-2 flex-wrap">
                     <QuickViewModal
                       workout={workout}
+                      hasNewerStarted={hasNewerStarted}
                       trigger={
                         <Button variant="outline" size="sm">
                           <Eye className="w-4 h-4 mr-2" />

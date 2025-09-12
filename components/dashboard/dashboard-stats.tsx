@@ -313,7 +313,13 @@ export function DashboardStats() {
     logger.info(`Last week workouts with duration: ${lastWeekWorkoutsWithDuration.length} out of ${completedWorkouts.filter(workout => {
       const workoutDate = new Date(workout.startTime)
       return workoutDate >= lastWeekStart && workoutDate <= lastWeekEnd
-    }).length}`)
+    }).length}`, {
+      lastWeekWorkoutsWithDuration: lastWeekWorkoutsWithDuration.length,
+      totalCompletedWorkoutsLastWeek: completedWorkouts.filter(workout => {
+        const workoutDate = new Date(workout.startTime)
+        return workoutDate >= lastWeekStart && workoutDate <= lastWeekEnd
+      }).length
+    })
 
     const avgDurationLastWeek = lastWeekWorkoutsWithDuration.length > 0
       ? Math.round(lastWeekWorkoutsWithDuration.reduce((sum: number, w) => {

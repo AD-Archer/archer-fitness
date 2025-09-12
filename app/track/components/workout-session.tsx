@@ -92,6 +92,7 @@ export function WorkoutSession({
   restTimer,
   exerciseTimer,
   onPauseWorkout,
+  onFinishWorkout,
   onStopWorkout,
   onBackToSelection,
   onAddSet,
@@ -197,6 +198,14 @@ export function WorkoutSession({
             <Button onClick={onPauseWorkout} variant="outline" className="bg-transparent flex-1 sm:flex-none">
               {isTimerRunning ? <Pause className="w-4 h-4 mr-1" /> : <Play className="w-4 h-4 mr-1" />}
               {isTimerRunning ? "Resume" : "Pause"}
+            </Button>
+            <Button 
+              onClick={onFinishWorkout} 
+              className="bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-none"
+              disabled={getCompletedExercisesCount(session) === 0}
+            >
+              <Check className="w-4 h-4 mr-1" />
+              Finish Workout
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>

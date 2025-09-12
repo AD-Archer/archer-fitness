@@ -17,15 +17,15 @@ export function DashboardMainContent() {
       <DashboardStats />
 
       {/* Main Content Grid */}
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 sm:gap-3 xl:grid-cols-3">
         {/* Left Column - 2/3 width */}
-        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+        <div className="xl:col-span-2 space-y-2 sm:space-y-3">
           <WeeklyProgress />
           <RecentWorkouts />
         </div>
 
         {/* Right Column - 1/3 width */}
-        <div className="space-y-4 sm:space-y-6">
+        <div className="space-y-2 sm:space-y-3">
 
           {/* Today's Focus */}
           <TodaysFocus />
