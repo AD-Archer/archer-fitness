@@ -407,7 +407,7 @@ export function DashboardStats() {
       </div>
 
       {/* Weight Progress */}
-      {weightStatsArray.length > 0 && (
+      {/* {weightStatsArray.length > 0 && (
         <div>
           <h2 className="text-lg font-semibold mb-4">Weight Progress</h2>
           <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
@@ -428,7 +428,7 @@ export function DashboardStats() {
             })}
           </div>
         </div>
-      )}
+      )} */}
 
       <div>
         <h2 className="text-lg font-semibold mb-4">Workout Overview</h2>
