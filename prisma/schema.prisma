@@ -53,7 +53,7 @@ model User {
 
   // Fitness-related fields
   height        Float?
-  weight        Float?
+  weight        Float?  // Monthly average weight used for meal tracking and calculations
   age           Int?
   gender        String?   // "male" or "female"
   fitnessGoals  String?
@@ -71,6 +71,7 @@ model User {
   foods         Food[]
   meals         Meal[]
   savedWorkoutStates SavedWorkoutState[]
+  weightEntries WeightEntry[]
 
   @@map("users")
 }
@@ -95,6 +96,7 @@ model WorkoutTemplate {
   difficulty       String?  // "beginner", "intermediate", "advanced"
   isPublic         Boolean  @default(false)
   isPredefined     Boolean  @default(false)
+  isAiGenerated    Boolean  @default(false) // flag to track AI-generated templates
   usageCount       Int      @default(0)
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
@@ -110,10 +112,8 @@ model Exercise {
   id          String   @id @default(cuid())
   name        String
   description String?
-  category    String?  // e.g., "chest", "back", "legs", "shoulders", "arms", "core"
-  muscleGroup String?  // primary muscle group targeted
-  equipment   String?  // e.g., "dumbbells", "barbell", "bodyweight", "machine"
   instructions String?
+  gifUrl      String?
   isPublic    Boolean  @default(false)
   isPredefined Boolean @default(false)
   userId      String?  @map("user_id") // null for predefined exercises
@@ -124,7 +124,65 @@ model Exercise {
   templateExercises WorkoutTemplateExercise[]
   sessionExercises  WorkoutSessionExercise[]
 
+  // Relations to global entities
+  bodyParts   ExerciseBodyPart[]
+  equipments  ExerciseEquipment[]
+  muscles     ExerciseMuscle[]
+
   @@map("exercises")
+}
+
+model BodyPart {
+  id   String @id @default(cuid())
+  name String @unique
+  exercises ExerciseBodyPart[]
+  @@map("body_parts")
+}
+
+model Equipment {
+  id   String @id @default(cuid())
+  name String @unique
+  exercises ExerciseEquipment[]
+  @@map("equipments")
+}
+
+model Muscle {
+  id   String @id @default(cuid())
+  name String @unique
+  exercises ExerciseMuscle[]
+  @@map("muscles")
+}
+
+// Join tables for many-to-many
+model ExerciseBodyPart {
+  id         String   @id @default(cuid())
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  exerciseId String   @map("exercise_id")
+  bodyPart   BodyPart @relation(fields: [bodyPartId], references: [id], onDelete: Cascade)
+  bodyPartId String   @map("body_part_id")
+  @@unique([exerciseId, bodyPartId])
+  @@map("exercise_body_parts")
+}
+
+model ExerciseEquipment {
+  id         String   @id @default(cuid())
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  exerciseId String   @map("exercise_id")
+  equipment  Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  equipmentId String  @map("equipment_id")
+  @@unique([exerciseId, equipmentId])
+  @@map("exercise_equipments")
+}
+
+model ExerciseMuscle {
+  id         String   @id @default(cuid())
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  exerciseId String   @map("exercise_id")
+  muscle     Muscle   @relation(fields: [muscleId], references: [id], onDelete: Cascade)
+  muscleId   String   @map("muscle_id")
+  isPrimary  Boolean  @default(false)
+  @@unique([exerciseId, muscleId])
+  @@map("exercise_muscles")
 }
 
 model WorkoutTemplateExercise {
@@ -334,4 +392,20 @@ model MealIngredient {
   food Food @relation(fields: [foodId], references: [id], onDelete: Cascade)
 
   @@map("meal_ingredients")
+}
+
+model WeightEntry {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  weight    Float    // weight in pounds or kg depending on user preference
+  date      DateTime @default(now()) // when the weight was recorded
+  notes     String?  // optional notes about the weigh-in
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("weight_entries")
 }

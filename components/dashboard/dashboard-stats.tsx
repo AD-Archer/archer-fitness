@@ -63,8 +63,11 @@ interface WaterEntry {
 
 export function DashboardStats() {
   const [workoutSessions, setWorkoutSessions] = useState<WorkoutSession[]>([])
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [nutritionGoals, setNutritionGoals] = useState<NutritionGoals | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loggedFoods, setLoggedFoods] = useState<LoggedFood[]>([])
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [waterEntries, setWaterEntries] = useState<WaterEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -75,50 +78,15 @@ export function DashboardStats() {
         setLoading(true)
         setError(null)
 
-        // Fetch workout sessions
-        const sessionsResponse = await fetch('/api/workout-sessions?limit=50')
-        if (sessionsResponse.ok) {
-          const sessionsData = await sessionsResponse.json()
-          setWorkoutSessions(sessionsData)
+        // Fetch workout sessions data
+        const workoutResponse = await fetch('/api/workout-tracker/sessions?limit=5')
+        if (workoutResponse.ok) {
+          const workoutData = await workoutResponse.json()
+          setWorkoutSessions(workoutData.sessions || [])
         }
 
-        // Fetch nutrition goals (you might need to create this endpoint)
-        // For now, we'll use default values
-        setNutritionGoals({
-          dailyCalories: 2200,
-          dailyWater: 2500,
-          protein: 150,
-          carbs: 250,
-          fat: 75,
-          fiber: 30,
-        })
-
-        // Fetch logged foods (fallback to empty if API doesn't exist)
-        try {
-          const foodsResponse = await fetch('/api/meals/today')
-          if (foodsResponse.ok) {
-            const foodsData = await foodsResponse.json()
-            setLoggedFoods(foodsData.loggedFoods || [])
-          }
-        } catch {
-          console.warn('Meals API not available, using empty nutrition data')
-          setLoggedFoods([])
-        }
-
-        // Fetch water entries (fallback to empty if API doesn't exist)
-        try {
-          const waterResponse = await fetch('/api/health/water/today')
-          if (waterResponse.ok) {
-            const waterData = await waterResponse.json()
-            setWaterEntries(waterData.entries || [])
-          }
-        } catch {
-          console.warn('Water API not available, using empty water data')
-          setWaterEntries([])
-        }
-
-      } catch (err) {
-        console.error('Failed to fetch dashboard data:', err)
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error)
         setError('Failed to load dashboard data')
       } finally {
         setLoading(false)

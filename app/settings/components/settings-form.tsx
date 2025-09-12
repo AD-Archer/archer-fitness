@@ -306,24 +306,38 @@ export function SettingsForm() {
   const handleSaveChanges = async () => {
     setIsSaving(true)
     try {
+      // Validate and prepare profile data
+      const profileData = {
+        name: profile.name || null,
+        age: profile.age && !isNaN(parseInt(profile.age)) ? parseInt(profile.age) : null,
+        weight: profile.weight && !isNaN(parseFloat(profile.weight)) ? parseFloat(profile.weight) : null,
+        height: (() => {
+          if (appPrefs.units === "imperial") {
+            const feet = profile.heightFeet && !isNaN(parseFloat(profile.heightFeet)) ? parseFloat(profile.heightFeet) : null
+            const inches = profile.heightInches && !isNaN(parseFloat(profile.heightInches)) ? parseFloat(profile.heightInches) : null
+            return (feet && inches) ? convertHeightToCm(feet, inches) : null
+          } else {
+            return profile.heightCm && !isNaN(parseFloat(profile.heightCm)) ? parseFloat(profile.heightCm) : null
+          }
+        })(),
+        gender: profile.gender || null,
+        fitnessGoals: profile.fitnessGoals || null,
+        activityLevel: profile.activityLevel || null,
+      }
+
+      console.log("Sending profile data:", profileData)
+
       const profileRes = await fetch("/api/user/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: profile.name,
-          age: profile.age ? parseInt(profile.age) : null,
-          weight: profile.weight ? parseFloat(profile.weight) : null,
-          height: appPrefs.units === "imperial" 
-            ? (profile.heightFeet && profile.heightInches) ? 
-                convertHeightToCm(parseFloat(profile.heightFeet), parseFloat(profile.heightInches)) : null
-            : profile.heightCm ? parseFloat(profile.heightCm) : null,
-          gender: profile.gender,
-          fitnessGoals: profile.fitnessGoals,
-          activityLevel: profile.activityLevel,
-        }),
+        body: JSON.stringify(profileData),
       })
 
-      if (!profileRes.ok) throw new Error("Failed to save profile")
+      if (!profileRes.ok) {
+        const errorData = await profileRes.json().catch(() => ({ error: "Unknown error" }))
+        console.error("Profile save failed:", errorData)
+        throw new Error(`Failed to save profile: ${errorData.error || 'Unknown error'}`)
+      }
 
       // Save preferences, but don't block profile save success
       const prefsRes = await fetch("/api/user/preferences", {

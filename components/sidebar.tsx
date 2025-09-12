@@ -24,10 +24,10 @@ import { signOut } from "next-auth/react"
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Generate", href: "/generate", icon: Zap },
-  { name: "Tracker", href: "/track", icon: Play },
-  { name: "History", href: "/workouts", icon: Dumbbell },
+  { name: "Workout", href: "/track", icon: Dumbbell },
+  { name: "History", href: "/workouts", icon: Play },
   { name: "Nutrition", href: "/nutrition", icon: Apple },
-  { name: "Progress", href: "/progress", icon: TrendingUp },
+  { name: "Statistics", href: "/progress", icon: TrendingUp },
   { name: "Schedule", href: "#", icon: Calendar },
   { name: "Recovery", href: "/recovery", icon: Moon },
 ]

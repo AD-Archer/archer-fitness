@@ -163,25 +163,71 @@ The repository includes automated CI/CD pipelines for building, testing, and dep
 
 ### Docker Deployment
 
-1. **Build the Docker image**
-   ```bash
-   docker build -t archer-fitness .
-   ```
 
-2. **Run with Docker Compose**
-   ```bash
-   docker-compose up -d
-   ```
+1. **Run with Docker Compose**
 
-3. **Or run manually**
-   ```bash
-   docker run -d \
-     --name archer-fitness \
-     --network host \
-     --env-file .env \
-     -e NODE_ENV=production \
-     archer-fitness
-   ```
+    Create a `.env` file (see below for required variables), then use the following `docker-compose.yml` (copy-pasteable example):
+
+    ```yaml
+    services:
+       archer-fitness:
+          image: ad-archer/archer-fitness:latest
+          container_name: archer-fitness
+          ports:
+             - "3000:3000"
+          env_file:
+             - .env
+          environment:
+             - NODE_ENV=production
+             - PORT=${PORT:-3000}
+             # Uncomment below if using the local db service
+             # DATABASE_URL=postgresql://postgres:postgres@db:5432/archer_fitness?schema=public
+          restart: unless-stopped
+          # depends_on:
+          #   - db  # Uncomment if using the local db service
+          healthcheck:
+             test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+             interval: 30s
+             timeout: 10s
+             retries: 3
+             start_period: 40s
+
+       # --- OPTIONAL: Local PostgreSQL Database ---
+       # Uncomment to run a local db for dev/testing
+       # db:
+       #   image: postgres:15
+       #   container_name: archer-fitness-db
+       #   restart: unless-stopped
+       #   environment:
+       #     POSTGRES_DB: archer_fitness
+       #     POSTGRES_USER: postgres
+       #     POSTGRES_PASSWORD: postgres
+       #   ports:
+       #     - "5432:5432"
+       #   volumes:
+       #     - db-data:/var/lib/postgresql/data
+
+    volumes:
+       db-data: {}
+    ```
+
+    Then start the stack:
+    ```bash
+    docker compose up -d
+    ```
+2. **Or run manually**
+    ```bash
+    docker run -d \
+       --name archer-fitness \
+       --env-file .env \
+       -p 3000:3000 \
+       --restart unless-stopped \
+       adarcher/archer-fitness:latest
+    ```
+
+**Note:**
+- The default `docker-compose.yml` is production-ready and supports both external and local databases.
+- For local development, uncomment the `db` service and the `depends_on`/`DATABASE_URL` lines in the app service.
 
 ### Home Server Deployment
 
@@ -293,12 +339,13 @@ pnpm run update:docker # Update Docker containers
 
 ### Docker + Home Server
 
-1. **Build and push Docker image to DockerHub** (handled by CI/CD)
-2. **Manual deployment to your home server**:
+1. **Pull the image on your server**
    ```bash
-   # On your server
-   docker pull ad-archer/archer-fitness:latest
-   docker-compose up -d
+   docker pull adarcher/archer-fitness:latest
+   ```
+2. **Start with Docker Compose**
+   ```bash
+   docker compose up -d
    ```
 
 ### Manual Server
@@ -377,17 +424,12 @@ This project is private and proprietary. All rights reserved.
 
 ## 🙏 Acknowledgments
 
-- **Next.js Team** for the amazing React framework
-- **Prisma Team** for the excellent database toolkit
-- **Radix UI** for accessible component primitives
-- **Tailwind CSS** for the utility-first CSS framework
-- **Vercel** for hosting and deployment platform
+- [**Exercise DB**](https://www.exercisedb.dev/) - For their Amazing Database to get all of our exercises, machines, muscles, and bodyparts 
+
 
 ## 📞 Support
 
 For support or questions:
 - Create an issue on GitHub
-- Contact: antonio@archer.software
-- Documentation: [docs.archer.software](https://docs.archer.software)
-
+- Contact: antonioarcher.dev@gmail.com
 ---

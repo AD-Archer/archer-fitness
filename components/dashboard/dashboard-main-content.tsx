@@ -1,12 +1,13 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
 import { DashboardStats } from "@/components/dashboard/dashboard-stats"
 import { RecentWorkouts } from "@/app/workouts/components/recent-workouts"
 import { WeeklyProgress } from "@/components/weekly-progress"
+import { TodaysFocus } from "@/components/dashboard/todays-focus"
+import { WeightTracker } from "@/components/dashboard/weight-tracker"
 
 
 export function DashboardMainContent() {
@@ -27,28 +28,10 @@ export function DashboardMainContent() {
         <div className="space-y-4 sm:space-y-6">
 
           {/* Today's Focus */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Today&#39;s Focus</CardTitle>
-              <CardDescription>AI recommended workout</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 sm:space-y-4">
-              <div className="p-3 sm:p-4 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 border overflow-hidden">
-                <h3 className="font-semibold text-blue-900 dark:text-blue-100 truncate">Upper Body Strength</h3>
-                <p className="text-sm text-blue-700 dark:text-blue-300 mt-1 truncate">45 min • 6 exercises • Intermediate</p>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Progress</span>
-                  <span>0/6 exercises</span>
-                </div>
-                <Progress value={0} className="h-2" />
-              </div>
-              <Button variant="outline" className="w-full bg-transparent">
-                Start Workout
-              </Button>
-            </CardContent>
-          </Card>
+          <TodaysFocus />
+
+          {/* Weight Tracking */}
+                    <WeightTracker />
 
           {/* Rest & Recovery */}
           <Card>
