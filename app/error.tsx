@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { RefreshCw, Home, AlertTriangle, Bug } from 'lucide-react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 
 interface ErrorProps {
   error: Error & { digest?: string }
@@ -13,10 +14,31 @@ interface ErrorProps {
 }
 
 export default function Error({ error, reset }: ErrorProps) {
+  const { data: session } = useSession()
+
   useEffect(() => {
     // Log the error to an error reporting service
     console.error('Application error:', error)
-  }, [error])
+
+    // Report error to admin via API (async, don't await to avoid blocking UI)
+    fetch('/api/errors/report', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        error: {
+          message: error.message,
+          stack: error.stack,
+          digest: error.digest,
+        },
+        context: 'Client-side error in Archer Fitness app',
+        userId: (session?.user as any)?.id, // Include userId if available
+      }),
+    }).catch(err => {
+      console.error('Failed to report error to admin:', err)
+    })
+  }, [error, (session?.user as any)?.id])
 
   const isDevelopment = process.env.NODE_ENV === 'development'
 

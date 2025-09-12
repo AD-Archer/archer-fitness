@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
@@ -18,8 +18,60 @@ import { PrivacyTab } from "./privacy-tab"
 export function SettingsForm() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+
+  // Tab state management with URL sync
+  const [activeTab, setActiveTab] = useState("profile")
+
+  // Sync tab with URL on mount
+  useEffect(() => {
+    const tabFromUrl = searchParams.get("tab")
+    if (tabFromUrl && ["profile", "workout", "nutrition", "notifications", "privacy"].includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl)
+    }
+  }, [searchParams])
+
+  // Update URL when tab changes
+  const handleTabChange = (value: string) => {
+    setActiveTab(value)
+    const newSearchParams = new URLSearchParams(searchParams.toString())
+    newSearchParams.set("tab", value)
+    router.replace(`/settings?${newSearchParams.toString()}`, { scroll: false })
+  }
+
+  const defaultWorkoutPrefs = {
+    defaultDuration: "45",
+    difficultyLevel: "intermediate",
+    preferredTime: "morning",
+    availableEquipment: ["dumbbells", "barbell", "bodyweight"],
+    restDayReminders: true,
+  }
+  const defaultNutritionPrefs = {
+    dailyCalories: "2200",
+    proteinTarget: "150",
+    carbTarget: "250",
+    fatTarget: "80",
+    dietaryRestrictions: [],
+    trackWater: true,
+    waterTarget: "2500",
+    useSmartCalculations: true,
+  }
+  const defaultAppPrefs = {
+    theme: "system",
+    units: "imperial",
+    notifications: true,
+    weeklyReports: true,
+    dataSharing: false,
+    notificationPrefs: {
+      workoutReminders: true,
+      weightReminders: true,
+      nutritionReminders: true,
+      streakReminders: true,
+      reminderTime: "09:00"
+    }
+  }
 
   const [profile, setProfile] = useState<UserProfile>({
     name: "",
@@ -59,6 +111,13 @@ export function SettingsForm() {
     notifications: true,
     weeklyReports: true,
     dataSharing: false,
+    notificationPrefs: {
+      workoutReminders: true,
+      weightReminders: true,
+      nutritionReminders: true,
+      streakReminders: true,
+      reminderTime: "09:00"
+    }
   })
 
   // Redirect if not authenticated
@@ -111,86 +170,20 @@ export function SettingsForm() {
         if (prefsRes.ok) {
           const data = await prefsRes.json()
           if (data?.preferences) {
-            const defaultWorkoutPrefs = {
-              defaultDuration: "45",
-              difficultyLevel: "intermediate",
-              preferredTime: "morning",
-              availableEquipment: ["dumbbells", "barbell", "bodyweight"],
-              restDayReminders: true,
-            }
-            const defaultNutritionPrefs = {
-              dailyCalories: "2200",
-              proteinTarget: "150",
-              carbTarget: "250",
-              fatTarget: "80",
-              dietaryRestrictions: [],
-              trackWater: true,
-              waterTarget: "2500",
-              useSmartCalculations: true,
-            }
-            const defaultAppPrefs = {
-              theme: "system",
-              units: "imperial",
-              notifications: true,
-              weeklyReports: true,
-              dataSharing: false,
-            }
-            setWorkoutPrefs(data.preferences.workoutPrefs || defaultWorkoutPrefs)
-            setNutritionPrefs(data.preferences.nutritionPrefs || defaultNutritionPrefs)
-            setAppPrefs(data.preferences.appPrefs || defaultAppPrefs)
+            setWorkoutPrefs({ ...defaultWorkoutPrefs, ...data.preferences.workoutPrefs })
+            setNutritionPrefs({ ...defaultNutritionPrefs, ...data.preferences.nutritionPrefs })
+            setAppPrefs({ ...defaultAppPrefs, ...data.preferences.appPrefs })
           } else {
             // Use defaults if no preferences exist
-            setWorkoutPrefs({
-              defaultDuration: "45",
-              difficultyLevel: "intermediate",
-              preferredTime: "morning",
-              availableEquipment: ["dumbbells", "barbell", "bodyweight"],
-              restDayReminders: true,
-            })
-            setNutritionPrefs({
-              dailyCalories: "2200",
-              proteinTarget: "150",
-              carbTarget: "250",
-              fatTarget: "80",
-              dietaryRestrictions: [],
-              trackWater: true,
-              waterTarget: "2500",
-              useSmartCalculations: true,
-            })
-            setAppPrefs({
-              theme: "system",
-              units: "imperial",
-              notifications: true,
-              weeklyReports: true,
-              dataSharing: false,
-            })
+            setWorkoutPrefs(defaultWorkoutPrefs)
+            setNutritionPrefs(defaultNutritionPrefs)
+            setAppPrefs(defaultAppPrefs)
           }
         } else {
           // Use defaults if API fails
-          setWorkoutPrefs({
-            defaultDuration: "45",
-            difficultyLevel: "intermediate",
-            preferredTime: "morning",
-            availableEquipment: ["dumbbells", "barbell", "bodyweight"],
-            restDayReminders: true,
-          })
-          setNutritionPrefs({
-            dailyCalories: "2200",
-            proteinTarget: "150",
-            carbTarget: "250",
-            fatTarget: "80",
-            dietaryRestrictions: [],
-            trackWater: true,
-            waterTarget: "2500",
-            useSmartCalculations: true,
-          })
-          setAppPrefs({
-            theme: "system",
-            units: "imperial",
-            notifications: true,
-            weeklyReports: true,
-            dataSharing: false,
-          })
+          setWorkoutPrefs(defaultWorkoutPrefs)
+          setNutritionPrefs(defaultNutritionPrefs)
+          setAppPrefs(defaultAppPrefs)
         }
       } catch (error) {
         console.error("Failed to load user data:", error)
@@ -277,30 +270,9 @@ export function SettingsForm() {
       fitnessGoals: "maintenance",
       activityLevel: "moderate",
     })
-    setWorkoutPrefs({
-      defaultDuration: "45",
-      difficultyLevel: "intermediate",
-      preferredTime: "morning",
-      availableEquipment: ["dumbbells", "barbell", "bodyweight"],
-      restDayReminders: true,
-    })
-    setNutritionPrefs({
-      dailyCalories: "2200",
-      proteinTarget: "150",
-      carbTarget: "250",
-      fatTarget: "80",
-      dietaryRestrictions: [],
-      trackWater: true,
-      waterTarget: "2500",
-      useSmartCalculations: true,
-    })
-    setAppPrefs({
-      theme: "system",
-      units: "imperial",
-      notifications: true,
-      weeklyReports: true,
-      dataSharing: false,
-    })
+    setWorkoutPrefs(defaultWorkoutPrefs)
+    setNutritionPrefs(defaultNutritionPrefs)
+    setAppPrefs(defaultAppPrefs)
   }
 
   const handleSaveChanges = async () => {
@@ -376,7 +348,7 @@ export function SettingsForm() {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="profile" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
         <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />

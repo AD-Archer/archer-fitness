@@ -37,4 +37,11 @@ export interface AppPrefs {
   notifications: boolean
   weeklyReports: boolean
   dataSharing: boolean
+  notificationPrefs: {
+    workoutReminders: boolean
+    weightReminders: boolean
+    nutritionReminders: boolean
+    streakReminders: boolean
+    reminderTime: string // HH:MM format
+  }
 }

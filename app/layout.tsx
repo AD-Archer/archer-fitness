@@ -6,6 +6,7 @@ import { AuthProvider } from '@/components/auth-provider'
 import { Toaster } from 'sonner'
 import Script from 'next/script'
 import './globals.css'
+import { NotificationInitializer } from '@/components/notification-initializer'
 
 const baseUrl = process.env.NEXTAUTH_URL || 'https://fitness.archer.software'
 
@@ -149,10 +150,31 @@ export default function RootLayout({
       </head>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <AuthProvider>
+          <NotificationInitializer />
           {children}
           <Toaster />
         </AuthProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
+
+        {/* Service Worker Registration */}
+        <Script
+          id="sw-registration"
+          strategy="afterInteractive"
+        >
+          {`
+            if ('serviceWorker' in navigator) {
+              window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                  .then(function(registration) {
+                    console.log('Service Worker registered with scope:', registration.scope);
+                  })
+                  .catch(function(error) {
+                    console.log('Service Worker registration failed:', error);
+                  });
+              });
+            }
+          `}
+        </Script>
       </body>
     </html>
   )

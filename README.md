@@ -138,9 +138,47 @@ The repository includes automated CI/CD pipelines for building, testing, and dep
    NEXTAUTH_SECRET="your-super-secret-key"
    NEXTAUTH_URL="http://localhost:3000"
 
+   # VAPID Keys for Push Notifications (Required)
+   NEXT_PUBLIC_VAPID_PUBLIC_KEY="your-vapid-public-key"
+   VAPID_PRIVATE_KEY="your-vapid-private-key"
+   VAPID_EMAIL="admin@yourdomain.com"
+
+   # Admin Email for Error and Startup Notifications (Optional)
+   ADMIN_EMAIL="admin@yourdomain.com"
+
    # Optional: Analytics
    VERCEL_ANALYTICS_ID="your-vercel-analytics-id"
    ```
+
+3. **Generate VAPID keys for push notifications**
+   ```bash
+   node scripts/generate-vapid-keys.js
+   ```
+   This will generate the required `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` values using the web-push library (ensures correct format for both client and server).
+
+   **Output Example:**
+   ```
+   VAPID Keys Generated Successfully!
+   =====================================
+
+   Public Key (NEXT_PUBLIC_VAPID_PUBLIC_KEY):
+   BI-bhgEd6FOJsBKELAstGTh...
+
+   Private Key (VAPID_PRIVATE_KEY):
+   y53ggQU7...
+
+   Add these to your .env.local file (development) or .env file (production/Docker):
+   NEXT_PUBLIC_VAPID_PUBLIC_KEY=BI-bhgEd6FOJsBKELAstGTh...
+   VAPID_PRIVATE_KEY=y53ggQU7...
+   ```
+
+   **Important Notes:**
+   - The script uses the `web-push` library to generate keys in the correct format
+   - Public key is safe to expose (used in browser)
+   - Private key must be kept secure (never commit to version control)
+   - Keys work for both browser Push API and server-side web-push library
+   - For Docker/production: Add keys to `.env` file
+   - For development: Add keys to `.env.local` file
 
 4. **Set up the database**
    ```bash

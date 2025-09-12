@@ -74,6 +74,7 @@ model User {
   weightEntries WeightEntry[]
   schedules     Schedule[]
   scheduleTemplates ScheduleTemplate[]
+  pushSubscriptions PushSubscription[]
 
   @@map("users")
 }
@@ -489,4 +490,20 @@ model ScheduleTemplateItem {
 
   @@index([templateId, day])
   @@map("schedule_template_items")
+}
+
+// Push notification subscription model
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  endpoint  String   @unique
+  keys      Json     // Store p256dh and auth keys
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, endpoint])
+  @@index([userId])
+  @@map("push_subscriptions")
 }

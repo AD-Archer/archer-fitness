@@ -69,7 +69,8 @@ export function PrivacyTab({ appPrefs, setAppPrefs }: PrivacyTabProps) {
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <Label>Anonymous Data Sharing</Label>
-            <p className="text-sm text-muted-foreground">Help improve the app by sharing anonymous usage data</p>
+            <p className="text-sm text-muted-foreground">Help improve the app by sharing anonymous usage data and error reports</p>
+            <p className="text-xs text-muted-foreground">When disabled, error reports and admin notifications will not be sent</p>
           </div>
           <Switch
             checked={appPrefs.dataSharing}

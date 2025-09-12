@@ -110,11 +110,29 @@ At a minimum, set:
 - DATABASE_URL — PostgreSQL connection string (e.g. postgresql://user:pass@db:5432/archer_fitness?schema=public)
 - NEXTAUTH_SECRET — secret for NextAuth
 - NEXTAUTH_URL — public URL (e.g. https://example.com or http://localhost:3000)
+- NEXT_PUBLIC_VAPID_PUBLIC_KEY — VAPID public key for push notifications
+- VAPID_PRIVATE_KEY — VAPID private key for push notifications
+- VAPID_EMAIL — contact email for VAPID
+- ADMIN_EMAIL — admin email for error and startup notifications (optional)
 
-Optional / recommended:
+### Generate VAPID Keys
 
-- VERCEL_ANALYTICS_ID — analytics id if used
-- NODE_ENV — production (default set by image if built for production)
+Before running the container, generate VAPID keys for push notifications:
+
+Go to [https://vapidkeys.com/] or 
+
+```bash
+# Clone the repository to access the script
+git clone https://github.com/ad-archer/archer-fitness.git
+cd archer-fitness
+
+# Generate VAPID keys
+node scripts/generate-vapid-keys.js
+```
+
+Copy the generated keys into your `.env` file.
+
+**Note:** Push notifications require valid VAPID keys to work. Without them, the notification feature will not function properly.
 
 Example `.env`:
 
@@ -122,6 +140,10 @@ Example `.env`:
 DATABASE_URL="postgresql://postgres:postgres@db:5432/archer_fitness?schema=public"
 NEXTAUTH_SECRET="your-super-secret-key"
 NEXTAUTH_URL="http://localhost:3000"
+NEXT_PUBLIC_VAPID_PUBLIC_KEY="your-generated-public-key"
+VAPID_PRIVATE_KEY="your-generated-private-key"
+VAPID_EMAIL="admin@yourdomain.com"
+ADMIN_EMAIL="admin@yourdomain.com"
 # Optional: PORT is read by Docker Compose when using dotenv. Set if you want a custom port.
 PORT=3000
 ```
