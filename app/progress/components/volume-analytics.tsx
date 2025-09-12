@@ -6,6 +6,7 @@ import { Dumbbell } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useUserPreferences } from "@/hooks/use-user-preferences"
 import { getWeightUnitAbbr } from "@/lib/weight-utils"
+import { logger } from "@/lib/logger"
 
 interface VolumeData {
   week: string
@@ -77,7 +78,7 @@ export function VolumeAnalytics({ timeRange = "3months" }: VolumeAnalyticsProps)
           }
         }
       } catch (error) {
-        console.error('Failed to fetch volume data:', error)
+        logger.error('Failed to fetch volume data:', error)
       } finally {
         setLoading(false)
       }

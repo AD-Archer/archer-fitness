@@ -60,7 +60,6 @@ export async function GET(request: NextRequest) {
         newestEntry: entries[0]?.date,
       })
     } catch (dbError) {
-      console.warn('WeightEntry table not found:', dbError)
       return NextResponse.json({
         averageWeight: null,
         entryCount: 0,
@@ -69,7 +68,6 @@ export async function GET(request: NextRequest) {
       })
     }
   } catch (error) {
-    console.error("Weight average fetch error:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

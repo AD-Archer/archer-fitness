@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
+import { logger } from "@/lib/logger"
 
 export async function GET(request: NextRequest) {
   try {
@@ -116,7 +117,7 @@ export async function GET(request: NextRequest) {
       predefinedExercises,
     })
   } catch (error) {
-    console.error("Error fetching exercises:", error)
+    logger.error("Error fetching exercises:", error)
     return NextResponse.json(
       { error: "Failed to fetch exercises" },
       { status: 500 }
@@ -194,7 +195,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(exercise, { status: 201 })
   } catch (error) {
-    console.error("Error creating exercise:", error)
+    logger.error("Error creating exercise:", error)
     return NextResponse.json(
       { error: "Failed to create exercise" },
       { status: 500 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import prisma from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 
 // GET /api/schedule/templates - Get all schedule templates for a user
 export async function GET() {
@@ -38,7 +39,7 @@ export async function GET() {
     return NextResponse.json({ templates })
 
   } catch (error) {
-    console.error('Error fetching schedule templates:', error)
+    logger.error('Error fetching schedule templates:', error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ template: fullTemplate })
 
   } catch (error) {
-    console.error('Error creating schedule template:', error)
+    logger.error('Error creating schedule template:', error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

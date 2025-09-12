@@ -11,6 +11,7 @@ import { ScheduleTemplates } from "./schedule-templates"
 import { WeeklySchedule, ScheduleItem } from "../types/schedule"
 import { useScheduleApi } from "../hooks/use-schedule-api"
 import { useToast } from "@/hooks/use-toast"
+import { logger } from "@/lib/logger"
 
 export function ScheduleManager() {
   const [currentSchedule, setCurrentSchedule] = useState<WeeklySchedule | null>(null)
@@ -68,7 +69,7 @@ export function ScheduleManager() {
         setCompletedSessions(sessions.filter(session => session.status === 'completed'))
       }
     } catch (error) {
-      console.error('Failed to load completed sessions:', error)
+      logger.error('Failed to load completed sessions:', error)
     }
   }, [])
 
@@ -104,7 +105,7 @@ export function ScheduleManager() {
       // Load completed sessions for the week
       await loadCompletedSessions(weekStart)
     } catch (error) {
-      console.error('Failed to load schedule:', error)
+      logger.error('Failed to load schedule:', error)
       toast({
         title: "Error",
         description: "Failed to load schedule from server",
@@ -144,7 +145,7 @@ export function ScheduleManager() {
       const allItems = schedule.days.flatMap(day => day.items)
       await saveSchedule(weekKey, allItems)
     } catch (error) {
-      console.error('Failed to save schedule:', error)
+      logger.error('Failed to save schedule:', error)
       toast({
         title: "Error",
         description: "Failed to save schedule to server",

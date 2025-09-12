@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Search, Trash2, Target, TrendingUp, Apple, Droplets, Minus, Database, ChefHat, Users, Lock, Eye } from "lucide-react"
+import { logger } from "@/lib/logger"
 
 interface FoodItem {
   id: string
@@ -261,7 +262,7 @@ export function CalorieTracker() {
         })
       }
     } catch (error) {
-      console.error('Error adding custom food:', error)
+      logger.error('Error adding custom food:', error)
     }
   }
 
@@ -328,7 +329,7 @@ export function CalorieTracker() {
         })
       }
     } catch {
-      console.error('Error adding quick food')
+      logger.error('Error adding quick food')
     }
   }
 
@@ -374,7 +375,7 @@ export function CalorieTracker() {
         setMealIngredients([])
       }
     } catch {
-      console.error('Error creating meal')
+      logger.error('Error creating meal')
     }
   }
 

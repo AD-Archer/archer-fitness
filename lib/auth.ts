@@ -46,8 +46,7 @@ export const authOptions: NextAuthOptions = {
             name: user.name,
             image: user.image,
           }
-        } catch (error) {
-          console.error("Auth error:", error)
+        } catch {
           return null
         }
       }
@@ -100,8 +99,7 @@ export const authOptions: NextAuthOptions = {
             user.id = existingUser.id
             return true
           }
-        } catch (error) {
-          console.error("Sign-in error:", error)
+        } catch {
           return false
         }
       }

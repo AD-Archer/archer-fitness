@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { calculateWorkoutPerformance } from "@/lib/workout-performance"
+import { logger } from "@/lib/logger"
 
 export async function GET(
   request: NextRequest,
@@ -83,7 +84,7 @@ export async function GET(
 
     return NextResponse.json(sessionWithPerformance)
   } catch (error) {
-    console.error("Error fetching workout session:", error)
+    logger.error("Error fetching workout session:", error)
     return NextResponse.json(
       { error: "Failed to fetch workout session" },
       { status: 500 }
@@ -207,7 +208,7 @@ export async function PUT(
 
     return NextResponse.json(workoutSession)
   } catch (error) {
-    console.error("Error updating workout session:", error)
+    logger.error("Error updating workout session:", error)
     return NextResponse.json(
       { error: "Failed to update workout session" },
       { status: 500 }
@@ -234,7 +235,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: "Workout session deleted successfully" })
   } catch (error) {
-    console.error("Error deleting workout session:", error)
+    logger.error("Error deleting workout session:", error)
     return NextResponse.json(
       { error: "Failed to delete workout session" },
       { status: 500 }

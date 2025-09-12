@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-console */
 
 // Script to generate VAPID keys for push notifications
 // Run with: node scripts/generate-vapid-keys.js

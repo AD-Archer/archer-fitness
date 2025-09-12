@@ -14,6 +14,7 @@ import { WorkoutTab } from "./workout-tab"
 import { NutritionTab } from "./nutrition-tab"
 import { AppTab } from "./app-tab"
 import { PrivacyTab } from "./privacy-tab"
+import { logger } from "@/lib/logger"
 
 export function SettingsForm() {
   const { data: session, status } = useSession()
@@ -186,7 +187,7 @@ export function SettingsForm() {
           setAppPrefs(defaultAppPrefs)
         }
       } catch (error) {
-        console.error("Failed to load user data:", error)
+        logger.error("Failed to load user data:", error)
         toast.error("Failed to load user data")
       } finally {
         setIsLoading(false)
@@ -254,7 +255,7 @@ export function SettingsForm() {
         }))
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [appPrefs.units, profile.heightCm, profile.heightFeet, profile.heightInches])
 
   const handleResetToDefaults = () => {
@@ -297,7 +298,7 @@ export function SettingsForm() {
         activityLevel: profile.activityLevel || null,
       }
 
-      console.log("Sending profile data:", profileData)
+      logger.info("Sending profile data:", profileData)
 
       const profileRes = await fetch("/api/user/profile", {
         method: "PUT",
@@ -307,7 +308,7 @@ export function SettingsForm() {
 
       if (!profileRes.ok) {
         const errorData = await profileRes.json().catch(() => ({ error: "Unknown error" }))
-        console.error("Profile save failed:", errorData)
+        logger.error("Profile save failed:", errorData)
         throw new Error(`Failed to save profile: ${errorData.error || 'Unknown error'}`)
       }
 
@@ -327,7 +328,7 @@ export function SettingsForm() {
         toast.success("Settings saved successfully!")
       }
     } catch (error) {
-      console.error("Failed to save settings:", error)
+      logger.error("Failed to save settings:", error)
       toast.error("Failed to save settings")
     } finally {
       setIsSaving(false)

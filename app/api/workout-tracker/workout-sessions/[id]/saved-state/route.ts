@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 
 // Save workout state
 export async function POST(
@@ -67,7 +68,7 @@ export async function POST(
 
     return NextResponse.json(savedState)
   } catch (error) {
-    console.error("Error saving workout state:", error)
+    logger.error("Error saving workout state:", error)
     return NextResponse.json(
       { error: "Failed to save workout state" },
       { status: 500 }
@@ -105,7 +106,7 @@ export async function GET(
 
     return NextResponse.json(savedState)
   } catch (error) {
-    console.error("Error getting saved workout state:", error)
+    logger.error("Error getting saved workout state:", error)
     return NextResponse.json(
       { error: "Failed to get saved workout state" },
       { status: 500 }
@@ -149,7 +150,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Error deleting saved workout state:", error)
+    logger.error("Error deleting saved workout state:", error)
     return NextResponse.json(
       { error: "Failed to delete saved workout state" },
       { status: 500 }

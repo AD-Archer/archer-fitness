@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { type WeightUnit } from '@/lib/weight-utils'
+import { logger } from "@/lib/logger"
 
 interface UserPreferences {
   app: {
@@ -54,7 +55,7 @@ export function useUserPreferences(): UseUserPreferencesReturn {
       
       setPreferences(userPrefs)
     } catch (err) {
-      console.error('Error loading user preferences:', err)
+      logger.error('Error loading user preferences:', err)
       setError(err instanceof Error ? err.message : 'Unknown error')
       
       // Set fallback preferences

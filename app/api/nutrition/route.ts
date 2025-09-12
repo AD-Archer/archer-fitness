@@ -78,7 +78,6 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error("Error fetching nutrition logs:", error)
     return NextResponse.json(
       { error: "Failed to fetch nutrition logs" },
       { status: 500 }
@@ -116,7 +115,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(nutritionLog, { status: 201 })
   } catch (error) {
-    console.error("Error creating nutrition log:", error)
     return NextResponse.json(
       { error: "Failed to create nutrition log" },
       { status: 500 }

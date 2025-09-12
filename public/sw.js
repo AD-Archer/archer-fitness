@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 // Service Worker for Push Notifications
 // This handles push notifications when the app is not active
 

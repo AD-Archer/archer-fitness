@@ -85,8 +85,7 @@ export async function GET(request: NextRequest) {
     })
 
     return NextResponse.json(foods)
-  } catch (error) {
-    console.error("Error fetching foods:", error)
+  } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -160,8 +159,7 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(food, { status: 201 })
-  } catch (error) {
-    console.error("Error creating food:", error)
+  } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

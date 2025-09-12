@@ -5,6 +5,7 @@ import { Calendar, Apple, Droplets, Scale } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useUserPreferences } from "@/hooks/use-user-preferences"
 import { formatWeight, formatWeightChange } from "@/lib/weight-utils"
+import { logger } from "@/lib/logger"
 
 interface KeyMetrics {
   totalWorkouts: number
@@ -46,7 +47,7 @@ export function KeyMetricsCards({ timeRange = "3months" }: KeyMetricsCardsProps)
             }
           }
         } catch (e) {
-          console.error('Failed to fetch general stats from analytics API', e)
+          logger.error('Failed to fetch general stats from analytics API', e)
         }
 
 
@@ -64,7 +65,7 @@ export function KeyMetricsCards({ timeRange = "3months" }: KeyMetricsCardsProps)
             }
           }
         } catch {
-          console.log('Nutrition API not available, using defaults')
+          logger.info('Nutrition API not available, using defaults')
           avgCalories = 2100
           caloriesPercentage = 95
         }
@@ -82,7 +83,7 @@ export function KeyMetricsCards({ timeRange = "3months" }: KeyMetricsCardsProps)
             }
           }
         } catch {
-          console.log('Weight API not available, using defaults')
+          logger.info('Weight API not available, using defaults')
           currentWeight = 165
           weightChange = -2.5
         }
@@ -96,7 +97,7 @@ export function KeyMetricsCards({ timeRange = "3months" }: KeyMetricsCardsProps)
             hydrationRate = Math.round(hydrationData.averageCompletionRate || 0)
           }
         } catch {
-          console.log('Hydration API not available, using defaults')
+          logger.info('Hydration API not available, using defaults')
           hydrationRate = 85
         }
 
@@ -113,7 +114,7 @@ export function KeyMetricsCards({ timeRange = "3months" }: KeyMetricsCardsProps)
         })
 
       } catch (error) {
-        console.error('Failed to fetch key metrics:', error)
+        logger.error('Failed to fetch key metrics:', error)
         // Set fallback data
         setMetrics({
           totalWorkouts: 0,

@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 import { Target } from "lucide-react"
 import { useEffect, useState } from "react"
+import { logger } from "@/lib/logger"
 
 interface MuscleGroupData {
   name: string
@@ -49,12 +50,12 @@ export function DistributionAnalytics({ timeRange = "3months" }: DistributionAna
         if (response.ok) {
           const sessions: WorkoutSession[] = await response.json()
           
-          console.log('Fetched sessions:', sessions.length)
-          console.log('Session statuses:', sessions.map(s => s.status))
+          logger.info('Fetched sessions:', sessions.length)
+          logger.info('Session statuses:', sessions.map(s => s.status))
           
           // Debug: Check if we have any sessions and their structure
           if (sessions.length === 0) {
-            console.log('No workout sessions found')
+            logger.info('No workout sessions found')
             setLoading(false)
             return
           }
@@ -74,7 +75,7 @@ export function DistributionAnalytics({ timeRange = "3months" }: DistributionAna
                 sessionHasCompletedSets = true
                 totalCompletedSets += completedSets
                 
-                console.log(`Exercise: ${sessionEx.exercise.name}, Completed Sets: ${completedSets}, Muscles:`, sessionEx.exercise.muscles)
+                logger.info(`Exercise: ${sessionEx.exercise.name}, Completed Sets: ${completedSets}, Muscles:`, sessionEx.exercise.muscles)
                 
                 // Get primary and secondary muscles
                 const primaryMuscles = sessionEx.exercise.muscles
@@ -85,7 +86,7 @@ export function DistributionAnalytics({ timeRange = "3months" }: DistributionAna
                   .filter(m => !m.isPrimary)
                   .map(m => m.muscle.name)
                 
-                console.log(`Primary muscles: ${primaryMuscles}, Secondary muscles: ${secondaryMuscles}`)
+                logger.info(`Primary muscles: ${primaryMuscles}, Secondary muscles: ${secondaryMuscles}`)
                 
                 // Assign full weight to primary muscles, half weight to secondary
                 primaryMuscles.forEach(muscle => {
@@ -103,8 +104,8 @@ export function DistributionAnalytics({ timeRange = "3months" }: DistributionAna
             }
           })
 
-          console.log('Total completed sets:', totalCompletedSets)
-          console.log('Muscle group sets:', muscleGroupSets)
+          logger.info('Total completed sets:', totalCompletedSets)
+          logger.info('Muscle group sets:', muscleGroupSets)
 
           // Convert to chart data and group similar muscle names
           const muscleGroupMap = new Map<string, number>()
@@ -135,7 +136,7 @@ export function DistributionAnalytics({ timeRange = "3months" }: DistributionAna
           setTotalSets(totalCompletedSets)
         }
       } catch (error) {
-        console.error('Failed to fetch muscle group data:', error)
+        logger.error('Failed to fetch muscle group data:', error)
       } finally {
         setLoading(false)
       }

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dumbbell, Zap, Plus, Search } from "lucide-react"
 import { ScheduleItem } from "../types/schedule"
 import { useToast } from "@/hooks/use-toast"
+import { logger } from "@/lib/logger"
 
 interface WorkoutTemplate {
   id: string
@@ -86,7 +87,7 @@ export function WorkoutTemplateSelector({ onSelectWorkout, currentWeek }: Workou
       const data = await response.json()
       setUserTemplates(data.userTemplates || [])
     } catch (error) {
-      console.error('Failed to load workout templates:', error)
+      logger.error('Failed to load workout templates:', error)
       toast({
         title: "Error",
         description: "Failed to load workout templates",

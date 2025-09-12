@@ -10,6 +10,7 @@ import { Zap, Download, Utensils, Calendar, RefreshCw } from "lucide-react"
 import { ScheduleItem, MealScheduleData } from "../types/schedule"
 import { WorkoutTemplateSelector } from "./workout-template-selector"
 import { cn } from "@/lib/utils"
+import { logger } from "@/lib/logger"
 
 interface GeneratedScheduleImporterProps {
   onImportSchedule: (items: Omit<ScheduleItem, "id">[]) => void
@@ -103,7 +104,7 @@ export function GeneratedScheduleImporter({ onImportSchedule, currentWeek }: Gen
 
       setGeneratedMeals(meals)
     } catch (error) {
-      console.error('Failed to load generated content:', error)
+      logger.error('Failed to load generated content:', error)
     } finally {
       setIsLoading(false)
     }

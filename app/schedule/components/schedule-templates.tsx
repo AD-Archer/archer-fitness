@@ -12,6 +12,7 @@ import { Users, Plus, Download, Save, Trash2, Clock, Calendar } from "lucide-rea
 import { ScheduleItem, ScheduleTemplate, WeeklySchedule } from "../types/schedule"
 import { useScheduleApi } from "../hooks/use-schedule-api"
 import { useToast } from "@/hooks/use-toast"
+import { logger } from "@/lib/logger"
 
 interface ScheduleTemplatesProps {
   onApplyTemplate: (items: Omit<ScheduleItem, "id">[]) => void
@@ -272,7 +273,7 @@ export function ScheduleTemplates({ onApplyTemplate, currentSchedule }: Schedule
       const templates = await loadTemplates()
       setCustomTemplates(templates.filter(t => !t.isDefault))
     } catch (error) {
-      console.error('Failed to load templates:', error)
+      logger.error('Failed to load templates:', error)
       toast({
         title: "Error",
         description: "Failed to load templates",
@@ -346,7 +347,7 @@ export function ScheduleTemplates({ onApplyTemplate, currentSchedule }: Schedule
         })
       }
     } catch (error) {
-      console.error('Failed to save template:', error)
+      logger.error('Failed to save template:', error)
       toast({
         title: "Error",
         description: "Failed to save template",
@@ -366,7 +367,7 @@ export function ScheduleTemplates({ onApplyTemplate, currentSchedule }: Schedule
         })
       }
     } catch (error) {
-      console.error('Failed to delete template:', error)
+      logger.error('Failed to delete template:', error)
       toast({
         title: "Error",
         description: "Failed to delete template",

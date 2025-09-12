@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback } from "react"
 import { toast } from "sonner"
 import { WorkoutDetailsModal } from "./workout-details-modal"
 import { QuickViewModal } from "./quick-view-modal"
+import { logger } from "@/lib/logger"
 
 interface WorkoutSession {
   id: string
@@ -181,7 +182,7 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
         setWorkoutTemplates(transformedTemplates)
 
       } catch (error) {
-        console.error('Failed to fetch recent workouts:', error)
+        logger.error('Failed to fetch recent workouts:', error)
       } finally {
         setLoading(false)
       }
@@ -237,7 +238,7 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
         throw new Error('Failed to delete workout')
       }
     } catch (error) {
-      console.error('Failed to delete workout:', error)
+      logger.error('Failed to delete workout:', error)
       toast.error('Failed to delete workout')
     }
   }
@@ -286,7 +287,7 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
         throw new Error('Failed to repeat workout')
       }
     } catch (error) {
-      console.error('Failed to repeat workout:', error)
+      logger.error('Failed to repeat workout:', error)
       toast.error('Failed to repeat workout')
     }
   }

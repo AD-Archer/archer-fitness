@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import prisma from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 
 interface RouteParams {
   params: { id: string }
@@ -41,7 +42,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ template })
 
   } catch (error) {
-    console.error('Error fetching schedule template:', error)
+    logger.error('Error fetching schedule template:', error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -133,7 +134,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ template: updatedTemplate })
 
   } catch (error) {
-    console.error('Error updating schedule template:', error)
+    logger.error('Error updating schedule template:', error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -166,7 +167,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ success: true })
 
   } catch (error) {
-    console.error('Error deleting schedule template:', error)
+    logger.error('Error deleting schedule template:', error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -271,7 +272,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ schedule: updatedSchedule })
 
   } catch (error) {
-    console.error('Error applying schedule template:', error)
+    logger.error('Error applying schedule template:', error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

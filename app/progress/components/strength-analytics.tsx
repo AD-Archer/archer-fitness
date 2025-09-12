@@ -7,6 +7,7 @@ import { TrendingUp, Award } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useUserPreferences } from "@/hooks/use-user-preferences"
 import { getWeightUnitAbbr } from "@/lib/weight-utils"
+import { logger } from "@/lib/logger"
 
 interface StrengthProgress {
   date: string
@@ -129,7 +130,7 @@ export function StrengthAnalytics({ timeRange = "3months" }: StrengthAnalyticsPr
           setPersonalRecords(records)
         }
       } catch (error) {
-        console.error('Failed to fetch strength data:', error)
+        logger.error('Failed to fetch strength data:', error)
       } finally {
         setLoading(false)
       }

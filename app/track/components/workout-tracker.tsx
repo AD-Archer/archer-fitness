@@ -1,6 +1,6 @@
 "use client"
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 
 import type React from "react"
 
@@ -11,6 +11,7 @@ import { AddExerciseModal } from "./add-exercise-modal"
 import { SaveWorkoutDialog } from "./save-workout-dialog"
 import { useWorkoutSession, useWorkoutTimer, useWorkoutActions } from "../hooks"
 import { getWorkoutProgress } from "../utils"
+import { logger } from "@/lib/logger"
 
 // Import WorkoutTimerState type
 import type { WorkoutTimerState } from "../hooks"
@@ -111,7 +112,7 @@ export function WorkoutTracker() {
       backToSelection()
       setShowSaveDialog(false)
     } catch (e) {
-      console.error("Failed to save workout state", e)
+      logger.error("Failed to save workout state", e)
       alert("Failed to save workout. Please try again.")
     } finally {
       setIsSavingWorkout(false)
@@ -180,7 +181,7 @@ export function WorkoutTracker() {
       setShowSaveDialog(false)
       alert(`Workout "${name}" saved successfully!`)
     } catch (e) {
-      console.error("Failed to save workout template", e)
+      logger.error("Failed to save workout template", e)
       alert("Failed to save workout template. Please try again.")
     } finally {
       setIsSavingWorkout(false)
@@ -247,7 +248,7 @@ export function WorkoutTracker() {
       setShowSaveDialog(false)
       alert(`Workout "${session.name}" updated successfully!`)
     } catch (e) {
-      console.error("Failed to update workout template", e)
+      logger.error("Failed to update workout template", e)
       alert("Failed to update workout template. Please try again.")
     } finally {
       setIsSavingWorkout(false)
@@ -278,7 +279,7 @@ export function WorkoutTracker() {
         // No saved state to clear
       }
     } catch (e) {
-      console.error("Failed to complete session", e)
+      logger.error("Failed to complete session", e)
     }
     reset()
     setSession(null)
@@ -309,7 +310,7 @@ export function WorkoutTracker() {
         // No saved state to clear
       }
     } catch (e) {
-      console.error("Failed to stop session", e)
+      logger.error("Failed to stop session", e)
     }
     reset()
     setSession(null)
@@ -392,7 +393,7 @@ export function WorkoutTracker() {
       }
 
     } catch (error) {
-      console.error("Failed to remove exercise:", error)
+      logger.error("Failed to remove exercise:", error)
       alert(`Failed to remove exercise: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }

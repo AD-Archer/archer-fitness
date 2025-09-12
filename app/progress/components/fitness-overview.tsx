@@ -6,6 +6,7 @@ import { TrendingUp, Target, Clock, Zap, Trophy, Activity } from "lucide-react"
 import { useEffect, useState } from "react"
 import { getWeightUnitAbbr } from "@/lib/weight-utils"
 import { useUserPreferences } from "@/hooks/use-user-preferences"
+import { logger } from "@/lib/logger"
 
 interface FitnessOverview {
   totalWorkouts: number
@@ -117,7 +118,7 @@ export function FitnessOverview({ timeRange = "3months" }: FitnessOverviewProps)
           setTopPerformances([...topStrength, ...topEndurance, ...topVolume])
         }
       } catch (error) {
-        console.error('Failed to fetch fitness overview:', error)
+        logger.error('Failed to fetch fitness overview:', error)
       } finally {
         setLoading(false)
       }

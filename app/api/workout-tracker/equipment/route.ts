@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 
 export async function GET() {
   try {
@@ -11,7 +12,7 @@ export async function GET() {
 
     return NextResponse.json(equipment)
   } catch (error) {
-    console.error("Error fetching equipment:", error)
+    logger.error("Error fetching equipment:", error)
     return NextResponse.json(
       { error: "Failed to fetch equipment" },
       { status: 500 }
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(equipmentItem, { status: 201 })
   } catch (error) {
-    console.error("Error creating equipment:", error)
+    logger.error("Error creating equipment:", error)
     return NextResponse.json(
       { error: "Failed to create equipment" },
       { status: 500 }

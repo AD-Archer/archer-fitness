@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useEffect, useState } from "react"
+import { logger } from "@/lib/logger"
 
 interface WorkoutSession {
   id: string
@@ -32,7 +33,7 @@ export function WeeklyProgress() {
           setWorkoutSessions(data)
         }
       } catch (error) {
-        console.error('Failed to fetch workout sessions:', error)
+        logger.error('Failed to fetch workout sessions:', error)
       } finally {
         setLoading(false)
       }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { logger } from "@/lib/logger"
 
 const prisma = new PrismaClient()
 
@@ -36,7 +37,7 @@ export async function GET() {
       }))
     })
   } catch (error) {
-    console.error('Error fetching workout options:', error)
+    logger.error('Error fetching workout options:', error)
     return NextResponse.json(
       { 
         error: 'Failed to fetch workout options',

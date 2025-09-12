@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { WorkoutDetailsModal } from "./workout-details-modal"
 import { QuickViewModal } from "./quick-view-modal"
 import { getPerformanceBadgeProps, type WorkoutPerformanceStatus } from "@/lib/workout-performance"
+import { logger } from "@/lib/logger"
 
 interface WorkoutSession {
   id: string
@@ -86,7 +87,7 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
           setWorkoutHistory(transformedData)
         }
       } catch (error) {
-        console.error('Failed to fetch workout history:', error)
+        logger.error('Failed to fetch workout history:', error)
       } finally {
         setLoading(false)
       }
@@ -160,7 +161,7 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
         throw new Error('Failed to delete workout')
       }
     } catch (error) {
-      console.error('Failed to delete workout:', error)
+      logger.error('Failed to delete workout:', error)
       toast.error('Failed to delete workout')
     }
   }
@@ -191,7 +192,7 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
         throw new Error('Failed to repeat workout')
       }
     } catch (error) {
-      console.error('Failed to repeat workout:', error)
+      logger.error('Failed to repeat workout:', error)
       toast.error('Failed to repeat workout')
     }
   }

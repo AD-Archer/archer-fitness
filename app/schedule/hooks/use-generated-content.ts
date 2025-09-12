@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { logger } from "@/lib/logger"
 
 interface Exercise {
   name: string
@@ -82,7 +83,7 @@ export function useGeneratedContent() {
       setWorkouts(loadedWorkouts)
       setMeals(loadedMeals)
     } catch (error) {
-      console.error('Failed to load generated content:', error)
+      logger.error('Failed to load generated content:', error)
     } finally {
       setIsLoading(false)
     }
@@ -101,7 +102,7 @@ export function useGeneratedContent() {
       setWorkouts(prev => [fullWorkout, ...prev])
       return id
     } catch (error) {
-      console.error('Failed to save workout:', error)
+      logger.error('Failed to save workout:', error)
       return null
     }
   }
@@ -119,7 +120,7 @@ export function useGeneratedContent() {
       setMeals(prev => [fullMeal, ...prev])
       return id
     } catch (error) {
-      console.error('Failed to save meal:', error)
+      logger.error('Failed to save meal:', error)
       return null
     }
   }
@@ -129,7 +130,7 @@ export function useGeneratedContent() {
       localStorage.removeItem(`generated-workout-${id}`)
       setWorkouts(prev => prev.filter(w => w.id !== id))
     } catch (error) {
-      console.error('Failed to delete workout:', error)
+      logger.error('Failed to delete workout:', error)
     }
   }
 
@@ -138,7 +139,7 @@ export function useGeneratedContent() {
       localStorage.removeItem(`generated-meal-${id}`)
       setMeals(prev => prev.filter(m => m.id !== id))
     } catch (error) {
-      console.error('Failed to delete meal:', error)
+      logger.error('Failed to delete meal:', error)
     }
   }
 

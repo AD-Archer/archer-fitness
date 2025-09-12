@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { logger } from "@/lib/logger"
 import {
   LineChart,
   Line,
@@ -100,7 +101,7 @@ export function RecoveryMonitor() {
       date: new Date().toISOString().split("T")[0],
     } as RecoveryMetrics
 
-    console.log("[v0] Logging recovery data:", newEntry)
+    logger.info("[v0] Logging recovery data:", newEntry)
     setShowLogForm(false)
     // Here you would save to database
   }

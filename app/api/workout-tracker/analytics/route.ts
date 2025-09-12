@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 
 // Weight conversion utilities
 const LBS_TO_KG_RATIO = 0.453592
@@ -324,7 +325,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(analytics)
   } catch (error) {
-    console.error("Error fetching workout analytics:", error)
+    logger.error("Error fetching workout analytics:", error)
     return NextResponse.json(
       { error: "Failed to fetch workout analytics" },
       { status: 500 }

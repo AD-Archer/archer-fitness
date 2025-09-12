@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger"
 /**
  * Weight conversion and formatting utilities
  * 
@@ -157,8 +158,9 @@ export async function getUserWeightUnits(): Promise<WeightUnit> {
       const data = await response.json()
       return data?.preferences?.app?.units || 'imperial'
     }
-  } catch (error) {
-    console.error('Error loading user preferences:', error)
+  } catch (e) {
+    // Log the error and fall back to default
+    logger.error('Failed to fetch user preferences for weight units:', e)
   }
   return 'imperial' // Default fallback
 }

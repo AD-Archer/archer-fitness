@@ -14,6 +14,7 @@ import { ExerciseTimer } from "./exercise-timer"
 import { formatTime, getExerciseProgress, isExerciseCompleted, getCompletedExercisesCount } from "../utils"
 import { formatWeight } from "@/lib/weight-utils"
 import { useUserPreferences } from "@/hooks/use-user-preferences"
+import { logger } from "@/lib/logger"
 
 interface ExerciseSet {
   reps: number
@@ -151,7 +152,7 @@ export function WorkoutSession({
   }
 
   // Debug: Log exercise data
-  console.log('Current exercise data:', {
+  logger.info('Current exercise data:', {
     name: currentExercise.name,
     exercise: currentExercise.exercise,
     gifUrl: currentExercise.exercise?.gifUrl,
@@ -300,11 +301,11 @@ export function WorkoutSession({
                           className="max-w-full h-auto rounded-lg border shadow-sm"
                           style={{ maxHeight: '150px' }}
                           onError={(e) => {
-                            console.log('GIF failed to load:', currentExercise.exercise?.gifUrl);
+                            logger.info('GIF failed to load:', currentExercise.exercise?.gifUrl);
                             e.currentTarget.style.display = 'none';
                           }}
                           onLoad={() => {
-                            console.log('GIF loaded successfully:', currentExercise.exercise?.gifUrl);
+                            logger.info('GIF loaded successfully:', currentExercise.exercise?.gifUrl);
                           }}
                         />
                       </div>
@@ -435,7 +436,7 @@ export function WorkoutSession({
                   <span className="text-sm">
                     {currentExercise.targetType === "time"
                       ? `${Math.floor(set.reps / 60)}:${(set.reps % 60).toString().padStart(2, "0")}`
-                      : `${set.reps} reps × ${set.weight != null ? formatWeight(set.weight, units) : "bodyweight"}`
+                      : `${set.reps} reps × ${set.weight !== null && set.weight !== undefined ? formatWeight(set.weight, units) : "bodyweight"}`
                     }
                   </span>
                 </div>

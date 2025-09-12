@@ -1,8 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 
 // PUT update an exercise in a session
 export async function PUT(
@@ -52,7 +53,7 @@ export async function PUT(
 
     return NextResponse.json(updated)
   } catch (error) {
-    console.error("Error updating session exercise:", error)
+    logger.error("Error updating session exercise:", error)
     return NextResponse.json(
       { error: "Failed to update session exercise" },
       { status: 500 }
@@ -100,7 +101,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Error removing session exercise:", error)
+    logger.error("Error removing session exercise:", error)
     return NextResponse.json(
       { error: "Failed to remove session exercise", details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

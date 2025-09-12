@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import type { Schedule, ScheduleItem, ScheduleTemplate } from '../types/schedule'
+import { logger } from "@/lib/logger"
 
 interface UseScheduleApiReturn {
   loading: boolean
@@ -37,7 +38,7 @@ export function useScheduleApi(): UseScheduleApiReturn {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred'
       setError(errorMessage)
-      console.error('API call failed:', err)
+      logger.error('API call failed:', err)
       return null
     } finally {
       setLoading(false)

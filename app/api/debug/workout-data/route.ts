@@ -88,8 +88,7 @@ export async function GET() {
         } : null
       } : null
     })
-  } catch (error) {
-    console.error("Debug API error:", error)
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch debug data" },
       { status: 500 }

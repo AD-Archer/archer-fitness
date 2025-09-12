@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrendingUp, Calendar, Flame, Target } from "lucide-react"
 import { useEffect, useState, useCallback } from "react"
+import { logger } from "@/lib/logger"
 
 interface WorkoutSession {
   id: string
@@ -111,22 +112,22 @@ export function DashboardStats() {
         // Check if user is authenticated first
         const authResponse = await fetch('/api/auth/session')
         const session = await authResponse.json()
-        console.log('Current session:', session)
+        logger.info('Current session:', session)
 
         if (!session?.user) {
-          console.log('User not authenticated')
+          logger.info('User not authenticated')
           setError('Please sign in to view your workout stats')
           return
         }
 
         // Fetch workout sessions data - use simpler query like the working components
         const workoutResponse = await fetch('/api/workout-tracker/workout-sessions?limit=20')
-        console.log('Workout API response status:', workoutResponse.status)
+        logger.info('Workout API response status:', workoutResponse.status)
 
         if (workoutResponse.ok) {
           const workoutData = await workoutResponse.json()
-          console.log('API Response:', workoutData)
-          console.log('Number of workouts returned:', workoutData.length)
+          logger.info('API Response:', workoutData)
+          logger.info('Number of workouts returned:', workoutData.length)
           
           // Transform workout data to calculate proper completion status
           const transformedWorkouts = workoutData.map((session: WorkoutSession) => ({
@@ -135,7 +136,7 @@ export function DashboardStats() {
             calculatedStatus: getStatusFromCompletion(session.status, session.exercises || [])
           }))
           
-          console.log('Transformed workouts:', transformedWorkouts.map((w: WorkoutSession & { calculatedStatus: string }) => ({
+          logger.info('Transformed workouts:', transformedWorkouts.map((w: WorkoutSession & { calculatedStatus: string }) => ({
             id: w.id,
             name: w.name,
             status: w.status,
@@ -147,12 +148,12 @@ export function DashboardStats() {
           setWorkoutSessions(transformedWorkouts)
         } else {
           const errorText = await workoutResponse.text()
-          console.error('API Error:', workoutResponse.status, workoutResponse.statusText, errorText)
+          logger.error('API Error:', workoutResponse.status, workoutResponse.statusText, errorText)
           setError(`Failed to load workout data: ${workoutResponse.status}`)
         }
 
       } catch (error) {
-        console.error('Error fetching dashboard data:', error)
+        logger.error('Error fetching dashboard data:', error)
         setError('Failed to load dashboard data')
       } finally {
         setLoading(false)
@@ -183,11 +184,11 @@ export function DashboardStats() {
     const completedWorkouts = workoutSessions.filter(session => {
       const calculatedStatus = getStatusFromCompletion(session.status, session.exercises || [])
       const completionRate = calculateCompletionRate(session.exercises || [])
-      console.log(`Workout ${session.name}: status=${session.status}, calculated=${calculatedStatus}, completion=${completionRate}%`)
+      logger.info(`Workout ${session.name}: status=${session.status}, calculated=${calculatedStatus}, completion=${completionRate}%`)
       return calculatedStatus === 'completed'
     })
 
-    console.log(`Total workouts: ${workoutSessions.length}, Completed workouts: ${completedWorkouts.length}`)
+    logger.info(`Total workouts: ${workoutSessions.length}, Completed workouts: ${completedWorkouts.length}`)
 
     // This week's workouts (current week starting from Monday)
     const currentDate = new Date()
@@ -199,13 +200,13 @@ export function DashboardStats() {
     endOfWeek.setDate(startOfWeek.getDate() + 6) // End of week (Sunday)
     endOfWeek.setHours(23, 59, 59, 999)
 
-    console.log(`Date ranges: This week: ${startOfWeek.toDateString()} to ${endOfWeek.toDateString()}`)
-    console.log(`Current date: ${now.toDateString()}`)
+    logger.info(`Date ranges: This week: ${startOfWeek.toDateString()} to ${endOfWeek.toDateString()}`)
+    logger.info(`Current date: ${now.toDateString()}`)
 
     const workoutsThisWeek = completedWorkouts.filter(workout => {
       const workoutDate = new Date(workout.startTime)
       const isInWeek = workoutDate >= startOfWeek && workoutDate <= endOfWeek
-      console.log(`This week check for ${workout.name}: ${workoutDate.toDateString()}, inWeek=${isInWeek}`)
+      logger.info(`This week check for ${workout.name}: ${workoutDate.toDateString()}, inWeek=${isInWeek}`)
       return isInWeek
     }).length
 
@@ -257,11 +258,11 @@ export function DashboardStats() {
       
       const hasDuration = effectiveDuration > 0
       
-      console.log(`Duration check for ${workout.name}: date=${workoutDate.toDateString()}, inWeek=${isInWeek}, duration=${workout.duration}, endTime=${workout.endTime}, effectiveDuration=${effectiveDuration}, hasDuration=${hasDuration}`)
+      logger.info(`Duration check for ${workout.name}: date=${workoutDate.toDateString()}, inWeek=${isInWeek}, duration=${workout.duration}, endTime=${workout.endTime}, effectiveDuration=${effectiveDuration}, hasDuration=${hasDuration}`)
       return isInWeek && hasDuration
     })
 
-    console.log(`This week workouts with duration: ${thisWeekWorkoutsWithDuration.length} out of ${completedWorkouts.filter(workout => {
+    logger.info(`This week workouts with duration: ${thisWeekWorkoutsWithDuration.length} out of ${completedWorkouts.filter(workout => {
       const workoutDate = new Date(workout.startTime)
       return workoutDate >= startOfWeek && workoutDate <= endOfWeek
     }).length}`)
@@ -287,7 +288,7 @@ export function DashboardStats() {
     const lastWeekEnd = new Date(endOfWeek)
     lastWeekEnd.setDate(lastWeekEnd.getDate() - 7)
 
-    console.log(`Date ranges: Last week: ${lastWeekStart.toDateString()} to ${lastWeekEnd.toDateString()}`)
+    logger.info(`Date ranges: Last week: ${lastWeekStart.toDateString()} to ${lastWeekEnd.toDateString()}`)
 
     const lastWeekWorkoutsWithDuration = completedWorkouts.filter(workout => {
       const workoutDate = new Date(workout.startTime)
@@ -305,11 +306,11 @@ export function DashboardStats() {
       
       const hasDuration = effectiveDuration > 0
       
-      console.log(`Last week duration check for ${workout.name}: date=${workoutDate.toDateString()}, inLastWeek=${isInLastWeek}, duration=${workout.duration}, endTime=${workout.endTime}, effectiveDuration=${effectiveDuration}, hasDuration=${hasDuration}`)
+      logger.info(`Last week duration check for ${workout.name}: date=${workoutDate.toDateString()}, inLastWeek=${isInLastWeek}, duration=${workout.duration}, endTime=${workout.endTime}, effectiveDuration=${effectiveDuration}, hasDuration=${hasDuration}`)
       return isInLastWeek && hasDuration
     })
 
-    console.log(`Last week workouts with duration: ${lastWeekWorkoutsWithDuration.length} out of ${completedWorkouts.filter(workout => {
+    logger.info(`Last week workouts with duration: ${lastWeekWorkoutsWithDuration.length} out of ${completedWorkouts.filter(workout => {
       const workoutDate = new Date(workout.startTime)
       return workoutDate >= lastWeekStart && workoutDate <= lastWeekEnd
     }).length}`)

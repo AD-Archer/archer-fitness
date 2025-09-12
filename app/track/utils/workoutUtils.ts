@@ -133,7 +133,7 @@ export const transformSessionFromAPI = (sessionData: unknown): WorkoutSession =>
         const set = s as { reps?: number; weight?: number | null; completed: boolean }
         return {
           reps: set.reps ?? 0,
-          weight: set.weight == null ? undefined : set.weight,
+          weight: set.weight === null ? undefined : set.weight,
           completed: set.completed
         }
       }),

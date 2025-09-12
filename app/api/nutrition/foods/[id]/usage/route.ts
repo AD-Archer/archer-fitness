@@ -27,8 +27,7 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json({ success: true, usageCount: updatedFood.usageCount })
-  } catch (error) {
-    console.error("Error incrementing food usage:", error)
+  } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

@@ -8,6 +8,7 @@ import { Clock, Dumbbell, Repeat } from "lucide-react"
 import { toast } from "sonner"
 import { useUserPreferences } from "@/hooks/use-user-preferences"
 import { formatWeight } from "@/lib/weight-utils"
+import { logger } from "@/lib/logger"
 
 interface WorkoutSession {
   id: string
@@ -78,7 +79,7 @@ export function WorkoutDetailsModal({ workout, onRepeat, trigger }: WorkoutDetai
         throw new Error('Failed to repeat workout')
       }
     } catch (error) {
-      console.error('Failed to repeat workout:', error)
+      logger.error('Failed to repeat workout:', error)
       toast.error('Failed to repeat workout')
     }
   }
@@ -172,7 +173,7 @@ export function WorkoutDetailsModal({ workout, onRepeat, trigger }: WorkoutDetai
                           <div className="flex items-center gap-3">
                             <Badge variant="outline">Set {setIndex + 1}</Badge>
                             <span className="text-sm">
-                              {set.reps} reps × {set.weight != null ? formatWeight(set.weight, units) : "bodyweight"}
+                              {set.reps} reps × {set.weight !== null && set.weight !== undefined ? formatWeight(set.weight, units) : "bodyweight"}
                             </span>
                           </div>
                           {set.completed && (

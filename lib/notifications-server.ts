@@ -61,10 +61,7 @@ export async function sendPushNotification(
         actions: payload.actions || []
       })
     );
-
-    console.log('Push notification sent successfully');
   } catch (error) {
-    console.error('Failed to send push notification:', error);
     throw error;
   }
 }

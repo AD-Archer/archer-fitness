@@ -69,12 +69,9 @@ export class NotificationManager {
         scope: '/'
       });
 
-      console.log('Service Worker registered successfully:', this.swRegistration);
-
       // Wait for the service worker to be ready
       await navigator.serviceWorker.ready;
     } catch (error) {
-      console.error('Service Worker registration failed:', error);
       throw error;
     }
   }
@@ -89,16 +86,10 @@ export class NotificationManager {
       // Get VAPID public key from environment or use default for development
       const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BDefaultPublicKeyForDevelopment';
 
-      if (vapidPublicKey === 'BDefaultPublicKeyForDevelopment') {
-        console.warn('Using default VAPID key. Push notifications will not work in production. Set NEXT_PUBLIC_VAPID_PUBLIC_KEY environment variable.');
-      }
-
       const subscription = await this.swRegistration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: this.urlBase64ToUint8Array(vapidPublicKey) as BufferSource
       });
-
-      console.log('Push subscription successful:', subscription);
 
       return {
         endpoint: subscription.endpoint,
@@ -108,7 +99,6 @@ export class NotificationManager {
         }
       };
     } catch (error) {
-      console.error('Push subscription failed:', error);
       throw error;
     }
   }
@@ -123,10 +113,8 @@ export class NotificationManager {
       const subscription = await this.swRegistration.pushManager.getSubscription();
       if (subscription) {
         await subscription.unsubscribe();
-        console.log('Successfully unsubscribed from push notifications');
       }
     } catch (error) {
-      console.error('Failed to unsubscribe from push notifications:', error);
       throw error;
     }
   }
@@ -139,8 +127,7 @@ export class NotificationManager {
 
     try {
       return await this.swRegistration.pushManager.getSubscription();
-    } catch (error) {
-      console.error('Failed to get current subscription:', error);
+    } catch {
       return null;
     }
   }
@@ -167,7 +154,6 @@ export class NotificationManager {
   // Schedule a local notification (for immediate notifications)
   scheduleLocalNotification(payload: NotificationPayload, delay: number = 0): void {
     if (this.getPermissionStatus() !== 'granted') {
-      console.warn('Notification permission not granted');
       return;
     }
 

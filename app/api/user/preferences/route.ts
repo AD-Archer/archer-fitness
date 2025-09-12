@@ -70,7 +70,6 @@ export async function GET() {
       },
     })
   } catch (error) {
-    console.error("Preferences fetch error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -127,7 +126,6 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       )
     }
-    console.error("Preferences update error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

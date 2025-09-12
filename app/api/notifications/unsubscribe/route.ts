@@ -40,15 +40,13 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    console.log('Push subscription deleted for user:', session.user.id);
 
     return NextResponse.json({
       success: true,
       message: 'Subscription deleted successfully'
     });
 
-  } catch (error) {
-    console.error('Error deleting push subscription:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to delete subscription' },
       { status: 500 }
@@ -56,7 +54,7 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
-export async function DELETE_ALL(request: NextRequest) {
+export async function DELETE_ALL() {
   try {
     // Get user session
     const session = await getServerSession(authOptions);
@@ -74,15 +72,13 @@ export async function DELETE_ALL(request: NextRequest) {
       }
     });
 
-    console.log(`Deleted ${deletedSubscriptions.count} push subscriptions for user:`, session.user.id);
 
     return NextResponse.json({
       success: true,
       message: `Deleted ${deletedSubscriptions.count} subscriptions`
     });
 
-  } catch (error) {
-    console.error('Error deleting push subscriptions:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to delete subscriptions' },
       { status: 500 }

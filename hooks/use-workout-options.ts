@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { logger } from "@/lib/logger"
 
 export interface WorkoutOption {
   id: string
@@ -36,7 +37,7 @@ export function useWorkoutOptions() {
         const data = await response.json()
         setOptions(data)
       } catch (err) {
-        console.error('Error fetching workout options:', err)
+        logger.error('Error fetching workout options:', err)
         setError(err instanceof Error ? err.message : 'Failed to load options')
         
         // Fallback to hardcoded options if API fails

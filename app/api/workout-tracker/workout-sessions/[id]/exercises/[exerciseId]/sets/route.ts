@@ -1,8 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 
 export async function POST(
   request: NextRequest,
@@ -80,7 +81,7 @@ export async function POST(
 
     return NextResponse.json({ set: createdSet, exercise: updatedExercise }, { status: 201 })
   } catch (error) {
-    console.error("Error adding set:", error)
+    logger.error("Error adding set:", error)
     return NextResponse.json(
       { error: "Failed to add set" },
       { status: 500 }

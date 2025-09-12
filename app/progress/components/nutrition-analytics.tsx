@@ -6,6 +6,7 @@ import { Apple, Target } from "lucide-react"
 import { useEffect } from "react"
 import { useUserPreferences } from "@/hooks/use-user-preferences"
 import { getWeightUnitAbbr, weightFromLbs } from "@/lib/weight-utils"
+import { logger } from "@/lib/logger"
 
 const nutritionProgressData = [
 	{ date: "Jan 1", calories: 2100, protein: 140, carbs: 220, fat: 75, water: 2200, weight: 75.2 },
@@ -33,7 +34,7 @@ export function NutritionAnalytics({ timeRange = "3months" }: NutritionAnalytics
 	const { units } = useUserPreferences()
 	
 	useEffect(() => {
-		console.log(`Time range selected: ${timeRange}`)
+		logger.info(`Time range selected: ${timeRange}`)
 		// Add logic here to filter or fetch data based on the timeRange
 	}, [timeRange])
 

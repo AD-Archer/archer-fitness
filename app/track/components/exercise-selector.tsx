@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, Plus, Trash2 } from "lucide-react"
 import Fuse from 'fuse.js'
+import { logger } from "@/lib/logger"
 
 interface Exercise {
   id: string
@@ -99,14 +100,14 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
       const allExercisesList = [...data.userExercises, ...data.predefinedExercises]
       
       // Debug: Log the structure of the first few exercises
-      console.log('Raw exercise data sample:', allExercisesList.slice(0, 3))
-      console.log('First exercise complete structure:', JSON.stringify(allExercisesList[0], null, 2))
+      logger.info('Raw exercise data sample:', allExercisesList.slice(0, 3))
+      logger.info('First exercise complete structure:', JSON.stringify(allExercisesList[0], null, 2))
       
       setAllExercises(allExercisesList)
       setExercises(allExercisesList.slice(0, 20)) // Show first 20 initially
       setHasMore(allExercisesList.length > 20)
     } catch (error) {
-      console.error("Error fetching all exercises:", error)
+      logger.error("Error fetching all exercises:", error)
     } finally {
       setLoading(false)
     }
@@ -122,7 +123,7 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
     setTimeout(() => {
       let filteredExercises = allExercises
 
-      console.log('Filtering exercises:', {
+      logger.info('Filtering exercises:', {
         totalExercises: allExercises.length,
         selectedEquipment,
         selectedMuscle,
@@ -131,8 +132,8 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
 
       // Apply filters first
       if (selectedBodyPart !== "all") {
-        console.log('Filtering by body part:', selectedBodyPart)
-        console.log('Available muscles:', muscles)
+        logger.info('Filtering by body part:', selectedBodyPart)
+        logger.info('Available muscles:', muscles)
         
         filteredExercises = filteredExercises.filter(exercise => {
           // Filter by body part: show exercises that target muscles belonging to the selected body part
@@ -140,7 +141,7 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
           const hasDirectBodyPart = 
             exercise.bodyParts?.some(bp => bp.bodyPart?.id === selectedBodyPart)
           
-          console.log(`Exercise "${exercise.name}" - Direct body part match:`, hasDirectBodyPart)
+          logger.info(`Exercise "${exercise.name}" - Direct body part match:`, hasDirectBodyPart)
           
           // Since muscles don't have bodyPartId in the API, let's use a different approach
           // We'll create a mapping based on common muscle-to-body-part relationships
@@ -162,7 +163,7 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
           // Check if any of the exercise's muscles belong to this body part
           const hasMuscleInBodyPart = exercise.muscles?.some(exerciseMuscle => {
             const muscleName = exerciseMuscle.muscle.name.toLowerCase()
-            console.log(`  Checking muscle "${exerciseMuscle.muscle.name}" for body part "${selectedBodyPartName}"`)
+            logger.info(`  Checking muscle "${exerciseMuscle.muscle.name}" for body part "${selectedBodyPartName}"`)
             
             // Get the muscle keywords for this body part
             const bodyPartMuscles = muscleToBodyPartMap[selectedBodyPartName] || []
@@ -172,13 +173,13 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
               muscleName.includes(keyword.toLowerCase())
             ) || muscleName.includes(selectedBodyPartName)
             
-            console.log(`    Muscle "${muscleName}" belongs to "${selectedBodyPartName}":`, belongsToBodyPart)
+            logger.info(`    Muscle "${muscleName}" belongs to "${selectedBodyPartName}":`, belongsToBodyPart)
             return belongsToBodyPart
           })
           
-          console.log(`Exercise "${exercise.name}" - Muscle in body part match:`, hasMuscleInBodyPart)
+          logger.info(`Exercise "${exercise.name}" - Muscle in body part match:`, hasMuscleInBodyPart)
           const shouldInclude = hasDirectBodyPart || hasMuscleInBodyPart
-          console.log(`Exercise "${exercise.name}" - Final decision:`, shouldInclude)
+          logger.info(`Exercise "${exercise.name}" - Final decision:`, shouldInclude)
           
           return shouldInclude
         })
@@ -207,7 +208,7 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
         )
       }
 
-      console.log('Final filtered exercises:', filteredExercises.length)
+      logger.info('Final filtered exercises:', filteredExercises.length)
       setExercises(filteredExercises.slice(0, 50)) // Show more results
       setHasMore(filteredExercises.length > 50)
       setIsSearching(false)
@@ -230,12 +231,12 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
       setEquipment(equipmentData)
       
       const musclesData = await musclesRes.json()
-      console.log('Muscles from API:', musclesData)
-      console.log('Sample muscle structure:', JSON.stringify(musclesData[0], null, 2)) // Debug muscle structure
-      console.log('Total muscles loaded:', musclesData.length)
+      logger.info('Muscles from API:', musclesData)
+      logger.info('Sample muscle structure:', JSON.stringify(musclesData[0], null, 2)) // Debug muscle structure
+      logger.info('Total muscles loaded:', musclesData.length)
       setMuscles(musclesData)
     } catch (error) {
-      console.error("Error fetching filter options:", error)
+      logger.error("Error fetching filter options:", error)
     }
   }
 
@@ -284,10 +285,10 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
         setNewExerciseDescription("")
         setShowCreateForm(false)
       } else {
-        console.error("Failed to create custom exercise")
+        logger.error("Failed to create custom exercise")
       }
     } catch (error) {
-      console.error("Error creating custom exercise:", error)
+      logger.error("Error creating custom exercise:", error)
     } finally {
       setSavingCustomExercise(false)
     }
@@ -304,10 +305,10 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
       if (response.ok) {
         setExercises(prev => prev.filter(ex => ex.id !== id))
       } else {
-        console.error("Failed to delete custom exercise")
+        logger.error("Failed to delete custom exercise")
       }
     } catch (error) {
-      console.error("Error deleting custom exercise:", error)
+      logger.error("Error deleting custom exercise:", error)
     }
   }
 

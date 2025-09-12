@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+
 import { prisma } from '@/lib/prisma';
 import { emailNotificationManager } from '@/lib/email-notifications';
 
@@ -30,8 +29,7 @@ export async function POST(request: NextRequest) {
             canSendAdminNotification = false;
           }
         }
-      } catch (prefsError) {
-        console.error('Failed to check user preferences:', prefsError);
+      } catch {
         // If we can't check preferences, err on the side of caution and don't send
         canSendAdminNotification = false;
       }
@@ -50,8 +48,7 @@ export async function POST(request: NextRequest) {
       success,
       message: success ? 'Error reported to admin' : canSendAdminNotification ? 'Failed to report error' : 'Error reporting disabled by user preference'
     });
-  } catch (err) {
-    console.error('Failed to process error report:', err);
+  } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

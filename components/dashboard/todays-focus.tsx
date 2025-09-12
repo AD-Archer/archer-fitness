@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import { logger } from "@/lib/logger"
 
 interface ScheduledWorkout {
   id: string
@@ -187,7 +188,7 @@ export function TodaysFocus() {
           setAllWorkoutsCompleted(allScheduledCompleted)
         }
       } catch (error) {
-        console.error('Failed to fetch today\'s focus:', error)
+        logger.error('Failed to fetch today\'s focus:', error)
       } finally {
         setLoading(false)
       }

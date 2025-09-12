@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { emailNotificationManager } from '../lib/email-notifications.js';
 
 // Send startup notification to admin

@@ -36,7 +36,6 @@ export async function GET() {
   const { password, ...safeUser } = user
   return NextResponse.json({ user: safeUser })
   } catch (error) {
-    console.error("Profile fetch error:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -79,7 +78,6 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    console.error("Profile update error:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -102,7 +100,6 @@ export async function DELETE() {
 
     return NextResponse.json({ message: "Account deleted successfully" })
   } catch (error) {
-    console.error("Account deletion error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

@@ -50,7 +50,6 @@ async function updateUserAverageWeight(userId: string) {
       })
     }
   } catch (error) {
-    console.error('Error updating user average weight:', error)
     // Don't throw error to avoid breaking weight entry creation
   }
 }
@@ -167,7 +166,6 @@ export async function GET(request: NextRequest) {
         }
       })
     } catch (dbError) {
-      console.warn('WeightEntry table not found, using simulated data:', dbError)
       
       // Fallback to simulated data for development
       const currentDate = new Date()
@@ -206,7 +204,6 @@ export async function GET(request: NextRequest) {
       })
     }
   } catch (error) {
-    console.error("Weight fetch error:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -254,7 +251,6 @@ export async function POST(request: NextRequest) {
       message: "Weight entry saved successfully" 
     })
   } catch (error) {
-    console.error("Weight save error:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -297,7 +293,6 @@ export async function DELETE(request: NextRequest) {
       message: "Weight entry deleted successfully" 
     })
   } catch (error) {
-    console.error("Weight delete error:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

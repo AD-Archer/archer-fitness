@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 
 export async function POST(
   request: NextRequest,
@@ -79,7 +80,7 @@ export async function POST(
 
     return NextResponse.json(newSession, { status: 201 })
   } catch (error) {
-    console.error("Error repeating workout:", error)
+    logger.error("Error repeating workout:", error)
     return NextResponse.json(
       { error: "Failed to repeat workout" },
       { status: 500 }

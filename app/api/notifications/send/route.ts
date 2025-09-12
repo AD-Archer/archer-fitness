@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { emailNotificationManager } from '@/lib/email-notifications';
 
@@ -29,8 +27,7 @@ export async function POST(request: NextRequest) {
             canSendNotification = false;
           }
         }
-      } catch (prefsError) {
-        console.error('Failed to check user preferences:', prefsError);
+      } catch {
         // If we can't check preferences, err on the side of caution and don't send
         canSendNotification = false;
       }
@@ -80,8 +77,7 @@ export async function POST(request: NextRequest) {
       success,
       message: success ? 'Email notification sent' : canSendNotification ? 'Failed to send email notification' : 'Notifications disabled by user preference'
     });
-  } catch (err) {
-    console.error('Failed to send notification:', err);
+  } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

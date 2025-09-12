@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sendPushNotification } from '@/lib/notifications-server';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     // Get user session
     const session = await getServerSession(authOptions);
@@ -46,7 +47,6 @@ export async function POST(request: NextRequest) {
 
     await Promise.all(sendPromises);
 
-    console.log(`Test notification sent to ${subscriptions.length} subscription(s) for user:`, session.user.id);
 
     return NextResponse.json({
       success: true,
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error sending test notification:', error);
+    logger.error('Failed to send test notification:', error);
     return NextResponse.json(
       { error: 'Failed to send test notification' },
       { status: 500 }

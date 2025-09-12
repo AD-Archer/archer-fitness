@@ -9,6 +9,7 @@ import { Download } from "lucide-react"
 import { signOut } from "next-auth/react"
 import { toast } from "sonner"
 import { AppPrefs } from "./types"
+import { logger } from "@/lib/logger"
 
 interface PrivacyTabProps {
   appPrefs: AppPrefs
@@ -30,7 +31,7 @@ export function PrivacyTab({ appPrefs, setAppPrefs }: PrivacyTabProps) {
           throw new Error("Failed to delete account")
         }
       } catch (error) {
-        console.error("Failed to delete account:", error)
+        logger.error("Failed to delete account:", error)
         toast.error("Failed to delete account")
       }
     }
@@ -54,7 +55,7 @@ export function PrivacyTab({ appPrefs, setAppPrefs }: PrivacyTabProps) {
         throw new Error("Failed to export data")
       }
     } catch (error) {
-      console.error("Failed to export data:", error)
+      logger.error("Failed to export data:", error)
       toast.error("Failed to export data")
     }
   }

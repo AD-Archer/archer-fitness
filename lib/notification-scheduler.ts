@@ -1,4 +1,4 @@
-import { notificationManager, NotificationTemplates } from '@/lib/notifications-client';
+import { notificationManager } from '@/lib/notifications-client';
 
 export interface ScheduledNotification {
   id: string;
@@ -39,8 +39,6 @@ export class NotificationScheduler {
     this.intervalId = setInterval(() => {
       this.checkDueNotifications();
     }, 60000);
-
-    console.log('Notification scheduler started');
   }
 
   // Stop the notification scheduler
@@ -48,7 +46,6 @@ export class NotificationScheduler {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
-      console.log('Notification scheduler stopped');
     }
   }
 
@@ -73,16 +70,12 @@ export class NotificationScheduler {
       }, timeUntilDue);
     }
 
-    console.log('Notification scheduled:', id, notification.title);
     return id;
   }
 
   // Cancel a scheduled notification
   cancelNotification(id: string): boolean {
     const removed = this.scheduledNotifications.delete(id);
-    if (removed) {
-      console.log('Notification cancelled:', id);
-    }
     return removed;
   }
 
@@ -96,7 +89,7 @@ export class NotificationScheduler {
     const now = new Date();
     const dueNotifications: ScheduledNotification[] = [];
 
-    for (const [id, notification] of this.scheduledNotifications) {
+    for (const [, notification] of this.scheduledNotifications) {
       if (notification.scheduledTime <= now) {
         dueNotifications.push(notification);
       }
@@ -130,7 +123,6 @@ export class NotificationScheduler {
         };
 
         notificationManager.scheduleLocalNotification(payload);
-        console.log('Push notification sent:', notification.title);
       }
 
       // Also try email notification if email is available
@@ -150,19 +142,16 @@ export class NotificationScheduler {
           });
 
           if (response.ok) {
-            const result = await response.json();
-            if (result.success) {
-              console.log('Email notification sent:', notification.title);
-            }
+            await response.json();
           } else {
-            console.error('Failed to send email notification:', response.statusText);
+            // Email notification failed
           }
-        } catch (error) {
-          console.error('Error sending email notification:', error);
+        } catch {
+          // Error sending email notification
         }
       }
-    } catch (error) {
-      console.error('Failed to send notification:', error);
+    } catch {
+      // Failed to send notification
     }
   }
 
@@ -187,7 +176,6 @@ export class NotificationScheduler {
 
     // Update the scheduled time
     notification.scheduledTime = nextTime;
-    console.log('Recurring notification rescheduled:', notification.id, nextTime);
   }
 
   // Get URL for notification based on type

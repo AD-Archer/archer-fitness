@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 
 export async function DELETE(
   req: NextRequest,
@@ -48,7 +49,7 @@ export async function DELETE(
     
     return new NextResponse(null, { status: 204 })
   } catch (error) {
-    console.error("[API] Error deleting custom exercise:", error)
+    logger.error("[API] Error deleting custom exercise:", error)
     return new NextResponse("Internal Server Error", { status: 500 })
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import prisma from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 
 // GET /api/schedule - Get schedules for a user
 export async function GET(request: NextRequest) {
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ schedule })
 
   } catch (error) {
-    console.error('Error fetching schedule:', error)
+    logger.error('Error fetching schedule:', error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -153,7 +154,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ schedule: updatedSchedule })
 
   } catch (error) {
-    console.error('Error saving schedule:', error)
+    logger.error('Error saving schedule:', error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -194,7 +195,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true })
 
   } catch (error) {
-    console.error('Error clearing schedule:', error)
+    logger.error('Error clearing schedule:', error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

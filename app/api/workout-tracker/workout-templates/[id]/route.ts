@@ -1,8 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 
 export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -15,7 +16,7 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
     if (!template) return NextResponse.json({ error: "Not found" }, { status: 404 })
     return NextResponse.json(template)
   } catch (error) {
-    console.error("Error fetching workout template:", error)
+    logger.error("Error fetching workout template:", error)
     return NextResponse.json({ error: "Failed" }, { status: 500 })
   }
 }
@@ -119,7 +120,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     })
     return NextResponse.json(full)
   } catch (error) {
-    console.error("Error updating workout template:", error)
+    logger.error("Error updating workout template:", error)
     return NextResponse.json({ error: "Failed to update template" }, { status: 500 })
   }
 }
@@ -136,7 +137,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: { id: 
     await prisma.workoutTemplate.delete({ where: { id: params.id } })
     return NextResponse.json({ message: "Deleted" })
   } catch (error) {
-    console.error("Error deleting workout template:", error)
+    logger.error("Error deleting workout template:", error)
     return NextResponse.json({ error: "Failed to delete template" }, { status: 500 })
   }
 }

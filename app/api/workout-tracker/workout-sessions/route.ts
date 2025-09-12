@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { calculateWorkoutPerformance } from "@/lib/workout-performance"
+import { logger } from "@/lib/logger"
 
 export async function GET(request: NextRequest) {
   try {
@@ -145,7 +146,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(workoutSessionsWithPerformance)
   } catch (error) {
-    console.error("Error fetching workout sessions:", error)
+    logger.error("Error fetching workout sessions:", error)
     return NextResponse.json(
       { error: "Failed to fetch workout sessions" },
       { status: 500 }
@@ -290,7 +291,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(workoutSession, { status: 201 })
   } catch (error) {
-    console.error("Error creating workout session:", error)
+    logger.error("Error creating workout session:", error)
     return NextResponse.json(
       { error: "Failed to create workout session" },
       { status: 500 }

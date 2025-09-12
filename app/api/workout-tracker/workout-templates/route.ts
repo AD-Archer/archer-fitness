@@ -1,8 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 
 export async function GET(request: NextRequest) {
   try {
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ userTemplates, predefinedTemplates })
   } catch (error) {
-    console.error("Error fetching workout templates:", error)
+    logger.error("Error fetching workout templates:", error)
     return NextResponse.json(
       { error: "Failed to fetch workout templates" },
       { status: 500 }
@@ -223,7 +224,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(workoutTemplate, { status: 201 })
   } catch (error) {
-    console.error("Error creating workout template:", error)
+    logger.error("Error creating workout template:", error)
     return NextResponse.json(
       { error: `Failed to create workout template: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }

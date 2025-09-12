@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useUserPreferences } from "@/hooks/use-user-preferences"
 import { formatWeight, getWeightUnitAbbr, weightToLbs } from "@/lib/weight-utils"
+import { logger } from "@/lib/logger"
 
 
 interface WeightEntry {
@@ -62,7 +63,7 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
     return date.toISOString()
   }, [])
 
-  console.log('BodyCompositionAnalytics rendered with timeRange:', timeRange)
+  logger.info('BodyCompositionAnalytics rendered with timeRange:', timeRange)
 
   // Handle adding new weight entry
   const handleAddWeightEntry = async () => {
@@ -75,7 +76,7 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
       // Convert weight to pounds for database storage
       const weightInLbs = weightToLbs(parseFloat(newWeight), units)
       
-      console.log('Adding weight entry:', {
+      logger.info('Adding weight entry:', {
         weight: weightInLbs,
         date: dateStringToISOString(newWeightDate),
         notes: newWeightNotes || null,
@@ -93,11 +94,11 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
         }),
       })
 
-      console.log('Add weight response:', response.status, response.statusText)
+      logger.info('Add weight response:', response.status, response.statusText)
 
       if (response.ok) {
         const result = await response.json()
-        console.log('Add weight result:', result)
+        logger.info('Add weight result:', result)
         
         // Reset form
         setNewWeight('')
@@ -109,11 +110,11 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
         toast.success("Weight entry added successfully!")
       } else {
         const errorText = await response.text()
-        console.error('Failed to add weight entry:', errorText)
+        logger.error('Failed to add weight entry:', errorText)
         toast.error(`Failed to add weight entry: ${response.status} ${response.statusText}`)
       }
     } catch (error) {
-      console.error('Error adding weight entry:', error)
+      logger.error('Error adding weight entry:', error)
       toast.error(`Error adding weight entry: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -125,28 +126,28 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
     if (!confirmed) return
 
     try {
-      console.log('Deleting weight entry:', entryId)
+      logger.info('Deleting weight entry:', entryId)
       
       const response = await fetch(`/api/user/weight?id=${entryId}`, {
         method: 'DELETE',
       })
 
-      console.log('Delete weight response:', response.status, response.statusText)
+      logger.info('Delete weight response:', response.status, response.statusText)
 
       if (response.ok) {
         const result = await response.json()
-        console.log('Delete weight result:', result)
+        logger.info('Delete weight result:', result)
         
         // Refresh data
         await fetchData()
         toast.success("Weight entry deleted successfully!")
       } else {
         const errorText = await response.text()
-        console.error('Failed to delete weight entry:', errorText)
+        logger.error('Failed to delete weight entry:', errorText)
         toast.error(`Failed to delete weight entry: ${response.status} ${response.statusText}`)
       }
     } catch (error) {
-      console.error('Error deleting weight entry:', error)
+      logger.error('Error deleting weight entry:', error)
       toast.error(`Error deleting weight entry: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -169,14 +170,14 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
       }
 
       const days = getDaysFromTimeRange(timeRange)
-      console.log(`Fetching weight data for ${timeRange} (${days} days)`)
+      logger.info(`Fetching weight data for ${timeRange} (${days} days)`)
 
       const weightRes = await fetch(`/api/user/weight?days=${days}`)
       
       if (weightRes.ok) {
         const weightData = await weightRes.json()
-        console.log('Weight data received:', weightData)
-        console.log('Number of entries received:', weightData.entries?.length || 0)
+        logger.info('Weight data received:', weightData)
+        logger.info('Number of entries received:', weightData.entries?.length || 0)
 
         // Store all weight entries for the modal
         if (weightData.entries && weightData.entries.length > 0) {
@@ -207,8 +208,8 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
             }
           })
 
-          console.log('Aggregated data keys:', Object.keys(aggregatedData))
-          console.log('Daily averages:', Object.entries(aggregatedData).map(([date, data]) => ({
+          logger.info('Aggregated data keys:', Object.keys(aggregatedData))
+          logger.info('Daily averages:', Object.entries(aggregatedData).map(([date, data]) => ({
             date,
             averageWeight: data.averageWeight.toFixed(2),
             entryCount: data.entries.length
@@ -222,16 +223,16 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
               entryCount: data.entries.length,
             }))
 
-          console.log('Final chart data points:', progressData.length)
+          logger.info('Final chart data points:', progressData.length)
           setNutritionProgressData(progressData)
         } else {
-          console.log(`No weight entries found for ${timeRange}`)
+          logger.info(`No weight entries found for ${timeRange}`)
           setAllWeightEntries([])
           // No weight data available, show empty state
           setNutritionProgressData([])
         }
       } else {
-        console.error('Weight API request failed:', weightRes.status, weightRes.statusText)
+        logger.error('Weight API request failed:', weightRes.status, weightRes.statusText)
         throw new Error('Failed to fetch weight data')
       }
       
@@ -242,7 +243,7 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
         { name: "Fat", value: 25, color: "#10b981", grams: 88 },
       ])
     } catch (error) {
-      console.error('Error fetching body composition data:', error)
+      logger.error('Error fetching body composition data:', error)
       // Set empty data if API fails - no hardcoded fallback
       setNutritionProgressData([])
       setAllWeightEntries([])

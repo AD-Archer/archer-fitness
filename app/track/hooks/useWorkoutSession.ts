@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import type { WorkoutTemplate, WorkoutSession } from "../types/workout"
 import { transformTemplateFromAPI, transformSessionFromAPI, createWorkoutPayload, createTemplatePayload } from "../utils/workoutUtils"
+import { logger } from "@/lib/logger"
 
 const fallbackWorkouts: WorkoutTemplate[] = []
 
@@ -73,7 +74,7 @@ export function useWorkoutSession() {
           setIsLoading(false)
         }
       } catch (e) {
-        console.warn("Using fallback workouts", e)
+        logger.warn("Using fallback workouts", e)
         if (active) {
           setAvailableWorkouts(fallbackWorkouts)
           setIsLoading(false)
@@ -99,7 +100,7 @@ export function useWorkoutSession() {
 
       if (!res.ok) {
         const errorText = await res.text()
-        console.error("Failed to create session:", res.status, errorText)
+        logger.error("Failed to create session:", res.status, errorText)
         throw new Error("Failed to create session")
       }
 
@@ -122,7 +123,7 @@ export function useWorkoutSession() {
 
       setShowWorkoutSelection(false)
     } catch (e) {
-      console.error("Error in startWorkout:", e)
+      logger.error("Error in startWorkout:", e)
       throw e
     }
   }
@@ -162,7 +163,7 @@ export function useWorkoutSession() {
         setAvailableWorkouts((prev) => [...prev, workout])
       }
     } catch (e) {
-      console.warn("Create template fallback", e)
+      logger.warn("Create template fallback", e)
       alert("Failed to save workout. It will be available locally only.")
       setAvailableWorkouts((prev) => [...prev, workout])
     }
@@ -183,7 +184,7 @@ export function useWorkoutSession() {
       // Reflect update locally
       setAvailableWorkouts((prev) => prev.map((w) => (w.id === workout.id ? workout : w)))
     } catch (e) {
-      console.error("Failed to edit template", e)
+      logger.error("Failed to edit template", e)
       throw e
     }
   }
@@ -195,7 +196,7 @@ export function useWorkoutSession() {
         const res = await fetch(`/api/workout-tracker/workout-templates/${workoutId}`, { method: "DELETE" })
         if (!res.ok) throw new Error("Failed to delete template")
       } catch (e) {
-        console.warn("Delete template fallback", e)
+        logger.warn("Delete template fallback", e)
       } finally {
         setAvailableWorkouts((prev) => prev.filter((w) => w.id !== workoutId))
       }

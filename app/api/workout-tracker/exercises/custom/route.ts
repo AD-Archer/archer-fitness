@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
       isCustom: true
     })
   } catch (error) {
-    console.error("[API] Error creating custom exercise:", error)
+    logger.error("[API] Error creating custom exercise:", error)
     return new NextResponse("Internal Server Error", { status: 500 })
   }
 }

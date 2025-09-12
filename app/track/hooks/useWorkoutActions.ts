@@ -1,5 +1,6 @@
 import { useState } from "react"
 import type { WorkoutSession, TrackedExercise } from "../types/workout"
+import { logger } from "@/lib/logger"
 
 export function useWorkoutActions(
   session: WorkoutSession | null,
@@ -39,7 +40,7 @@ export function useWorkoutActions(
       // Reset session and go back to selection
       setSession(null)
     } catch (e) {
-      console.error("Failed to save workout state", e)
+      logger.error("Failed to save workout state", e)
     }
   }
 
@@ -63,10 +64,10 @@ export function useWorkoutActions(
           method: "DELETE",
         })
       } catch {
-        console.log("No saved state to clear")
+        logger.info("No saved state to clear")
       }
     } catch (e) {
-      console.error("Failed to complete session", e)
+      logger.error("Failed to complete session", e)
     }
     setSession(null)
   }
@@ -91,10 +92,10 @@ export function useWorkoutActions(
           method: "DELETE",
         })
       } catch {
-        console.log("No saved state to clear")
+        logger.info("No saved state to clear")
       }
     } catch (e) {
-      console.error("Failed to stop session", e)
+      logger.error("Failed to stop session", e)
     }
     setSession(null)
   }
@@ -120,7 +121,7 @@ export function useWorkoutActions(
                   ...ex,
                   sets: (updated.sets || []).map((s: { reps?: number; weight?: number | null; completed: boolean }) => ({
                     reps: s.reps ?? 0,
-                    weight: s.weight == null ? undefined : s.weight,
+                    weight: s.weight === null ? undefined : s.weight,
                     completed: s.completed
                   })),
                   completed: false,
@@ -131,7 +132,7 @@ export function useWorkoutActions(
         })
       }
     } catch (e) {
-      console.error("Failed to add set", e)
+      logger.error("Failed to add set", e)
     }
   }
 
@@ -197,7 +198,7 @@ export function useWorkoutActions(
 
       setSession((prev) => (prev ? { ...prev, exercises: [...prev.exercises, newTracked] } : prev))
     } catch (e) {
-      console.error(e)
+      logger.error(e)
       alert(`Failed to add exercise: ${e instanceof Error ? e.message : 'Unknown error'}`)
     } finally {
       setIsAddingExercise(false)

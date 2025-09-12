@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Zap, RefreshCw } from "lucide-react"
 import { WorkoutPreferencesForm } from "./workout-preferences-form"
 import { WorkoutDisplay } from "./workout-display"
+import { logger } from "@/lib/logger"
 
 interface Exercise {
   name: string
@@ -119,7 +120,7 @@ const loadExerciseDatabase = async (
     // Return only the filtered exercises (no need to slice here, we'll do it in generateWorkout)
     return filteredExercises
   } catch (error) {
-    console.error('Failed to load exercise database:', error)
+    logger.error('Failed to load exercise database:', error)
     return []
   }
 }
@@ -368,14 +369,14 @@ const loadSavedWorkoutPreferences = async (): Promise<SavedWorkoutPrefs | null> 
   try {
     const response = await fetch('/api/user/preferences')
     if (!response.ok) {
-      console.warn('Failed to fetch user preferences:', response.statusText)
+      logger.warn('Failed to fetch user preferences:', response.statusText)
       return null
     }
     
     const data = await response.json()
     return data.preferences?.workoutPrefs || null
   } catch (error) {
-    console.error('Error loading saved workout preferences:', error)
+    logger.error('Error loading saved workout preferences:', error)
     return null
   }
 }
@@ -517,7 +518,7 @@ export function AIWorkoutGenerator() {
 
       setGeneratedWorkout(workout)
     } catch (error) {
-      console.error('Failed to generate workout:', error)
+      logger.error('Failed to generate workout:', error)
       // Fallback to a basic workout if database fails to load
       const { workoutType, targetMuscles, targetBodyParts, equipment } = preferences
       const durationNum = Number.parseInt(preferences.duration)

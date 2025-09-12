@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 
 export async function GET() {
   try {
@@ -11,7 +12,7 @@ export async function GET() {
 
     return NextResponse.json(bodyParts)
   } catch (error) {
-    console.error("Error fetching body parts:", error)
+    logger.error("Error fetching body parts:", error)
     return NextResponse.json(
       { error: "Failed to fetch body parts" },
       { status: 500 }
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(bodyPart, { status: 201 })
   } catch (error) {
-    console.error("Error creating body part:", error)
+    logger.error("Error creating body part:", error)
     return NextResponse.json(
       { error: "Failed to create body part" },
       { status: 500 }

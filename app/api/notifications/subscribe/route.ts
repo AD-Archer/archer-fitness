@@ -44,8 +44,6 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    console.log('Push subscription saved for user:', session.user.id);
-
     return NextResponse.json({
       success: true,
       subscription: {
@@ -55,8 +53,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-  } catch (error) {
-    console.error('Error saving push subscription:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to save subscription' },
       { status: 500 }
@@ -64,7 +61,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Get user session
     const session = await getServerSession(authOptions);
@@ -96,8 +93,7 @@ export async function GET(request: NextRequest) {
       subscriptions
     });
 
-  } catch (error) {
-    console.error('Error fetching push subscriptions:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch subscriptions' },
       { status: 500 }

@@ -12,6 +12,7 @@ import { Scale, TrendingUp, TrendingDown, Minus, Plus, Calendar } from "lucide-r
 import { toast } from "sonner"
 import { formatWeight, formatWeightChange, getWeightUnitAbbr, weightToLbs } from "@/lib/weight-utils"
 import { useUserPreferences } from "@/hooks/use-user-preferences"
+import { logger } from "@/lib/logger"
 
 interface WeightEntry {
   id: string
@@ -62,7 +63,7 @@ export function WeightTracker({}: WeightTrackerProps) {
         toast.error('Failed to load weight data')
       }
     } catch (error) {
-      console.error('Error loading weight data:', error)
+      logger.error('Error loading weight data:', error)
       toast.error('Failed to load weight data')
     } finally {
       setIsLoading(false)
@@ -104,7 +105,7 @@ export function WeightTracker({}: WeightTrackerProps) {
         toast.error(error.error || 'Failed to save weight')
       }
     } catch (error) {
-      console.error('Error saving weight:', error)
+      logger.error('Error saving weight:', error)
       toast.error('Failed to save weight')
     } finally {
       setIsSaving(false)

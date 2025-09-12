@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { RefreshCw, Home, AlertTriangle, Bug } from 'lucide-react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
+import { logger } from "@/lib/logger"
 
 interface ErrorProps {
   error: Error & { digest?: string }
@@ -18,7 +19,7 @@ export default function Error({ error, reset }: ErrorProps) {
 
   useEffect(() => {
     // Log the error to an error reporting service
-    console.error('Application error:', error)
+    logger.error('Application error:', error)
 
     // Report error to admin via API (async, don't await to avoid blocking UI)
     fetch('/api/errors/report', {
@@ -36,7 +37,7 @@ export default function Error({ error, reset }: ErrorProps) {
         userId: (session?.user as any)?.id, // Include userId if available
       }),
     }).catch(err => {
-      console.error('Failed to report error to admin:', err)
+      logger.error('Failed to report error to admin:', err)
     })
   }, [error, (session?.user as any)?.id])
 

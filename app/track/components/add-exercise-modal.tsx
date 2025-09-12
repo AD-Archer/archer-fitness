@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Target, Search, Plus, Trash2 } from "lucide-react"
+import { logger } from "@/lib/logger"
 
 interface Exercise {
   id: string
@@ -100,7 +101,7 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
         setCurrentPage(1)
       }
     } catch (error) {
-      console.error("Error fetching exercises:", error)
+      logger.error("Error fetching exercises:", error)
     } finally {
       setLoading(false)
       setLoadingMore(false)
@@ -125,7 +126,7 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
       const musclesData = await musclesRes.json()
       setMuscles(musclesData)
     } catch (error) {
-      console.error("Error fetching filter options:", error)
+      logger.error("Error fetching filter options:", error)
     }
   }
 
@@ -245,10 +246,10 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
         setNewExerciseDescription("")
         setShowCreateForm(false)
       } else {
-        console.error("Failed to create custom exercise")
+        logger.error("Failed to create custom exercise")
       }
     } catch (error) {
-      console.error("Error creating custom exercise:", error)
+      logger.error("Error creating custom exercise:", error)
     } finally {
       setSavingCustomExercise(false)
     }
@@ -265,10 +266,10 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
       if (response.ok) {
         setExercises(prev => prev.filter(ex => ex.id !== id))
       } else {
-        console.error("Failed to delete custom exercise")
+        logger.error("Failed to delete custom exercise")
       }
     } catch (error) {
-      console.error("Error deleting custom exercise:", error)
+      logger.error("Error deleting custom exercise:", error)
     }
   }
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { notificationManager, PushSubscriptionData } from '@/lib/notifications-client';
+import { notificationManager } from '@/lib/notifications-client';
 import { toast } from 'sonner';
+import { logger } from "@/lib/logger"
 
 export function useNotifications() {
   const [isSupported, setIsSupported] = useState(false);
@@ -29,7 +30,7 @@ export function useNotifications() {
           }
         }
       } catch (error) {
-        console.error('Failed to initialize notifications:', error);
+        logger.error('Failed to initialize notifications:', error);
       }
     };
 
@@ -68,14 +69,14 @@ export function useNotifications() {
                 toast.success('Notifications enabled successfully!');
                 return true;
               } else {
-                console.warn('Failed to save subscription to server, but local notifications will work');
+                logger.warn('Failed to save subscription to server, but local notifications will work');
                 // Still mark as subscribed for local notifications
                 setIsSubscribed(true);
                 toast.success('Notifications enabled! (Server sync may not be available)');
                 return true;
               }
             } catch (serverError) {
-              console.warn('Server communication failed, but local notifications will work:', serverError);
+              logger.warn('Server communication failed, but local notifications will work:', serverError);
               // Still mark as subscribed for local notifications
               setIsSubscribed(true);
               toast.success('Notifications enabled! (Server sync may not be available)');
@@ -85,7 +86,7 @@ export function useNotifications() {
             throw new Error('Failed to create push subscription');
           }
         } catch (subscriptionError) {
-          console.error('Subscription failed:', subscriptionError);
+          logger.error('Subscription failed:', subscriptionError);
           // Check if VAPID keys are configured
           const errorMessage = subscriptionError instanceof Error ? subscriptionError.message : String(subscriptionError);
           if (errorMessage.includes('VAPID') || errorMessage.includes('applicationServerKey')) {
@@ -102,7 +103,7 @@ export function useNotifications() {
         return false;
       }
     } catch (error) {
-      console.error('Failed to enable notifications:', error);
+      logger.error('Failed to enable notifications:', error);
       toast.error('Failed to enable notifications. You can still use the app normally.');
       return false;
     } finally {
@@ -128,7 +129,7 @@ export function useNotifications() {
         });
 
         if (!response.ok) {
-          console.warn('Failed to remove subscription from server');
+          logger.warn('Failed to remove subscription from server');
         }
       }
 
@@ -136,7 +137,7 @@ export function useNotifications() {
       toast.success('Notifications disabled');
       return true;
     } catch (error) {
-      console.error('Failed to disable notifications:', error);
+      logger.error('Failed to disable notifications:', error);
       toast.error('Failed to disable notifications');
       return false;
     } finally {
@@ -164,7 +165,7 @@ export function useNotifications() {
       await notificationManager.sendTestNotification();
       toast.success('Test notification sent!');
     } catch (error) {
-      console.error('Failed to send test notification:', error);
+      logger.error('Failed to send test notification:', error);
       toast.error('Failed to send test notification. Check browser permissions.');
     }
   };
