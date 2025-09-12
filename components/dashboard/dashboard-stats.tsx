@@ -148,7 +148,7 @@ export function DashboardStats() {
           setWorkoutSessions(transformedWorkouts)
         } else {
           const errorText = await workoutResponse.text()
-          logger.error('API Error:', workoutResponse.status, workoutResponse.statusText, errorText)
+          logger.error('API Error:', `${workoutResponse.status} ${workoutResponse.statusText}: ${errorText}`)
           setError(`Failed to load workout data: ${workoutResponse.status}`)
         }
 

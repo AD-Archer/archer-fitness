@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
         oldestEntry: entries[entries.length - 1]?.date,
         newestEntry: entries[0]?.date,
       })
-    } catch (dbError) {
+    } catch {
       return NextResponse.json({
         averageWeight: null,
         entryCount: 0,
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
         message: "Weight tracking not available"
       })
     }
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

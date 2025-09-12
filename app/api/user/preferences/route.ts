@@ -69,7 +69,7 @@ export async function GET() {
         appPrefs: prefs.app,
       },
     })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

@@ -35,7 +35,7 @@ export async function GET() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { password, ...safeUser } = user
   return NextResponse.json({ user: safeUser })
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -99,7 +99,7 @@ export async function DELETE() {
     })
 
     return NextResponse.json({ message: "Account deleted successfully" })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

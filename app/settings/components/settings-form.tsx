@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -42,14 +42,15 @@ export function SettingsForm() {
     router.replace(`/settings?${newSearchParams.toString()}`, { scroll: false })
   }
 
-  const defaultWorkoutPrefs = {
+  const defaultWorkoutPrefs = useMemo(() => ({
     defaultDuration: "45",
     difficultyLevel: "intermediate",
     preferredTime: "morning",
     availableEquipment: ["dumbbells", "barbell", "bodyweight"],
     restDayReminders: true,
-  }
-  const defaultNutritionPrefs = {
+  }), [])
+  
+  const defaultNutritionPrefs = useMemo(() => ({
     dailyCalories: "2200",
     proteinTarget: "150",
     carbTarget: "250",
@@ -58,8 +59,9 @@ export function SettingsForm() {
     trackWater: true,
     waterTarget: "2500",
     useSmartCalculations: true,
-  }
-  const defaultAppPrefs = {
+  }), [])
+  
+  const defaultAppPrefs = useMemo(() => ({
     theme: "system",
     units: "imperial",
     notifications: true,
@@ -72,7 +74,7 @@ export function SettingsForm() {
       streakReminders: true,
       reminderTime: "09:00"
     }
-  }
+  }), [])
 
   const [profile, setProfile] = useState<UserProfile>({
     name: "",
@@ -194,10 +196,8 @@ export function SettingsForm() {
       }
     }
 
-    loadUserData()
-  }, [session])
-
-  // Auto-calculate nutrition values when smart calculations are enabled
+        loadUserData()
+  }, [session, defaultWorkoutPrefs, defaultNutritionPrefs, defaultAppPrefs])  // Auto-calculate nutrition values when smart calculations are enabled
   useEffect(() => {
     if (nutritionPrefs.useSmartCalculations) {
       const goalCalories = calculateGoalCalories(profile, appPrefs.units)

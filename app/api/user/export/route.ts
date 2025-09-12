@@ -42,7 +42,7 @@ export async function GET() {
         'Content-Disposition': 'attachment; filename="fitness-data-export.json"'
       }
     })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

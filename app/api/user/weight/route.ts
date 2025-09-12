@@ -49,7 +49,7 @@ async function updateUserAverageWeight(userId: string) {
         data: { weight: Math.round(averageWeight * 10) / 10 } // Round to 1 decimal
       })
     }
-  } catch (error) {
+  } catch {
     // Don't throw error to avoid breaking weight entry creation
   }
 }
@@ -165,7 +165,7 @@ export async function GET(request: NextRequest) {
           totalEntries: entries.length,
         }
       })
-    } catch (dbError) {
+    } catch {
       
       // Fallback to simulated data for development
       const currentDate = new Date()
@@ -203,7 +203,7 @@ export async function GET(request: NextRequest) {
         }
       })
     }
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -250,7 +250,7 @@ export async function POST(request: NextRequest) {
       },
       message: "Weight entry saved successfully" 
     })
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -292,7 +292,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ 
       message: "Weight entry deleted successfully" 
     })
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

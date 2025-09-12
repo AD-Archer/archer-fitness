@@ -24,7 +24,7 @@ export function AppTab({ appPrefs, setAppPrefs }: AppTabProps) {
     if (isSupported && permission === 'granted') {
       setAppPrefs({ ...appPrefs, notifications: isSubscribed })
     }
-  }, [isSupported, permission, isSubscribed])
+  }, [isSupported, permission, isSubscribed, appPrefs, setAppPrefs])
 
   const handleNotificationsToggle = async (enabled: boolean) => {
     if (!isSupported) {

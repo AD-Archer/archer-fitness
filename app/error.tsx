@@ -16,6 +16,7 @@ interface ErrorProps {
 
 export default function Error({ error, reset }: ErrorProps) {
   const { data: session } = useSession()
+  const userId = session?.user?.id
 
   useEffect(() => {
     // Log the error to an error reporting service
@@ -34,12 +35,12 @@ export default function Error({ error, reset }: ErrorProps) {
           digest: error.digest,
         },
         context: 'Client-side error in Archer Fitness app',
-        userId: (session?.user as any)?.id, // Include userId if available
+        userId: userId, // Include userId if available
       }),
     }).catch(err => {
       logger.error('Failed to report error to admin:', err)
     })
-  }, [error, (session?.user as any)?.id])
+  }, [error, userId])
 
   const isDevelopment = process.env.NODE_ENV === 'development'
 

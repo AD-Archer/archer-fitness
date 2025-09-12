@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
         averageFat: Math.round(averageFat * 10) / 10,
       }
     })
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch nutrition logs" },
       { status: 500 }
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(nutritionLog, { status: 201 })
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to create nutrition log" },
       { status: 500 }
