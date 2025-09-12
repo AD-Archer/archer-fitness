@@ -13,10 +13,10 @@ async function importExercisesToDatabase() {
   console.log('Starting exercise import to database...');
   
   try {
-    const dataFile = path.join(__dirname, '..', 'data', 'exercisedb-exercises.json');
+    const dataFile = path.join(__dirname, '..', 'data', 'all-exercises.json');
     
     if (!fs.existsSync(dataFile)) {
-      console.error('Exercise data file not found. Please run the scraper first with: npm run scrape:exercises');
+      console.error('Exercise data file not found. Please run the scraper first.');
       return;
     }
 
@@ -29,16 +29,51 @@ async function importExercisesToDatabase() {
     let skipped = 0;
     let errors = 0;
 
+    // First, ensure all muscles exist
+    const allMuscles = new Set();
+    const allEquipments = new Set();
+
+    data.exercises.forEach(exercise => {
+      // Collect all target and secondary muscles
+      if (exercise.targetMuscles) {
+        exercise.targetMuscles.forEach(muscle => allMuscles.add(muscle));
+      }
+      if (exercise.secondaryMuscles) {
+        exercise.secondaryMuscles.forEach(muscle => allMuscles.add(muscle));
+      }
+      // Collect all equipments
+      if (exercise.equipments) {
+        exercise.equipments.forEach(equipment => allEquipments.add(equipment));
+      }
+    });
+
+    console.log(`Found ${allMuscles.size} unique muscles and ${allEquipments.size} unique equipment types`);
+
+    // Create muscles if they don't exist
+    for (const muscleName of allMuscles) {
+      await prisma.muscle.upsert({
+        where: { name: muscleName },
+        update: {},
+        create: { name: muscleName }
+      });
+    }
+
+    // Create equipments if they don't exist
+    for (const equipmentName of allEquipments) {
+      await prisma.equipment.upsert({
+        where: { name: equipmentName },
+        update: {},
+        create: { name: equipmentName }
+      });
+    }
+
+    console.log('✅ Muscles and equipment tables populated');
+
     for (const exercise of data.exercises) {
       try {
-        // Check if exercise already exists by external ID
+        // Check if exercise already exists by name
         const existing = await prisma.exercise.findFirst({
-          where: {
-            OR: [
-              { name: exercise.name },
-              // If we add an externalId field later, we can check by that too
-            ]
-          }
+          where: { name: exercise.name }
         });
 
         if (existing) {
@@ -47,24 +82,85 @@ async function importExercisesToDatabase() {
           continue;
         }
 
-        // Create new exercise
-        await prisma.exercise.create({
+        // Create new exercise with GIF URL and proper relationships
+        const createdExercise = await prisma.exercise.create({
           data: {
             name: exercise.name,
             description: exercise.description,
-            category: exercise.category,
-            muscleGroup: exercise.muscleGroup,
-            equipment: exercise.equipment,
-            instructions: exercise.instructions,
-            isPublic: exercise.isPublic,
-            isPredefined: exercise.isPredefined,
-            userId: null // System/predefined exercises have no user
+            instructions: exercise.instructions?.join('\n'),
+            gifUrl: exercise.gifUrl,
+            isPublic: true,
+            isPredefined: true,
+            userId: null
           }
         });
 
+        // Add muscle relationships
+        if (exercise.targetMuscles || exercise.secondaryMuscles) {
+          const muscleRelations = [];
+
+          // Primary muscles
+          if (exercise.targetMuscles) {
+            for (const muscleName of exercise.targetMuscles) {
+              const muscle = await prisma.muscle.findUnique({
+                where: { name: muscleName }
+              });
+              if (muscle) {
+                muscleRelations.push({
+                  muscleId: muscle.id,
+                  isPrimary: true
+                });
+              }
+            }
+          }
+
+          // Secondary muscles
+          if (exercise.secondaryMuscles) {
+            for (const muscleName of exercise.secondaryMuscles) {
+              const muscle = await prisma.muscle.findUnique({
+                where: { name: muscleName }
+              });
+              if (muscle) {
+                muscleRelations.push({
+                  muscleId: muscle.id,
+                  isPrimary: false
+                });
+              }
+            }
+          }
+
+          // Create muscle relationships
+          for (const relation of muscleRelations) {
+            await prisma.exerciseMuscle.create({
+              data: {
+                exerciseId: createdExercise.id,
+                muscleId: relation.muscleId,
+                isPrimary: relation.isPrimary
+              }
+            });
+          }
+        }
+
+        // Add equipment relationships
+        if (exercise.equipments) {
+          for (const equipmentName of exercise.equipments) {
+            const equipment = await prisma.equipment.findUnique({
+              where: { name: equipmentName }
+            });
+            if (equipment) {
+              await prisma.exerciseEquipment.create({
+                data: {
+                  exerciseId: createdExercise.id,
+                  equipmentId: equipment.id
+                }
+              });
+            }
+          }
+        }
+
         imported++;
         
-        if (imported % 10 === 0) {
+        if (imported % 50 === 0) {
           console.log(`Imported ${imported} exercises...`);
         }
 
@@ -93,19 +189,21 @@ async function importSampleData() {
   console.log('Starting sample data import...');
   
   try {
-    const sampleFile = path.join(__dirname, '..', 'data', 'exercisedb-sample.json');
+    const sampleFile = path.join(__dirname, '..', 'data', 'all-exercises.json');
     
     if (!fs.existsSync(sampleFile)) {
-      console.error('Sample data file not found. Please run the scraper first.');
+      console.error('Sample data file not found.');
       return;
     }
 
     const rawData = fs.readFileSync(sampleFile, 'utf8');
     const data = JSON.parse(rawData);
     
-    console.log(`Importing ${data.exercises.length} sample exercises...`);
+    console.log(`Importing first 10 exercises as sample...`);
 
-    for (const exercise of data.exercises) {
+    const sampleExercises = data.exercises.slice(0, 10);
+
+    for (const exercise of sampleExercises) {
       try {
         // Check if exercise already exists
         const existing = await prisma.exercise.findFirst({
@@ -113,19 +211,75 @@ async function importSampleData() {
         });
 
         if (!existing) {
-          await prisma.exercise.create({
+          // Create exercise with GIF URL and relationships
+          const createdExercise = await prisma.exercise.create({
             data: {
               name: exercise.name,
               description: exercise.description,
-              category: exercise.category,
-              muscleGroup: exercise.muscleGroup,
-              equipment: exercise.equipment,
-              instructions: exercise.instructions,
-              isPublic: exercise.isPublic,
-              isPredefined: exercise.isPredefined,
+              instructions: exercise.instructions?.join('\n'),
+              gifUrl: exercise.gifUrl,
+              isPublic: true,
+              isPredefined: true,
               userId: null
             }
           });
+
+          // Add muscle relationships
+          if (exercise.targetMuscles || exercise.secondaryMuscles) {
+            // Primary muscles
+            if (exercise.targetMuscles) {
+              for (const muscleName of exercise.targetMuscles) {
+                const muscle = await prisma.muscle.upsert({
+                  where: { name: muscleName },
+                  update: {},
+                  create: { name: muscleName }
+                });
+                await prisma.exerciseMuscle.create({
+                  data: {
+                    exerciseId: createdExercise.id,
+                    muscleId: muscle.id,
+                    isPrimary: true
+                  }
+                });
+              }
+            }
+
+            // Secondary muscles
+            if (exercise.secondaryMuscles) {
+              for (const muscleName of exercise.secondaryMuscles) {
+                const muscle = await prisma.muscle.upsert({
+                  where: { name: muscleName },
+                  update: {},
+                  create: { name: muscleName }
+                });
+                await prisma.exerciseMuscle.create({
+                  data: {
+                    exerciseId: createdExercise.id,
+                    muscleId: muscle.id,
+                    isPrimary: false
+                  }
+                });
+              }
+            }
+          }
+
+          // Add equipment relationships
+          if (exercise.equipments) {
+            for (const equipmentName of exercise.equipments) {
+              const equipment = await prisma.equipment.upsert({
+                where: { name: equipmentName },
+                update: {},
+                create: { name: equipmentName }
+              });
+              await prisma.exerciseEquipment.create({
+                data: {
+                  exerciseId: createdExercise.id,
+                  equipmentId: equipment.id
+                }
+              });
+            }
+          }
+
           console.log(`Imported: ${exercise.name}`);
         } else {
           console.log(`Skipped existing: ${exercise.name}`);

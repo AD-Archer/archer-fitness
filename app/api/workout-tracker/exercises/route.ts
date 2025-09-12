@@ -26,7 +26,6 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const search = searchParams.get("search")
-    const bodyPartId = searchParams.get("bodyPartId")
     const muscleId = searchParams.get("muscleId")
     const equipmentId = searchParams.get("equipmentId")
     const limit = parseInt(searchParams.get("limit") || "50")
@@ -44,11 +43,6 @@ export async function GET(request: NextRequest) {
         }),
       },
       include: {
-        bodyParts: {
-          include: {
-            bodyPart: true
-          }
-        },
         muscles: {
           include: {
             muscle: true
@@ -79,14 +73,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Add filters based on the new schema relationships
-    if (bodyPartId) {
-      whereClause.bodyParts = {
-        some: {
-          bodyPartId: bodyPartId
-        }
-      }
-    }
-
     if (muscleId) {
       whereClause.muscles = {
         some: {
@@ -107,11 +93,6 @@ export async function GET(request: NextRequest) {
     const predefinedExercises = await prisma.exercise.findMany({
       where: whereClause,
       include: {
-        bodyParts: {
-          include: {
-            bodyPart: true
-          }
-        },
         muscles: {
           include: {
             muscle: true
@@ -164,7 +145,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, description, instructions, bodyParts, muscles, equipments } = body
+    const { name, description, instructions, muscles, equipments } = body
 
     if (!name) {
       return NextResponse.json(
@@ -181,13 +162,6 @@ export async function POST(request: NextRequest) {
         description,
         instructions,
         // Create relationships if provided
-        ...(bodyParts && bodyParts.length > 0 && {
-          bodyParts: {
-            create: bodyParts.map((bodyPartId: string) => ({
-              bodyPartId
-            }))
-          }
-        }),
         ...(muscles && muscles.length > 0 && {
           muscles: {
             create: muscles.map((muscle: { muscleId: string, isPrimary?: boolean }) => ({
@@ -205,11 +179,6 @@ export async function POST(request: NextRequest) {
         })
       },
       include: {
-        bodyParts: {
-          include: {
-            bodyPart: true
-          }
-        },
         muscles: {
           include: {
             muscle: true

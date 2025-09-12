@@ -60,7 +60,20 @@ export async function POST(
     const updatedExercise = await prismaAny.workoutSessionExercise.findFirst({
       where: { id: params.exerciseId },
       include: {
-        exercise: true,
+        exercise: {
+          include: {
+            muscles: {
+              include: {
+                muscle: true
+              }
+            },
+            equipments: {
+              include: {
+                equipment: true
+              }
+            }
+          }
+        },
         sets: { orderBy: { setNumber: "asc" } },
       },
     })

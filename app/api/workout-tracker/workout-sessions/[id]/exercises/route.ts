@@ -22,7 +22,20 @@ export async function GET(
         workoutSession: { userId: session.user.id },
       },
       include: {
-        exercise: true,
+        exercise: {
+          include: {
+            muscles: {
+              include: {
+                muscle: true
+              }
+            },
+            equipments: {
+              include: {
+                equipment: true
+              }
+            }
+          }
+        },
         sets: {
           orderBy: { setNumber: "asc" },
         },
@@ -86,7 +99,20 @@ export async function POST(
         notes,
       },
       include: {
-        exercise: true,
+        exercise: {
+          include: {
+            muscles: {
+              include: {
+                muscle: true
+              }
+            },
+            equipments: {
+              include: {
+                equipment: true
+              }
+            }
+          }
+        },
         sets: {
           orderBy: { setNumber: "asc" },
         },

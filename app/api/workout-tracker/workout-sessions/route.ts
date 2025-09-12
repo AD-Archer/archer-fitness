@@ -81,6 +81,11 @@ export async function GET(request: NextRequest) {
                   include: {
                     muscle: true
                   }
+                },
+                equipments: {
+                  include: {
+                    equipment: true
+                  }
                 }
               }
             },
@@ -263,6 +268,11 @@ export async function POST(request: NextRequest) {
                 muscles: {
                   include: {
                     muscle: true
+                  }
+                },
+                equipments: {
+                  include: {
+                    equipment: true
                   }
                 }
               }

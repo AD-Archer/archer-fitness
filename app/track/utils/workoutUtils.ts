@@ -96,7 +96,26 @@ export const transformSessionFromAPI = (sessionData: unknown): WorkoutSession =>
   const mappedExercises: TrackedExercise[] = (session.exercises || []).map((ex: unknown) => {
     const exercise = ex as {
       id: string
-      exercise?: { name?: string; instructions?: string }
+      exercise?: { 
+        id?: string
+        name?: string
+        description?: string
+        instructions?: string
+        gifUrl?: string
+        muscles?: Array<{
+          muscle: {
+            id: string
+            name: string
+          }
+          isPrimary: boolean
+        }>
+        equipments?: Array<{
+          equipment: {
+            id: string
+            name: string
+          }
+        }>
+      }
       targetSets: number
       targetReps: string
       targetType?: string
@@ -119,6 +138,16 @@ export const transformSessionFromAPI = (sessionData: unknown): WorkoutSession =>
         }
       }),
       completed: false,
+      // Include the full exercise data with muscles, equipments, and gifUrl
+      exercise: exercise.exercise ? {
+        id: exercise.exercise.id || "",
+        name: exercise.exercise.name || "Exercise",
+        description: exercise.exercise.description,
+        instructions: exercise.exercise.instructions,
+        gifUrl: exercise.exercise.gifUrl,
+        muscles: exercise.exercise.muscles || [],
+        equipments: exercise.exercise.equipments || []
+      } : undefined,
     }
   })
 

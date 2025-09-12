@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Check, Pause, Play, Square, Target, Timer, Save, X, Trash2 } from "lucide-react"
+import Image from "next/image"
 import { AddSetForm } from "./add-set-form"
 import { RestTimer } from "./rest-timer"
 import { ExerciseTimer } from "./exercise-timer"
@@ -27,6 +28,26 @@ interface TrackedExercise {
   instructions?: string
   sets: ExerciseSet[]
   completed: boolean
+  exercise?: {
+    id: string
+    name: string
+    description?: string
+    instructions?: string
+    gifUrl?: string
+    muscles: Array<{
+      muscle: {
+        id: string
+        name: string
+      }
+      isPrimary: boolean
+    }>
+    equipments: Array<{
+      equipment: {
+        id: string
+        name: string
+      }
+    }>
+  }
 }
 
 interface WorkoutSessionProps {
@@ -126,6 +147,18 @@ export function WorkoutSession({
     )
   }
 
+  // Debug: Log exercise data
+  console.log('Current exercise data:', {
+    name: currentExercise.name,
+    exercise: currentExercise.exercise,
+    gifUrl: currentExercise.exercise?.gifUrl,
+    hasGifUrl: !!currentExercise.exercise?.gifUrl,
+    muscles: currentExercise.exercise?.muscles,
+    hasMuscles: !!currentExercise.exercise?.muscles?.length,
+    primaryMuscles: currentExercise.exercise?.muscles?.filter(m => m.isPrimary),
+    secondaryMuscles: currentExercise.exercise?.muscles?.filter(m => !m.isPrimary)
+  })
+
   return (
     <div className="space-y-6">
       {/* Workout Header */}
@@ -156,14 +189,14 @@ export function WorkoutSession({
             <Progress value={getWorkoutProgress()} className="h-2" />
           </div>
 
-          <div className="flex gap-2">
-            <Button onClick={onPauseWorkout} variant="outline" className="bg-transparent">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={onPauseWorkout} variant="outline" className="bg-transparent flex-1 sm:flex-none">
               {isTimerRunning ? <Pause className="w-4 h-4 mr-1" /> : <Play className="w-4 h-4 mr-1" />}
               {isTimerRunning ? "Resume" : "Pause"}
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" className="bg-transparent text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950">
+                <Button variant="outline" className="bg-transparent text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 flex-1 sm:flex-none">
                   <Square className="w-4 h-4 mr-1" />
                   Stop
                 </Button>
@@ -196,7 +229,7 @@ export function WorkoutSession({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-            <Button onClick={onBackToSelection} variant="outline" className="bg-transparent">
+            <Button onClick={onBackToSelection} variant="outline" className="bg-transparent flex-1 sm:flex-none">
               Back to Selection
             </Button>
           </div>
@@ -234,7 +267,7 @@ export function WorkoutSession({
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <CardTitle className="flex items-center gap-2">
                 <Target className="w-5 h-5 text-blue-600" />
                 {currentExercise.name}
@@ -251,6 +284,40 @@ export function WorkoutSession({
                     </div>
                     <Progress value={getExerciseProgress(currentExercise)} className="h-2" />
                   </div>
+                  
+                  {/* Exercise GIF - positioned here */}
+                  {currentExercise.exercise?.gifUrl ? (
+                    <div className="space-y-2 pt-2">
+                      <div className="flex justify-center">
+                        <Image
+                          src={currentExercise.exercise.gifUrl}
+                          alt={`${currentExercise.name} demonstration`}
+                          width={250}
+                          height={150}
+                          className="max-w-full h-auto rounded-lg border shadow-sm"
+                          style={{ maxHeight: '150px' }}
+                          onError={(e) => {
+                            console.log('GIF failed to load:', currentExercise.exercise?.gifUrl);
+                            e.currentTarget.style.display = 'none';
+                          }}
+                          onLoad={() => {
+                            console.log('GIF loaded successfully:', currentExercise.exercise?.gifUrl);
+                          }}
+                        />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">
+                          💡 Pause the workout to see the demonstration more clearly
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-center pt-2">
+                      <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-3 text-center">
+                        📹 No demonstration video available
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardDescription>
             </div>
@@ -261,18 +328,89 @@ export function WorkoutSession({
                   Complete
                 </Badge>
               ) : null}
-              <Button
-                onClick={() => onRemoveExercise(currentExercise.id)}
-                variant="outline"
-                size="sm"
-                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Remove Exercise</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to remove &quot;{currentExercise.name}&quot; from this workout? 
+                      All sets for this exercise will be lost.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => onRemoveExercise(currentExercise.id)}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Remove Exercise
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Exercise Tags */}
+          <div className="space-y-3">
+            {/* Equipment Tags */}
+            {currentExercise.exercise?.equipments && currentExercise.exercise.equipments.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">Equipment</h4>
+                <div className="flex flex-wrap gap-1">
+                  {currentExercise.exercise.equipments.map((eq, idx) => (
+                    <Badge key={idx} variant="outline" className="text-xs">
+                      {eq.equipment.name}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Target Muscles */}
+            {currentExercise.exercise?.muscles && currentExercise.exercise.muscles.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">Target Muscles</h4>
+                <div className="flex flex-wrap gap-1">
+                  {currentExercise.exercise.muscles
+                    .filter(m => m.isPrimary)
+                    .map((muscle, idx) => (
+                      <Badge key={idx} className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                        {muscle.muscle.name}
+                      </Badge>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Secondary Muscles */}
+            {currentExercise.exercise?.muscles && currentExercise.exercise.muscles.some(m => !m.isPrimary) && (
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">Secondary Muscles</h4>
+                <div className="flex flex-wrap gap-1">
+                  {currentExercise.exercise.muscles
+                    .filter(m => !m.isPrimary)
+                    .map((muscle, idx) => (
+                      <Badge key={idx} variant="outline" className="text-xs border-orange-200 text-orange-700 dark:border-orange-800 dark:text-orange-300">
+                        {muscle.muscle.name}
+                      </Badge>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           {currentExercise.instructions && (
             <div className="p-3 rounded-lg bg-muted/50">
               <p className="text-sm">{currentExercise.instructions}</p>
@@ -370,14 +508,6 @@ export function WorkoutSession({
                     >
                       {idx === currentExerciseIndex ? "Active" : "Go"}
                     </Button>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <span>{ex.sets.length}/{ex.targetSets} sets</span>
-                    <div className="flex-1">
-                      <Progress value={getExerciseProgress(ex)} className="h-1" />
-                    </div>
-                    <span>{isExerciseCompleted(ex) ? "Done" : "In progress"}</span>
-                    {ex.targetType === "time" && <span className="text-xs">({ex.targetReps})</span>}
                   </div>
                 </div>
               )

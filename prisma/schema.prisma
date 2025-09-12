@@ -111,6 +111,7 @@ model Exercise {
   name        String
   description String?
   instructions String?
+  gifUrl      String?
   isPublic    Boolean  @default(false)
   isPredefined Boolean @default(false)
   userId      String?  @map("user_id") // null for predefined exercises

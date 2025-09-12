@@ -299,6 +299,7 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
           </div>
         </div>
       )}
+
     </div>
-  )
+  );
 }

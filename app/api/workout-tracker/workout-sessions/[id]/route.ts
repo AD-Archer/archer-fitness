@@ -23,7 +23,20 @@ export async function GET(
         workoutTemplate: true,
         exercises: {
           include: {
-            exercise: true,
+            exercise: {
+              include: {
+                muscles: {
+                  include: {
+                    muscle: true
+                  }
+                },
+                equipments: {
+                  include: {
+                    equipment: true
+                  }
+                }
+              }
+            },
             sets: {
               orderBy: {
                 setNumber: "asc",
@@ -165,7 +178,20 @@ export async function PUT(
         workoutTemplate: true,
         exercises: {
           include: {
-            exercise: true,
+            exercise: {
+              include: {
+                muscles: {
+                  include: {
+                    muscle: true
+                  }
+                },
+                equipments: {
+                  include: {
+                    equipment: true
+                  }
+                }
+              }
+            },
             sets: {
               orderBy: {
                 setNumber: "asc",

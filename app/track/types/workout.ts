@@ -13,6 +13,26 @@ export interface TrackedExercise {
   instructions?: string
   sets: ExerciseSet[]
   completed: boolean
+  exercise?: {
+    id: string
+    name: string
+    description?: string
+    instructions?: string
+    gifUrl?: string
+    muscles: Array<{
+      muscle: {
+        id: string
+        name: string
+      }
+      isPrimary: boolean
+    }>
+    equipments: Array<{
+      equipment: {
+        id: string
+        name: string
+      }
+    }>
+  }
 }
 
 export interface WorkoutTemplateExercise {
