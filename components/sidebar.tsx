@@ -28,7 +28,7 @@ const navigation = [
   { name: "History", href: "/workouts", icon: Play },
   { name: "Nutrition", href: "/nutrition", icon: Apple },
   { name: "Statistics", href: "/progress", icon: TrendingUp },
-  { name: "Schedule", href: "#", icon: Calendar },
+  { name: "Schedule", href: "/schedule", icon: Calendar },
   { name: "Recovery", href: "/recovery", icon: Moon },
 ]
 

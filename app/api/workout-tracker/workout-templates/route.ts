@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
         estimatedDuration: estimatedDuration || 30,
         category,
         difficulty,
-        // TODO: Add isAiGenerated field when Prisma client is properly updated
+        isAiGenerated: isAiGenerated || false,
         exercises: {
           create: resolvedExercises.map((ex: any, index: number) => ({
             exerciseId: ex.exerciseId,

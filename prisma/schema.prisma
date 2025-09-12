@@ -72,6 +72,8 @@ model User {
   meals         Meal[]
   savedWorkoutStates SavedWorkoutState[]
   weightEntries WeightEntry[]
+  schedules     Schedule[]
+  scheduleTemplates ScheduleTemplate[]
 
   @@map("users")
 }
@@ -408,4 +410,83 @@ model WeightEntry {
   @@index([userId, date(sort: Desc)])
   @@index([userId, createdAt(sort: Desc)])
   @@map("weight_entries")
+}
+
+// Schedule models
+model Schedule {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  weekStart DateTime // Start of the week (Sunday)
+  name      String?  // Optional name for the schedule
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items ScheduleItem[]
+
+  @@unique([userId, weekStart])
+  @@index([userId, weekStart])
+  @@map("schedules")
+}
+
+model ScheduleItem {
+  id          String   @id @default(cuid())
+  scheduleId  String   @map("schedule_id")
+  type        String   // "workout" | "meal"
+  title       String
+  description String?
+  startTime   String   // HH:MM format
+  endTime     String   // HH:MM format
+  day         Int      // 0 = Sunday, 1 = Monday, etc.
+  category    String?
+  calories    Int?
+  difficulty  String?
+  duration    Int?     // in minutes
+  isFromGenerator Boolean @default(false)
+  generatorData Json?  // Original data from AI generator
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([scheduleId, day])
+  @@map("schedule_items")
+}
+
+model ScheduleTemplate {
+  id          String   @id @default(cuid())
+  userId      String?  @map("user_id") // null for default templates
+  name        String
+  description String?
+  isDefault   Boolean  @default(false)
+  isPublic    Boolean  @default(false)
+  usageCount  Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user  User?                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items ScheduleTemplateItem[]
+
+  @@map("schedule_templates")
+}
+
+model ScheduleTemplateItem {
+  id               String   @id @default(cuid())
+  templateId       String   @map("template_id")
+  type             String   // "workout" | "meal"
+  title            String
+  description      String?
+  startTime        String   // HH:MM format
+  endTime          String   // HH:MM format
+  day              Int      // 0 = Sunday, 1 = Monday, etc.
+  category         String?
+  calories         Int?
+  difficulty       String?
+  duration         Int?     // in minutes
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  template ScheduleTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId, day])
+  @@map("schedule_template_items")
 }
