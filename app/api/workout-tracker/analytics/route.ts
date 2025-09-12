@@ -91,7 +91,8 @@ export async function GET(request: NextRequest) {
       personalRecords: {},
       strengthProgress: {},
       volumeMetrics: {},
-      generalStats: {}
+      generalStats: {},
+      workoutSessions: workoutSessions // Include full session data for duration calculations
     }
 
     // Calculate personal records and strength metrics
@@ -279,16 +280,19 @@ export async function GET(request: NextRequest) {
     if (type === "strength") {
       return NextResponse.json({ 
         strengthProgress: analytics.strengthProgress,
-        personalRecords: analytics.personalRecords 
+        personalRecords: analytics.personalRecords,
+        workoutSessions: analytics.workoutSessions
       })
     } else if (type === "volume") {
       return NextResponse.json({ 
         volumeMetrics: analytics.volumeMetrics,
-        generalStats: analytics.generalStats 
+        generalStats: analytics.generalStats,
+        workoutSessions: analytics.workoutSessions
       })
     } else if (type === "records") {
       return NextResponse.json({ 
-        personalRecords: analytics.personalRecords 
+        personalRecords: analytics.personalRecords,
+        workoutSessions: analytics.workoutSessions
       })
     }
 

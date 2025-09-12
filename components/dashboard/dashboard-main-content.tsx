@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DashboardStats } from "@/components/dashboard/dashboard-stats"
 import { RecentWorkouts } from "@/app/workouts/components/recent-workouts"
-import { WeeklyProgress } from "@/components/weekly-progress"
+import { WeeklyProgress } from "@/components/dashboard/weekly-progress"
 import { TodaysFocus } from "@/components/dashboard/todays-focus"
 import { WeightTracker } from "@/components/dashboard/weight-tracker"
 

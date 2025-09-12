@@ -1,9 +1,8 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { TrendingUp, Calendar, Flame, Target, Apple, Droplets } from "lucide-react"
-import { useEffect, useState } from "react"
+import { TrendingUp, Calendar, Flame, Target } from "lucide-react"
+import { useEffect, useState, useCallback } from "react"
 
 interface WorkoutSession {
   id: string
@@ -11,6 +10,7 @@ interface WorkoutSession {
   startTime: string
   duration: number | null
   status: string
+  endTime?: string | Date | null
   workoutTemplate?: {
     id: string
     name: string
@@ -28,6 +28,10 @@ interface WorkoutSession {
       completed: boolean
     }>
   }>
+  // Additional fields that might be returned by the API
+  performanceStatus?: string
+  completionRate?: number
+  perfectionScore?: number
 }
 
 interface NutritionGoals {
@@ -72,17 +76,79 @@ export function DashboardStats() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Helper function to calculate completion percentage
+  const calculateCompletionRate = (exercises: Array<{ sets: Array<{ completed: boolean }> }>) => {
+    if (exercises.length === 0) return 0
+
+    const totalSets = exercises.reduce((total, exercise) => total + exercise.sets.length, 0)
+    if (totalSets === 0) return 0
+
+    const completedSets = exercises.reduce((total, exercise) =>
+      total + exercise.sets.filter(set => set.completed).length, 0)
+
+    return Math.round((completedSets / totalSets) * 100)
+  }
+
+  // Helper function to get status based on completion
+  const getStatusFromCompletion = useCallback((status: string, exercises: Array<{ sets: Array<{ completed: boolean }> }>): "completed" | "in_progress" | "skipped" => {
+    const completionRate = calculateCompletionRate(exercises)
+
+    if (completionRate >= 100) {
+      return "completed"
+    } else if (completionRate > 0) {
+      return "in_progress"
+    } else {
+      return "in_progress" // No sets completed yet
+    }
+  }, [])
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true)
         setError(null)
 
-        // Fetch workout sessions data
-        const workoutResponse = await fetch('/api/workout-tracker/sessions?limit=5')
+        // Check if user is authenticated first
+        const authResponse = await fetch('/api/auth/session')
+        const session = await authResponse.json()
+        console.log('Current session:', session)
+
+        if (!session?.user) {
+          console.log('User not authenticated')
+          setError('Please sign in to view your workout stats')
+          return
+        }
+
+        // Fetch workout sessions data - use simpler query like the working components
+        const workoutResponse = await fetch('/api/workout-tracker/workout-sessions?limit=20')
+        console.log('Workout API response status:', workoutResponse.status)
+
         if (workoutResponse.ok) {
           const workoutData = await workoutResponse.json()
-          setWorkoutSessions(workoutData.sessions || [])
+          console.log('API Response:', workoutData)
+          console.log('Number of workouts returned:', workoutData.length)
+          
+          // Transform workout data to calculate proper completion status
+          const transformedWorkouts = workoutData.map((session: WorkoutSession) => ({
+            ...session,
+            // Calculate actual status based on completion
+            calculatedStatus: getStatusFromCompletion(session.status, session.exercises || [])
+          }))
+          
+          console.log('Transformed workouts:', transformedWorkouts.map((w: WorkoutSession & { calculatedStatus: string }) => ({
+            id: w.id,
+            name: w.name,
+            status: w.status,
+            calculatedStatus: w.calculatedStatus,
+            exercises: w.exercises?.length || 0,
+            completionRate: calculateCompletionRate(w.exercises || [])
+          })))
+          
+          setWorkoutSessions(transformedWorkouts)
+        } else {
+          const errorText = await workoutResponse.text()
+          console.error('API Error:', workoutResponse.status, workoutResponse.statusText, errorText)
+          setError(`Failed to load workout data: ${workoutResponse.status}`)
         }
 
       } catch (error) {
@@ -94,7 +160,7 @@ export function DashboardStats() {
     }
 
     fetchData()
-  }, [])
+  }, [getStatusFromCompletion])
 
   // Calculate workout statistics
   const calculateWorkoutStats = () => {
@@ -113,13 +179,34 @@ export function DashboardStats() {
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
 
-    // Filter completed workouts
-    const completedWorkouts = workoutSessions.filter(session => session.status === 'completed')
+    // Filter completed workouts using calculated status
+    const completedWorkouts = workoutSessions.filter(session => {
+      const calculatedStatus = getStatusFromCompletion(session.status, session.exercises || [])
+      const completionRate = calculateCompletionRate(session.exercises || [])
+      console.log(`Workout ${session.name}: status=${session.status}, calculated=${calculatedStatus}, completion=${completionRate}%`)
+      return calculatedStatus === 'completed'
+    })
 
-    // This week's workouts
+    console.log(`Total workouts: ${workoutSessions.length}, Completed workouts: ${completedWorkouts.length}`)
+
+    // This week's workouts (current week starting from Monday)
+    const currentDate = new Date()
+    const startOfWeek = new Date(currentDate)
+    startOfWeek.setDate(currentDate.getDate() - currentDate.getDay() + 1) // Start of week (Monday)
+    startOfWeek.setHours(0, 0, 0, 0)
+
+    const endOfWeek = new Date(startOfWeek)
+    endOfWeek.setDate(startOfWeek.getDate() + 6) // End of week (Sunday)
+    endOfWeek.setHours(23, 59, 59, 999)
+
+    console.log(`Date ranges: This week: ${startOfWeek.toDateString()} to ${endOfWeek.toDateString()}`)
+    console.log(`Current date: ${now.toDateString()}`)
+
     const workoutsThisWeek = completedWorkouts.filter(workout => {
       const workoutDate = new Date(workout.startTime)
-      return workoutDate >= weekAgo
+      const isInWeek = workoutDate >= startOfWeek && workoutDate <= endOfWeek
+      console.log(`This week check for ${workout.name}: ${workoutDate.toDateString()}, inWeek=${isInWeek}`)
+      return isInWeek
     }).length
 
     // Last week's workouts
@@ -130,19 +217,23 @@ export function DashboardStats() {
 
     // Calculate current streak
     let currentStreak = 0
-    const sortedWorkouts = completedWorkouts
-      .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
-
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    for (let i = 0; i < sortedWorkouts.length; i++) {
-      const workoutDate = new Date(sortedWorkouts[i].startTime)
+    // Create a set of workout dates for efficient lookup
+    const workoutDates = new Set<string>()
+    completedWorkouts.forEach(workout => {
+      const workoutDate = new Date(workout.startTime)
       workoutDate.setHours(0, 0, 0, 0)
+      workoutDates.add(workoutDate.toDateString())
+    })
 
-      const expectedDate = new Date(today.getTime() - currentStreak * 24 * 60 * 60 * 1000)
+    // Check consecutive days backwards from today
+    for (let i = 0; i < 365; i++) { // Max streak of 365 days
+      const checkDate = new Date(today)
+      checkDate.setDate(checkDate.getDate() - i)
 
-      if (workoutDate.getTime() === expectedDate.getTime()) {
+      if (workoutDates.has(checkDate.toDateString())) {
         currentStreak++
       } else {
         break
@@ -150,29 +241,98 @@ export function DashboardStats() {
     }
 
     // Average duration this week
-    const thisWeekWorkouts = completedWorkouts.filter(workout => {
+    const thisWeekWorkoutsWithDuration = completedWorkouts.filter(workout => {
       const workoutDate = new Date(workout.startTime)
-      return workoutDate >= weekAgo
+      const isInWeek = workoutDate >= startOfWeek && workoutDate <= endOfWeek
+      
+      // Calculate duration with fallback
+      let effectiveDuration = workout.duration || 0
+      
+      // If duration is 0 but we have startTime and endTime, calculate it
+      if (effectiveDuration === 0 && workout.endTime) {
+        const startTime = new Date(workout.startTime)
+        const endTime = new Date(workout.endTime)
+        effectiveDuration = Math.floor((endTime.getTime() - startTime.getTime()) / 1000) // Convert to seconds
+      }
+      
+      const hasDuration = effectiveDuration > 0
+      
+      console.log(`Duration check for ${workout.name}: date=${workoutDate.toDateString()}, inWeek=${isInWeek}, duration=${workout.duration}, endTime=${workout.endTime}, effectiveDuration=${effectiveDuration}, hasDuration=${hasDuration}`)
+      return isInWeek && hasDuration
     })
 
-    const avgDuration = thisWeekWorkouts.length > 0
-      ? Math.round(thisWeekWorkouts.reduce((sum, w) => sum + (w.duration || 0), 0) / thisWeekWorkouts.length / 60)
+    console.log(`This week workouts with duration: ${thisWeekWorkoutsWithDuration.length} out of ${completedWorkouts.filter(workout => {
+      const workoutDate = new Date(workout.startTime)
+      return workoutDate >= startOfWeek && workoutDate <= endOfWeek
+    }).length}`)
+
+    const avgDuration = thisWeekWorkoutsWithDuration.length > 0
+      ? Math.round(thisWeekWorkoutsWithDuration.reduce((sum: number, w) => {
+          let effectiveDuration = w.duration || 0
+          
+          // If duration is 0 but we have startTime and endTime, calculate it
+          if (effectiveDuration === 0 && w.endTime) {
+            const startTime = new Date(w.startTime)
+            const endTime = new Date(w.endTime)
+            effectiveDuration = Math.floor((endTime.getTime() - startTime.getTime()) / 1000)
+          }
+          
+          return sum + effectiveDuration
+        }, 0) / thisWeekWorkoutsWithDuration.length / 60)
       : 0
 
-    // Average duration last week
-    const lastWeekWorkouts = completedWorkouts.filter(workout => {
+    // Last week's workouts and average
+    const lastWeekStart = new Date(startOfWeek)
+    lastWeekStart.setDate(lastWeekStart.getDate() - 7)
+    const lastWeekEnd = new Date(endOfWeek)
+    lastWeekEnd.setDate(lastWeekEnd.getDate() - 7)
+
+    console.log(`Date ranges: Last week: ${lastWeekStart.toDateString()} to ${lastWeekEnd.toDateString()}`)
+
+    const lastWeekWorkoutsWithDuration = completedWorkouts.filter(workout => {
       const workoutDate = new Date(workout.startTime)
-      return workoutDate >= twoWeeksAgo && workoutDate < weekAgo
+      const isInLastWeek = workoutDate >= lastWeekStart && workoutDate <= lastWeekEnd
+      
+      // Calculate duration with fallback
+      let effectiveDuration = workout.duration || 0
+      
+      // If duration is 0 but we have startTime and endTime, calculate it
+      if (effectiveDuration === 0 && workout.endTime) {
+        const startTime = new Date(workout.startTime)
+        const endTime = new Date(workout.endTime)
+        effectiveDuration = Math.floor((endTime.getTime() - startTime.getTime()) / 1000) // Convert to seconds
+      }
+      
+      const hasDuration = effectiveDuration > 0
+      
+      console.log(`Last week duration check for ${workout.name}: date=${workoutDate.toDateString()}, inLastWeek=${isInLastWeek}, duration=${workout.duration}, endTime=${workout.endTime}, effectiveDuration=${effectiveDuration}, hasDuration=${hasDuration}`)
+      return isInLastWeek && hasDuration
     })
 
-    const avgDurationLastWeek = lastWeekWorkouts.length > 0
-      ? Math.round(lastWeekWorkouts.reduce((sum, w) => sum + (w.duration || 0), 0) / lastWeekWorkouts.length / 60)
+    console.log(`Last week workouts with duration: ${lastWeekWorkoutsWithDuration.length} out of ${completedWorkouts.filter(workout => {
+      const workoutDate = new Date(workout.startTime)
+      return workoutDate >= lastWeekStart && workoutDate <= lastWeekEnd
+    }).length}`)
+
+    const avgDurationLastWeek = lastWeekWorkoutsWithDuration.length > 0
+      ? Math.round(lastWeekWorkoutsWithDuration.reduce((sum: number, w) => {
+          let effectiveDuration = w.duration || 0
+          
+          // If duration is 0 but we have startTime and endTime, calculate it
+          if (effectiveDuration === 0 && w.endTime) {
+            const startTime = new Date(w.startTime)
+            const endTime = new Date(w.endTime)
+            effectiveDuration = Math.floor((endTime.getTime() - startTime.getTime()) / 1000)
+          }
+          
+          return sum + effectiveDuration
+        }, 0) / lastWeekWorkoutsWithDuration.length / 60)
       : 0
 
     return {
       workoutsThisWeek,
       currentStreak,
-      weeklyGoal: workoutsThisWeek,
+      weeklyGoal: Math.round((workoutsThisWeek / 3) * 100), // Progress towards 3 workouts per week goal
       avgDuration,
       workoutsLastWeek,
       avgDurationLastWeek,
@@ -181,18 +341,19 @@ export function DashboardStats() {
 
   const stats = calculateWorkoutStats()
 
-  // Calculate nutrition stats
-  const todaysCalories = loggedFoods.reduce((total, loggedFood) => {
-    return total + (loggedFood.food.calories * loggedFood.quantity)
-  }, 0)
+  // Placeholder calculations for future nutrition features
+  // const todaysCalories = loggedFoods.reduce((total, loggedFood) => {
+  //   return total + (loggedFood.food.calories * loggedFood.quantity)
+  // }, 0)
 
-  const todaysWaterIntake = waterEntries.reduce((total, entry) => total + entry.amount, 0)
+  // const todaysWaterIntake = waterEntries.reduce((total, entry) => total + entry.amount, 0)
 
   const workoutStats = [
     {
       title: "Workouts This Week",
       value: stats.workoutsThisWeek.toString(),
-      change: stats.workoutsLastWeek > 0
+      change: stats.workoutsThisWeek === 0 ? "Complete your first workout!" : 
+              stats.workoutsLastWeek > 0
         ? `${stats.workoutsThisWeek > stats.workoutsLastWeek ? '+' : ''}${stats.workoutsThisWeek - stats.workoutsLastWeek} from last week`
         : "First week!",
       icon: Calendar,
@@ -201,46 +362,28 @@ export function DashboardStats() {
     {
       title: "Current Streak",
       value: `${stats.currentStreak} days`,
-      change: stats.currentStreak > 0 ? "Keep it up!" : "Start your streak!",
+      change: stats.currentStreak === 0 ? "Start your workout streak!" : "Keep it up!",
       icon: Flame,
       color: "text-orange-600",
     },
     {
       title: "Weekly Goal",
-      value: stats.workoutsThisWeek > 0 ? `${Math.round((stats.workoutsThisWeek / Math.max(stats.workoutsThisWeek, 3)) * 100)}%` : "0%",
-      change: stats.workoutsThisWeek > 0 ? `${stats.workoutsThisWeek} of ${Math.max(stats.workoutsThisWeek, 3)} workouts` : "Set your first goal!",
+      value: stats.workoutsThisWeek === 0 ? "0%" : `${Math.round((stats.workoutsThisWeek / 3) * 100)}%`,
+      change: stats.workoutsThisWeek === 0 ? "Complete your first workout!" : `${stats.workoutsThisWeek} of 3 workouts completed`,
       icon: Target,
       color: "text-green-600",
     },
     {
       title: "Avg Session",
-      value: stats.avgDuration > 0 ? `${stats.avgDuration} min` : "0 min",
-      change: stats.avgDurationLastWeek > 0 && stats.avgDuration > 0
+      value: stats.avgDuration === 0 ? "0 min" : `${stats.avgDuration} min`,
+      change: stats.avgDuration === 0 ? "Complete a workout to see average!" :
+              stats.avgDurationLastWeek > 0 && stats.avgDuration > 0
         ? `${stats.avgDuration > stats.avgDurationLastWeek ? '+' : ''}${stats.avgDuration - stats.avgDurationLastWeek} min from last week`
         : stats.avgDuration > 0 ? "First week!" : "No sessions yet",
       icon: TrendingUp,
       color: "text-purple-600",
     },
   ]
-
-  const nutritionStats = nutritionGoals ? [
-    {
-      title: "Daily Calories",
-      current: Math.round(todaysCalories),
-      target: nutritionGoals.dailyCalories,
-      unit: "cal",
-      icon: Apple,
-      color: "text-emerald-600",
-    },
-    {
-      title: "Water Intake",
-      current: todaysWaterIntake,
-      target: nutritionGoals.dailyWater,
-      unit: "ml",
-      icon: Droplets,
-      color: "text-blue-600",
-    },
-  ] : []
 
   if (loading) {
     return (
@@ -302,59 +445,64 @@ export function DashboardStats() {
       <div>
         <h2 className="text-lg font-semibold mb-4">Today&#39;s Nutrition</h2>
         <div className="grid gap-4 md:grid-cols-2">
-          {nutritionStats.map((stat) => {
-            const Icon = stat.icon
-            const progress = (stat.current / stat.target) * 100
-            const isComplete = progress >= 100
-
-            return (
-              <Card key={stat.title}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
-                  <Icon className={`h-4 w-4 ${stat.color}`} />
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-baseline gap-2">
-                    <div className="text-2xl font-bold">{stat.current.toLocaleString()}</div>
-                    <div className="text-sm text-muted-foreground">
-                      / {stat.target.toLocaleString()} {stat.unit}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{Math.round(progress)}% of goal</span>
-                      <span className={isComplete ? "text-green-600" : ""}>
-                        {isComplete ? "Goal reached!" : `${stat.target - stat.current} ${stat.unit} remaining`}
-                      </span>
-                    </div>
-                    <Progress value={Math.min(progress, 100)} className="h-2" />
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center text-muted-foreground">
+                <p>Nutrition tracking - to be added</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center text-muted-foreground">
+                <p>Water intake tracking - to be added</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
       <div>
         <h2 className="text-lg font-semibold mb-4">Workout Overview</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {workoutStats.map((stat) => {
-            const Icon = stat.icon
-            return (
-              <Card key={stat.title}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
-                  <Icon className={`h-4 w-4 ${stat.color}`} />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stat.value}</div>
-                  <p className="text-xs text-muted-foreground mt-1">{stat.change}</p>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
+        {workoutSessions.length === 0 ? (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center text-muted-foreground">
+                <p className="text-lg mb-2">No workout data found</p>
+                <p className="text-sm">Complete your first workout to see your stats!</p>
+                <p className="text-xs mt-2">API Status: {error ? `Error: ${error}` : 'Connected'}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : stats.workoutsThisWeek === 0 && stats.currentStreak === 0 && stats.avgDuration === 0 ? (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center text-muted-foreground">
+                <p className="text-lg mb-2">You have {workoutSessions.length} workout{workoutSessions.length !== 1 ? 's' : ''} but none are completed</p>
+                <p className="text-sm">Complete your workouts to see your stats!</p>
+                <p className="text-xs mt-2">Make sure to mark your sets as completed during workouts</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {workoutStats.map((stat) => {
+              const Icon = stat.icon
+              return (
+                <Card key={stat.title}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
+                    <Icon className={`h-4 w-4 ${stat.color}`} />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stat.value}</div>
+                    <p className="text-xs text-muted-foreground mt-1">{stat.change}</p>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )

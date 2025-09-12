@@ -19,10 +19,13 @@ export async function GET(request: NextRequest) {
 
     let dateFilter = {}
     if (date) {
-      const startOfDay = new Date(date)
-      startOfDay.setHours(0, 0, 0, 0)
-      const endOfDay = new Date(date)
-      endOfDay.setHours(23, 59, 59, 999)
+      // Parse the date in UTC to avoid timezone issues
+      const year = parseInt(date.split('-')[0])
+      const month = parseInt(date.split('-')[1]) - 1 // JavaScript months are 0-indexed
+      const day = parseInt(date.split('-')[2])
+      
+      const startOfDay = new Date(Date.UTC(year, month, day, 0, 0, 0, 0))
+      const endOfDay = new Date(Date.UTC(year, month, day, 23, 59, 59, 999))
       
       dateFilter = {
         startTime: {
@@ -248,6 +251,7 @@ export async function POST(request: NextRequest) {
         workoutTemplateId,
         name,
         description,
+        startTime: new Date(), // Explicitly set startTime to current time
         exercises: {
           create: resolvedExercises.map((ex, index) => ({
             exerciseId: ex.exerciseId,

@@ -1,6 +1,5 @@
 "use client"
 
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { UserNav } from "@/components/user-nav"
 import Link from "next/link"
@@ -14,12 +13,6 @@ export function DashboardHeader() {
       </div>
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <UserNav />
-        <Badge
-          variant="secondary"
-          className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200"
-        >
-          Active Plan
-        </Badge>
         <Link href="/generate">
           <Button className="bg-blue-700 hover:bg-blue-800 text-white w-full sm:w-auto">Generate Workout</Button>
         </Link>

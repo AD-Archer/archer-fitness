@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
+import prisma from "@/lib/prisma"
 
 // GET /api/schedule/templates - Get all schedule templates for a user
 export async function GET() {

@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Clock, CheckCircle, Trash2, Eye, RotateCcw } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { toast } from "sonner"
 import { WorkoutDetailsModal } from "./workout-details-modal"
 import { QuickViewModal } from "./quick-view-modal"
@@ -96,6 +96,32 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
   const [loading, setLoading] = useState(true)
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutSession | null>(null)
 
+  // Helper function to calculate completion percentage
+  const calculateCompletionRate = (exercises: Array<{ sets: Array<{ completed: boolean }> }>) => {
+    if (exercises.length === 0) return 0
+
+    const totalSets = exercises.reduce((total, exercise) => total + exercise.sets.length, 0)
+    if (totalSets === 0) return 0
+
+    const completedSets = exercises.reduce((total, exercise) =>
+      total + exercise.sets.filter(set => set.completed).length, 0)
+
+    return Math.round((completedSets / totalSets) * 100)
+  }
+
+  // Helper function to get status based on completion
+  const getStatusFromCompletion = useCallback((status: string, exercises: Array<{ sets: Array<{ completed: boolean }> }>): "completed" | "in_progress" | "skipped" => {
+    const completionRate = calculateCompletionRate(exercises)
+
+    if (completionRate >= 100) {
+      return "completed"
+    } else if (completionRate > 0) {
+      return "in_progress"
+    } else {
+      return "in_progress" // No sets completed yet
+    }
+  }, [])
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -114,20 +140,27 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
         }
 
         // Transform sessions data
-        const transformedSessions = sessionsData.map((session) => ({
-          id: session.id,
-          name: session.name,
-          date: new Date(session.startTime),
-          duration: session.duration || 0,
-          exercises: session.exercises?.map(ex => ({
+        const transformedSessions = sessionsData.map((session) => {
+          // Map status values properly based on completion
+          const exercises = session.exercises?.map(ex => ({
             exerciseId: ex.exerciseId,
             exerciseName: ex.exercise?.name || 'Unknown Exercise',
             sets: ex.sets || []
-          })) || [],
-          status: session.status as "completed" | "in_progress" | "skipped",
-          notes: session.notes,
-          templateId: session.workoutTemplateId,
-        }))
+          })) || []
+
+          const status = getStatusFromCompletion(session.status, exercises)
+
+          return {
+            id: session.id,
+            name: session.name,
+            date: new Date(session.startTime),
+            duration: session.duration || 0,
+            exercises,
+            status,
+            notes: session.notes,
+            templateId: session.workoutTemplateId,
+          }
+        })
 
         setRecentWorkouts(transformedSessions)
 
@@ -155,7 +188,7 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
     }
 
     fetchData()
-  }, [])
+  }, [getStatusFromCompletion])
 
   // Helper function to format date
   const formatDate = (date: Date | string) => {
@@ -169,6 +202,11 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
 
     const daysAgo = Math.floor((today.getTime() - dateObj.getTime()) / (1000 * 60 * 60 * 24))
     return `${daysAgo} days ago`
+  }
+
+  // Helper function to calculate total sets
+  const calculateTotalSets = (exercises: Array<{ sets: Array<{ reps: number; weight?: number; completed: boolean }> }>) => {
+    return exercises.reduce((total, exercise) => total + exercise.sets.length, 0)
   }
 
   // Helper function to get template info
@@ -293,7 +331,8 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
                         <Clock className="w-3 h-3" />
                         {workout.duration ? Math.round(workout.duration / 60) : 0} min
                       </div>
-                      <span className="whitespace-nowrap">{template.exercises.length} exercises</span>
+                      <span className="whitespace-nowrap">{workout.exercises.length} exercises</span>
+                      <span className="whitespace-nowrap">{calculateTotalSets(workout.exercises)} sets</span>
                     </div>
                   </div>
                 </div>

@@ -47,6 +47,24 @@ export function QuickViewModal({ workout, trigger }: QuickViewModalProps) {
     return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`
   }
 
+  const getStatusDisplay = (status: string, exercises: Array<{ sets: Array<{ completed: boolean }> }>) => {
+    // Calculate completion rate
+    const totalSets = exercises.reduce((total, exercise) => total + exercise.sets.length, 0)
+    if (totalSets === 0) return "In Progress"
+
+    const completedSets = exercises.reduce((total, exercise) =>
+      total + exercise.sets.filter(set => set.completed).length, 0)
+    const completionRate = Math.round((completedSets / totalSets) * 100)
+
+    if (completionRate >= 100) {
+      return "Completed"
+    } else if (completionRate > 0) {
+      return "In Progress"
+    } else {
+      return "Not Started"
+    }
+  }
+
   const calculateSetStats = (sets: Array<{ reps: number; weight?: number; completed: boolean }>) => {
     const completedSets = sets.filter(set => set.completed)
     const totalReps = completedSets.reduce((sum, set) => sum + set.reps, 0)
@@ -82,8 +100,15 @@ export function QuickViewModal({ workout, trigger }: QuickViewModalProps) {
               <Clock className="w-3 h-3" />
               {formatDuration(workout.duration)}
             </span>
-            <Badge variant="outline" className="capitalize">
-              {workout.status.replace('_', ' ')}
+            <Badge 
+              variant="outline" 
+              className={`capitalize ${
+                getStatusDisplay(workout.status, workout.exercises) === "Completed" 
+                  ? "bg-green-100 text-green-800 border-green-300 dark:bg-green-900 dark:text-green-200 dark:border-green-700" 
+                  : ""
+              }`}
+            >
+              {getStatusDisplay(workout.status, workout.exercises)}
             </Badge>
           </DialogDescription>
         </DialogHeader>

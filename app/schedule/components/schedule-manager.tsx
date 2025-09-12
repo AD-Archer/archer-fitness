@@ -14,6 +14,12 @@ import { useToast } from "@/hooks/use-toast"
 
 export function ScheduleManager() {
   const [currentSchedule, setCurrentSchedule] = useState<WeeklySchedule | null>(null)
+  const [completedSessions, setCompletedSessions] = useState<Array<{
+    id: string
+    name: string
+    startTime: string
+    status: string
+  }>>([])
   const { toast } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -41,6 +47,30 @@ export function ScheduleManager() {
     const diff = d.getDate() - day // Sunday = 0
     return new Date(d.setDate(diff))
   }
+
+  const loadCompletedSessions = useCallback(async (weekStart: Date) => {
+    try {
+      // Get sessions for the entire week
+      const startDate = weekStart.toISOString().split('T')[0]
+      const endDate = new Date(weekStart)
+      endDate.setDate(endDate.getDate() + 6)
+      const endDateStr = endDate.toISOString().split('T')[0]
+
+      const response = await fetch(`/api/workout-tracker/workout-sessions?timeRange=custom&startDate=${startDate}&endDate=${endDateStr}`)
+      if (response.ok) {
+        const sessions: Array<{
+          id: string
+          status: string
+          startTime: string
+          workoutTemplateId?: string
+          name: string
+        }> = await response.json()
+        setCompletedSessions(sessions.filter(session => session.status === 'completed'))
+      }
+    } catch (error) {
+      console.error('Failed to load completed sessions:', error)
+    }
+  }, [])
 
   // Initialize with current week
   const loadScheduleFromAPI = useCallback(async (weekStart: Date) => {
@@ -70,6 +100,9 @@ export function ScheduleManager() {
           }
         })
       }
+
+      // Load completed sessions for the week
+      await loadCompletedSessions(weekStart)
     } catch (error) {
       console.error('Failed to load schedule:', error)
       toast({
@@ -78,7 +111,7 @@ export function ScheduleManager() {
         variant: "destructive"
       })
     }
-  }, [loadSchedule, toast])
+  }, [loadSchedule, toast, loadCompletedSessions])
 
   const initializeCurrentWeek = useCallback(() => {
     const today = new Date()
@@ -311,6 +344,7 @@ export function ScheduleManager() {
             onItemDelete={deleteScheduleItem}
             onClearWeek={clearWeekSchedule}
             isLoading={loading}
+            completedSessions={completedSessions}
           />
         </TabsContent>
 

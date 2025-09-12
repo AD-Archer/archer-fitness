@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ChevronLeft, ChevronRight, Trash2, Edit, Clock, Utensils, Dumbbell } from "lucide-react"
+import { ChevronLeft, ChevronRight, Trash2, Clock, Utensils, Dumbbell } from "lucide-react"
 import { WeeklySchedule } from "../types/schedule"
 import { cn } from "@/lib/utils"
 
@@ -14,6 +14,12 @@ interface WeeklyCalendarProps {
   onItemDelete: (itemId: string) => void
   onClearWeek: () => void
   isLoading: boolean
+  completedSessions?: Array<{
+    id: string
+    name: string
+    startTime: string
+    status: string
+  }>
 }
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -23,9 +29,25 @@ export function WeeklyCalendar({
   onNavigateWeek,
   onItemDelete,
   onClearWeek,
-  isLoading
+  isLoading,
+  completedSessions = []
 }: WeeklyCalendarProps) {
   const [selectedItem, setSelectedItem] = useState<string | null>(null)
+
+  const isWorkoutCompleted = (item: { title: string; startTime: string }) => {
+    // Check if there's a completed session that matches this scheduled workout
+    return completedSessions.some(session => {
+      if (session.status !== 'completed') return false
+      
+      const sessionDate = new Date(session.startTime)
+      // Compare dates (ignoring time)
+      const itemDate = new Date(`${schedule.weekStart.toDateString()} ${item.startTime}`)
+      
+      return sessionDate.toDateString() === itemDate.toDateString() &&
+             (session.name.toLowerCase().includes(item.title.toLowerCase()) ||
+              item.title.toLowerCase().includes(session.name.toLowerCase()))
+    })
+  }
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', { 
@@ -140,76 +162,75 @@ export function WeeklyCalendar({
                     No activities scheduled
                   </div>
                 ) : (
-                  day.items.map((item) => (
-                    <div
-                      key={item.id}
-                      className={cn(
-                        "p-2 rounded-lg border cursor-pointer transition-all hover:shadow-sm",
-                        getItemColor(item.type),
-                        selectedItem === item.id && "ring-2 ring-primary"
-                      )}
-                      onClick={() => setSelectedItem(selectedItem === item.id ? null : item.id)}
-                    >
-                      <div className="flex items-start justify-between gap-1">
-                        <div className="flex items-center gap-1 min-w-0">
-                          {getItemIcon(item.type)}
-                          <span className="text-xs font-medium truncate">{item.title}</span>
-                        </div>
-                        {item.isFromGenerator && (
-                          <Badge variant="secondary" className="text-xs px-1 py-0 h-4">
-                            AI
-                          </Badge>
+                  day.items.map((item) => {
+                    const completed = isWorkoutCompleted(item)
+                    
+                    return (
+                      <div
+                        key={item.id}
+                        className={cn(
+                          "p-2 rounded-lg border cursor-pointer transition-all hover:shadow-sm",
+                          completed 
+                            ? "bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800" 
+                            : getItemColor(item.type),
+                          selectedItem === item.id && "ring-2 ring-primary"
                         )}
-                      </div>
-                      
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {formatTimeRange(item.startTime, item.endTime)}
-                      </div>
-                      
-                      {item.duration && (
-                        <div className="text-xs text-muted-foreground">
-                          {item.duration} min
-                        </div>
-                      )}
-                      
-                      {selectedItem === item.id && (
-                        <div className="mt-2 pt-2 border-t border-current/20">
-                          <div className="flex gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 px-2 text-xs"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                // TODO: Implement edit functionality
-                                console.log('Edit item:', item.id)
-                              }}
-                            >
-                              <Edit className="h-3 w-3 mr-1" />
-                              Edit
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onItemDelete(item.id)
-                                setSelectedItem(null)
-                              }}
-                            >
-                              <Trash2 className="h-3 w-3 mr-1" />
-                              Delete
-                            </Button>
+                        onClick={() => setSelectedItem(selectedItem === item.id ? null : item.id)}
+                      >
+                        <div className="flex items-start justify-between gap-1">
+                          <div className="flex items-center gap-1 min-w-0">
+                            {getItemIcon(item.type)}
+                            <span className="text-xs font-medium truncate">{item.title}</span>
+                            {completed && (
+                              <Badge variant="secondary" className="text-xs px-1 py-0 h-4 bg-green-100 text-green-800">
+                                ✓
+                              </Badge>
+                            )}
                           </div>
-                          
-                          {item.description && (
-                            <p className="text-xs mt-1 text-muted-foreground">{item.description}</p>
+                          {item.isFromGenerator && !completed && (
+                            <Badge variant="secondary" className="text-xs px-1 py-0 h-4">
+                              AI
+                            </Badge>
                           )}
                         </div>
-                      )}
-                    </div>
-                  ))
+                        
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {formatTimeRange(item.startTime, item.endTime)}
+                          {completed && <span className="text-green-600 ml-1">• Completed</span>}
+                        </div>
+                        
+                        {item.duration && (
+                          <div className="text-xs text-muted-foreground">
+                            {item.duration} min
+                          </div>
+                        )}
+                        
+                        {selectedItem === item.id && (
+                          <div className="mt-2 pt-2 border-t border-current/20">
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onItemDelete(item.id)
+                                  setSelectedItem(null)
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3 mr-1" />
+                                Delete
+                              </Button>
+                            </div>
+                            
+                            {item.description && (
+                              <p className="text-xs mt-1 text-muted-foreground">{item.description}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
                 )}
               </div>
             </div>

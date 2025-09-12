@@ -110,16 +110,25 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
   }
 
   const getWorkoutPerformanceStatus = (workout: WorkoutSession): WorkoutPerformanceStatus => {
+    // Calculate completion rate first
+    const totalSets = workout.exercises.reduce((total, exercise) => total + exercise.sets.length, 0)
+    if (totalSets === 0) return "unfinished"
+
+    const completedSets = workout.exercises.reduce((total, exercise) =>
+      total + exercise.sets.filter(set => set.completed).length, 0)
+    const completionRate = Math.round((completedSets / totalSets) * 100)
+
+    // If 100% complete, return completed
+    if (completionRate >= 100) {
+      return "completed"
+    }
+
+    // Otherwise use the stored performance status or default to unfinished
     if (workout.performanceStatus) {
       return workout.performanceStatus
     }
-    
-    // Fallback for old workouts without performance status
-    if (workout.status === "completed") {
-      return "completed"
-    } else {
-      return "unfinished"
-    }
+
+    return "unfinished"
   }
 
   const calculateWorkoutStats = (workout: WorkoutSession) => {

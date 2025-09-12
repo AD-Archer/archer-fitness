@@ -5,6 +5,29 @@ import { Badge } from "@/components/ui/badge"
 import { TrendingUp, Target, Clock, Zap, Trophy, Activity } from "lucide-react"
 import { useEffect, useState } from "react"
 
+interface WorkoutSession {
+  id: string
+  startTime: string
+  endTime?: string | Date | null
+  duration: number | null
+  status: string
+  exercises: Array<{
+    exercise: {
+      name: string
+      muscles: Array<{
+        muscle: {
+          name: string
+        }
+      }>
+    }
+    sets: Array<{
+      completed: boolean
+      weight?: number
+      reps?: number
+    }>
+  }>
+}
+
 interface FitnessOverview {
   totalWorkouts: number
   totalSets: number
@@ -25,6 +48,7 @@ interface PersonalRecord {
   frequency: number
   lastWorkout: string
   muscleGroups: string[]
+  endTime?: string | Date | null
 }
 
 interface TopPerformance {
@@ -44,6 +68,20 @@ export function FitnessOverview({ timeRange = "3months" }: FitnessOverviewProps)
   const [topPerformances, setTopPerformances] = useState<TopPerformance[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Helper function to calculate effective duration with fallback
+  const calculateEffectiveDuration = (session: WorkoutSession) => {
+    let effectiveDuration = session.duration || 0
+    
+    // If duration is 0 but we have startTime and endTime, calculate it
+    if (effectiveDuration === 0 && session.endTime) {
+      const startTime = new Date(session.startTime)
+      const endTime = new Date(session.endTime)
+      effectiveDuration = Math.floor((endTime.getTime() - startTime.getTime()) / 1000) // Convert to seconds
+    }
+    
+    return effectiveDuration
+  }
+
   useEffect(() => {
     const fetchOverviewData = async () => {
       try {
@@ -51,7 +89,48 @@ export function FitnessOverview({ timeRange = "3months" }: FitnessOverviewProps)
         if (response.ok) {
           const data = await response.json()
           
-          setOverview(data.generalStats)
+          // Calculate general stats with proper duration handling
+          const workoutSessions = data.workoutSessions || []
+          const workoutDates = new Set<string>()
+          let totalCompletedSets = 0
+          let totalWorkoutTime = 0
+          let totalVolume = 0
+          
+          workoutSessions.forEach((session: WorkoutSession) => {
+            const sessionDate = new Date(session.startTime).toISOString().split('T')[0]
+            workoutDates.add(sessionDate)
+            
+            // Use effective duration calculation
+            const effectiveDuration = calculateEffectiveDuration(session)
+            console.log(`Fitness Overview - Session ${session.id}: duration=${session.duration}, endTime=${session.endTime}, effectiveDuration=${effectiveDuration}`)
+            if (effectiveDuration > 0) {
+              totalWorkoutTime += effectiveDuration
+            }
+
+            session.exercises.forEach(exercise => {
+              const completedSets = exercise.sets.filter(set => set.completed)
+              totalCompletedSets += completedSets.length
+              
+              completedSets.forEach(set => {
+                if (set.weight && set.reps) {
+                  totalVolume += set.weight * set.reps
+                }
+              })
+            })
+          })
+          
+          // Update general stats with calculated values
+          const calculatedGeneralStats = {
+            ...data.generalStats,
+            totalWorkouts: workoutDates.size,
+            totalSets: totalCompletedSets,
+            totalVolume,
+            averageWorkoutTime: workoutDates.size > 0 ? Math.round(totalWorkoutTime / workoutDates.size) : 0,
+            averageSetsPerWorkout: workoutDates.size > 0 ? Math.round(totalCompletedSets / workoutDates.size) : 0,
+            averageVolumePerWorkout: workoutDates.size > 0 ? Math.round(totalVolume / workoutDates.size) : 0,
+          }
+          
+          setOverview(calculatedGeneralStats)
           
           // Extract top performances from personal records
           const performances: TopPerformance[] = []
