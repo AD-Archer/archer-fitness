@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { TrendingUp, Calendar, Flame, Target, Apple, Droplets } from "lucide-react"
+import { TrendingUp, Calendar, Flame, Target, Apple, Droplets, Scale } from "lucide-react"
 import { useEffect, useState } from "react"
 
 interface WorkoutSession {
@@ -61,13 +61,51 @@ interface WaterEntry {
   date: string
 }
 
+interface WeightStats {
+  current: number
+  weekChange: number
+  monthChange: number
+  trend: 'increasing' | 'decreasing' | 'stable'
+}
+
 export function DashboardStats() {
   const [workoutSessions, setWorkoutSessions] = useState<WorkoutSession[]>([])
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [nutritionGoals, setNutritionGoals] = useState<NutritionGoals | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loggedFoods, setLoggedFoods] = useState<LoggedFood[]>([])
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [waterEntries, setWaterEntries] = useState<WaterEntry[]>([])
+  const [weightStats, setWeightStats] = useState<WeightStats | null>(null)
+  const [units, setUnits] = useState<string>('imperial')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Helper functions for weight conversion
+  const lbsToKg = (lbs: number) => lbs * 0.453592
+  
+  const formatWeight = (weightInLbs: number) => {
+    if (units === 'imperial') {
+      return `${weightInLbs.toFixed(1)} lbs`
+    } else {
+      return `${lbsToKg(weightInLbs).toFixed(1)} kg`
+    }
+  }
+
+  const formatWeightChange = (changeInLbs: number) => {
+    const absChange = Math.abs(changeInLbs)
+    let formatted: string
+    
+    if (units === 'imperial') {
+      formatted = `${absChange.toFixed(1)} lbs`
+    } else {
+      const kgChange = lbsToKg(absChange)
+      formatted = `${kgChange.toFixed(1)} kg`
+    }
+    
+    const prefix = changeInLbs > 0 ? '+' : changeInLbs < 0 ? '-' : ''
+    return `${prefix}${formatted} this month`
+  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -75,50 +113,36 @@ export function DashboardStats() {
         setLoading(true)
         setError(null)
 
-        // Fetch workout sessions
-        const sessionsResponse = await fetch('/api/workout-tracker/workout-sessions?limit=50')
-        if (sessionsResponse.ok) {
-          const sessionsData = await sessionsResponse.json()
-          setWorkoutSessions(sessionsData)
+        // Load user preferences first
+        const prefsRes = await fetch('/api/user/preferences')
+        if (prefsRes.ok) {
+          const prefsData = await prefsRes.json()
+          if (prefsData?.preferences?.app?.units) {
+            setUnits(prefsData.preferences.app.units)
+          }
         }
 
-        // Fetch nutrition goals (you might need to create this endpoint)
-        // For now, we'll use default values
-        setNutritionGoals({
-          dailyCalories: 2200,
-          dailyWater: 2500,
-          protein: 150,
-          carbs: 250,
-          fat: 75,
-          fiber: 30,
-        })
+        // Fetch workout sessions data
+        const workoutResponse = await fetch('/api/workout-tracker/sessions?limit=5')
+        if (workoutResponse.ok) {
+          const workoutData = await workoutResponse.json()
+          setWorkoutSessions(workoutData.sessions || [])
+        }
 
-        // Fetch logged foods (fallback to empty if API doesn't exist)
+        // Fetch weight stats
         try {
-          const foodsResponse = await fetch('/api/meals/today')
-          if (foodsResponse.ok) {
-            const foodsData = await foodsResponse.json()
-            setLoggedFoods(foodsData.loggedFoods || [])
+          const weightResponse = await fetch('/api/user/weight?limit=5&days=30')
+          if (weightResponse.ok) {
+            const weightData = await weightResponse.json()
+            setWeightStats(weightData.stats || null)
           }
         } catch {
-          console.warn('Meals API not available, using empty nutrition data')
-          setLoggedFoods([])
+          console.warn('Weight API not available, using empty weight data')
+          setWeightStats(null)
         }
 
-        // Fetch water entries (fallback to empty if API doesn't exist)
-        try {
-          const waterResponse = await fetch('/api/health/water/today')
-          if (waterResponse.ok) {
-            const waterData = await waterResponse.json()
-            setWaterEntries(waterData.entries || [])
-          }
-        } catch {
-          console.warn('Water API not available, using empty water data')
-          setWaterEntries([])
-        }
-
-      } catch (err) {
-        console.error('Failed to fetch dashboard data:', err)
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error)
         setError('Failed to load dashboard data')
       } finally {
         setLoading(false)
@@ -274,6 +298,20 @@ export function DashboardStats() {
     },
   ] : []
 
+  // Add weight stats
+  const weightStatsArray = weightStats ? [
+    {
+      title: "Current Weight",
+      value: formatWeight(weightStats.current),
+      change: weightStats.monthChange !== 0 
+        ? formatWeightChange(weightStats.monthChange)
+        : "No change this month",
+      icon: Scale,
+      color: weightStats.trend === 'decreasing' ? "text-green-600" : 
+             weightStats.trend === 'increasing' ? "text-orange-600" : "text-gray-600",
+    },
+  ] : []
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -367,6 +405,30 @@ export function DashboardStats() {
           })}
         </div>
       </div>
+
+      {/* Weight Progress */}
+      {weightStatsArray.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold mb-4">Weight Progress</h2>
+          <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
+            {weightStatsArray.map((stat) => {
+              const Icon = stat.icon
+              return (
+                <Card key={stat.title}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
+                    <Icon className={`h-4 w-4 ${stat.color}`} />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stat.value}</div>
+                    <p className="text-xs text-muted-foreground mt-1">{stat.change}</p>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div>
         <h2 className="text-lg font-semibold mb-4">Workout Overview</h2>

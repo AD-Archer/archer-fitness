@@ -53,7 +53,7 @@ model User {
 
   // Fitness-related fields
   height        Float?
-  weight        Float?
+  weight        Float?  // Monthly average weight used for meal tracking and calculations
   age           Int?
   gender        String?   // "male" or "female"
   fitnessGoals  String?
@@ -71,6 +71,7 @@ model User {
   foods         Food[]
   meals         Meal[]
   savedWorkoutStates SavedWorkoutState[]
+  weightEntries WeightEntry[]
 
   @@map("users")
 }
@@ -391,4 +392,20 @@ model MealIngredient {
   food Food @relation(fields: [foodId], references: [id], onDelete: Cascade)
 
   @@map("meal_ingredients")
+}
+
+model WeightEntry {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  weight    Float    // weight in pounds or kg depending on user preference
+  date      DateTime @default(now()) // when the weight was recorded
+  notes     String?  // optional notes about the weigh-in
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("weight_entries")
 }

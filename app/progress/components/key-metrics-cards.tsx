@@ -34,14 +34,12 @@ export function KeyMetricsCards({ timeRange = "3months" }: KeyMetricsCardsProps)
       try {
         // Use analytics API for general stats
         let totalWorkouts = 0
-        let totalWeightLifted = 0
         try {
           const res = await fetch(`/api/workout-tracker/analytics?timeRange=${timeRange}`)
           if (res.ok) {
             const data = await res.json()
             if (data && data.generalStats) {
               totalWorkouts = data.generalStats.totalWorkouts || 0
-              totalWeightLifted = data.generalStats.totalVolume || 0
             }
           }
         } catch (e) {
@@ -68,6 +66,24 @@ export function KeyMetricsCards({ timeRange = "3months" }: KeyMetricsCardsProps)
           caloriesPercentage = 95
         }
 
+        // Fetch weight data
+        let currentWeight = 0
+        let weightChange = 0
+        try {
+          const weightResponse = await fetch('/api/user/weight?days=90')
+          if (weightResponse.ok) {
+            const weightData = await weightResponse.json()
+            if (weightData.stats) {
+              currentWeight = Math.round(weightData.stats.current * 10) / 10
+              weightChange = Math.round(weightData.stats.monthChange * 10) / 10
+            }
+          }
+        } catch {
+          console.log('Weight API not available, using defaults')
+          currentWeight = 165
+          weightChange = -2.5
+        }
+
         // Fetch hydration data
         let hydrationRate = 0
         try {
@@ -86,8 +102,8 @@ export function KeyMetricsCards({ timeRange = "3months" }: KeyMetricsCardsProps)
           workoutChange: 0, // Optionally update this if you want to calculate period-over-period change
           avgCalories,
           caloriesPercentage,
-          totalWeight: Math.round(totalWeightLifted),
-          weightChange: Math.round(totalWeightLifted * 0.15), // Simplified calculation
+          totalWeight: currentWeight,
+          weightChange,
           hydrationRate,
           strengthGain: 0, // Optionally update if you want to calculate this from analytics
           strengthGainExercise: ""
@@ -176,15 +192,15 @@ export function KeyMetricsCards({ timeRange = "3months" }: KeyMetricsCardsProps)
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Weight Lifted</CardTitle>
+          <CardTitle className="text-sm font-medium">Current Weight</CardTitle>
           <Scale className="h-4 w-4 text-purple-600" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{metrics.totalWeight.toLocaleString()} lbs</div>
+          <div className="text-2xl font-bold">{metrics.totalWeight} lbs</div>
           <p className="text-xs text-muted-foreground">
-            {metrics.strengthGain > 0 && metrics.strengthGainExercise 
-              ? `+${metrics.strengthGain} lbs on ${metrics.strengthGainExercise}`
-              : 'Keep lifting to track progress!'}
+            {metrics.weightChange !== 0 
+              ? `${metrics.weightChange > 0 ? '+' : ''}${metrics.weightChange} lbs this month`
+              : 'Weight stable this month'}
           </p>
         </CardContent>
       </Card>

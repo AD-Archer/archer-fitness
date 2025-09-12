@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Zap, RefreshCw } from "lucide-react"
@@ -23,6 +23,14 @@ interface WorkoutPlan {
   exercises: Exercise[]
   warmup: string[]
   cooldown: string[]
+}
+
+interface SavedWorkoutPrefs {
+  defaultDuration: string
+  difficultyLevel: string
+  preferredTime: string
+  availableEquipment: string[]
+  restDayReminders: boolean
 }
 
 interface DatabaseExercise {
@@ -355,6 +363,23 @@ const convertToWorkoutExercise = (
   }
 }
 
+// Load saved workout preferences from user settings
+const loadSavedWorkoutPreferences = async (): Promise<SavedWorkoutPrefs | null> => {
+  try {
+    const response = await fetch('/api/user/preferences')
+    if (!response.ok) {
+      console.warn('Failed to fetch user preferences:', response.statusText)
+      return null
+    }
+    
+    const data = await response.json()
+    return data.preferences?.workoutPrefs || null
+  } catch (error) {
+    console.error('Error loading saved workout preferences:', error)
+    return null
+  }
+}
+
 export function AIWorkoutGenerator() {
   const [preferences, setPreferences] = useState({
     fitnessLevel: "",
@@ -365,8 +390,34 @@ export function AIWorkoutGenerator() {
     equipment: [] as string[],
     notes: "",
   })
+  const [savedPrefs, setSavedPrefs] = useState<SavedWorkoutPrefs | null>(null)
+  const [isLoadingPrefs, setIsLoadingPrefs] = useState(true)
   const [generatedWorkout, setGeneratedWorkout] = useState<WorkoutPlan | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+
+  // Load saved preferences on component mount
+  useEffect(() => {
+    const loadPrefs = async () => {
+      const saved = await loadSavedWorkoutPreferences()
+      setSavedPrefs(saved)
+      
+      // Auto-fill form with saved preferences if available
+      if (saved) {
+        setPreferences(prev => ({
+          ...prev,
+          // Map saved preferences to form preferences
+          duration: saved.defaultDuration || "",
+          equipment: saved.availableEquipment || [],
+          // Set fitness level based on difficulty level from settings
+          fitnessLevel: saved.difficultyLevel || "",
+        }))
+      }
+      
+      setIsLoadingPrefs(false)
+    }
+    
+    loadPrefs()
+  }, [])
 
   const generateWorkout = async () => {
     setIsGenerating(true)
@@ -655,6 +706,8 @@ export function AIWorkoutGenerator() {
           <WorkoutPreferencesForm
             preferences={preferences}
             onPreferencesChange={setPreferences}
+            savedPrefs={savedPrefs}
+            isLoadingPrefs={isLoadingPrefs}
           />
 
           <Button

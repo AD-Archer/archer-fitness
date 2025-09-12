@@ -6,8 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Dumbbell, Flame, Target, Heart } from "lucide-react"
+import { Dumbbell, Flame, Target, Heart, Loader2 } from "lucide-react"
 import { WorkoutPrefs } from "./types"
+import { useWorkoutOptions } from "@/hooks/use-workout-options"
 
 interface WorkoutTabProps {
   workoutPrefs: WorkoutPrefs
@@ -15,16 +16,8 @@ interface WorkoutTabProps {
 }
 
 export function WorkoutTab({ workoutPrefs, setWorkoutPrefs }: WorkoutTabProps) {
-  const equipmentOptions = [
-    "bodyweight",
-    "dumbbells",
-    "barbell",
-    "resistance_bands",
-    "kettlebells",
-    "pull_up_bar",
-    "gym_access",
-  ]
-
+  const { options, isLoading, error } = useWorkoutOptions()
+  
   const toggleEquipment = (equipment: string) => {
     setWorkoutPrefs({
       ...workoutPrefs,
@@ -107,18 +100,32 @@ export function WorkoutTab({ workoutPrefs, setWorkoutPrefs }: WorkoutTabProps) {
 
         <div className="space-y-3">
           <Label>Available Equipment</Label>
-          <div className="flex flex-wrap gap-2">
-            {equipmentOptions.map((equipment) => (
-              <Badge
-                key={equipment}
-                variant={workoutPrefs.availableEquipment.includes(equipment) ? "default" : "outline"}
-                className="cursor-pointer"
-                onClick={() => toggleEquipment(equipment)}
-              >
-                {equipment.replace("_", " ")}
-              </Badge>
-            ))}
-          </div>
+          {error && (
+            <Alert className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
+              <AlertDescription className="text-sm text-red-700 dark:text-red-300">
+                Error loading equipment options. Using default options.
+              </AlertDescription>
+            </Alert>
+          )}
+          {isLoading ? (
+            <div className="flex items-center justify-center p-4">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <span className="text-sm text-muted-foreground">Loading equipment options...</span>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {options.equipment.map((equipment) => (
+                <Badge
+                  key={equipment.id}
+                  variant={workoutPrefs.availableEquipment.includes(equipment.value) ? "default" : "outline"}
+                  className="cursor-pointer"
+                  onClick={() => toggleEquipment(equipment.value)}
+                >
+                  {equipment.name}
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between">

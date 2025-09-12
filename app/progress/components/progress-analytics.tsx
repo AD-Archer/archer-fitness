@@ -2,7 +2,8 @@
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ProgressAnalyticsHeader } from "./progress-analytics-header"
 import { KeyMetricsCards } from "./key-metrics-cards"
 import { StrengthAnalytics } from "./strength-analytics"
@@ -14,20 +15,59 @@ import { AchievementsAnalytics } from "./achievements-analytics"
 import { FitnessOverview } from "./fitness-overview"
 
 export function ProgressAnalytics() {
-  const [timeRange, setTimeRange] = useState("3months")
-  const [tab, setTab] = useState("overview")
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Initialize state from URL parameters
+  const [timeRange, setTimeRange] = useState(() => {
+    return searchParams.get('period') || "3months"
+  })
+  const [tab, setTab] = useState(() => {
+    return searchParams.get('tab') || "overview"
+  })
+
+  // Update URL when tab changes
+  const handleTabChange = (newTab: string) => {
+    setTab(newTab)
+
+    // Update URL with the new tab
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', newTab)
+
+    // Update the URL without triggering a page reload
+    router.replace(`?${params.toString()}`, { scroll: false })
+  }
+
+  // Update URL when timeRange changes (this is handled in the header component)
+  const handleTimeRangeChange = (newTimeRange: string) => {
+    setTimeRange(newTimeRange)
+  }
+
+  // Sync state with URL changes (for browser back/forward navigation)
+  useEffect(() => {
+    const urlPeriod = searchParams.get('period')
+    const urlTab = searchParams.get('tab')
+
+    if (urlPeriod && urlPeriod !== timeRange) {
+      setTimeRange(urlPeriod)
+    }
+
+    if (urlTab && urlTab !== tab) {
+      setTab(urlTab)
+    }
+  }, [searchParams, timeRange, tab])
 
   return (
     <div className="space-y-6">
       {/* Header with Time Range Selector */}
-      <ProgressAnalyticsHeader timeRange={timeRange} setTimeRange={setTimeRange} />
+      <ProgressAnalyticsHeader timeRange={timeRange} setTimeRange={handleTimeRangeChange} />
 
       {/* Key Metrics Cards */}
       <KeyMetricsCards timeRange={timeRange} />
 
       {/* Main Analytics Tabs - Dropdown for mobile, tabs for desktop */}
       <div className="block lg:hidden">
-        <Select value={tab} onValueChange={setTab}>
+        <Select value={tab} onValueChange={handleTabChange}>
           <SelectTrigger className="w-full justify-center text-center">
             <SelectValue className="text-center w-full" />
           </SelectTrigger>
@@ -37,13 +77,13 @@ export function ProgressAnalytics() {
             <SelectItem value="volume" className="justify-center text-center">Volume</SelectItem>
             <SelectItem value="distribution" className="justify-center text-center">Muscle Distribution</SelectItem>
             <SelectItem value="nutrition" className="justify-center text-center">Nutrition</SelectItem>
-            <SelectItem value="body" className="justify-center text-center">Body Comp</SelectItem>
+            <SelectItem value="body" className="justify-center text-center">Body</SelectItem>
             <SelectItem value="achievements" className="justify-center text-center">Achievements</SelectItem>
           </SelectContent>
         </Select>
       </div>
       <div className="hidden lg:block">
-        <Tabs value={tab} onValueChange={setTab} className="space-y-6">
+        <Tabs value={tab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="strength">Strength</TabsTrigger>

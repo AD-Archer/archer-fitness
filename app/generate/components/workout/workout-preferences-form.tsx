@@ -3,8 +3,10 @@
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Settings, Loader2, Target, Dumbbell, User } from "lucide-react"
-import { useWorkoutOptions } from "../../hooks/use-workout-options"
+import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Settings, Loader2, Target, Dumbbell, User, Clock, Zap, CheckCircle } from "lucide-react"
+import { useWorkoutOptions } from "@/hooks/use-workout-options"
 import { SearchableMultiSelect } from "../searchable-multi-select"
 
 interface WorkoutPreferences {
@@ -17,12 +19,27 @@ interface WorkoutPreferences {
   notes: string
 }
 
+interface SavedWorkoutPrefs {
+  defaultDuration: string
+  difficultyLevel: string
+  preferredTime: string
+  availableEquipment: string[]
+  restDayReminders: boolean
+}
+
 interface WorkoutPreferencesFormProps {
   preferences: WorkoutPreferences
   onPreferencesChange: (preferences: WorkoutPreferences) => void
+  savedPrefs?: SavedWorkoutPrefs | null
+  isLoadingPrefs?: boolean
 }
 
-export function WorkoutPreferencesForm({ preferences, onPreferencesChange }: WorkoutPreferencesFormProps) {
+export function WorkoutPreferencesForm({ 
+  preferences, 
+  onPreferencesChange, 
+  savedPrefs, 
+  isLoadingPrefs = false 
+}: WorkoutPreferencesFormProps) {
   const { options, isLoading, error } = useWorkoutOptions()
 
   const handleMuscleSelectionChange = (selected: string[]) => {
@@ -55,14 +72,64 @@ export function WorkoutPreferencesForm({ preferences, onPreferencesChange }: Wor
 
   return (
     <div className="space-y-6">
+      {/* Saved Preferences Display */}
+      {isLoadingPrefs ? (
+        <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <AlertDescription>
+            Loading your saved workout preferences...
+          </AlertDescription>
+        </Alert>
+      ) : savedPrefs ? (
+        <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
+          <CheckCircle className="h-4 w-4" />
+          <AlertDescription>
+            <div className="space-y-2">
+              <p className="font-medium">Your saved workout preferences from settings:</p>
+              <div className="flex flex-wrap gap-2 text-sm">
+                <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                  <Clock className="w-3 h-3 mr-1" />
+                  {savedPrefs.defaultDuration} min default
+                </Badge>
+                <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                  <Zap className="w-3 h-3 mr-1" />
+                  {savedPrefs.difficultyLevel} level
+                </Badge>
+                <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                  <Dumbbell className="w-3 h-3 mr-1" />
+                  {savedPrefs.availableEquipment.length} equipment types
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                💡 These preferences have been applied below and can be adjusted for this workout.
+              </p>
+            </div>
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
+          <Settings className="h-4 w-4" />
+          <AlertDescription>
+            <span className="font-medium">Tip:</span> Set your default workout preferences in Settings to have them automatically applied here.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">
-          <Label>Fitness Level</Label>
+          <Label className="flex items-center gap-2">
+            Fitness Level
+            {savedPrefs?.difficultyLevel && preferences.fitnessLevel === savedPrefs.difficultyLevel && (
+              <Badge variant="outline" className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                From Settings
+              </Badge>
+            )}
+          </Label>
           <Select
             value={preferences.fitnessLevel}
             onValueChange={(value) => updatePreference("fitnessLevel", value)}
           >
-            <SelectTrigger>
+            <SelectTrigger className={savedPrefs?.difficultyLevel && preferences.fitnessLevel === savedPrefs.difficultyLevel ? "border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-950" : ""}>
               <SelectValue placeholder="Select your level" />
             </SelectTrigger>
             <SelectContent>
@@ -92,12 +159,19 @@ export function WorkoutPreferencesForm({ preferences, onPreferencesChange }: Wor
         </div>
 
         <div className="space-y-2">
-          <Label>Duration (minutes)</Label>
+          <Label className="flex items-center gap-2">
+            Duration (minutes)
+            {savedPrefs?.defaultDuration && preferences.duration === savedPrefs.defaultDuration && (
+              <Badge variant="outline" className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                From Settings
+              </Badge>
+            )}
+          </Label>
           <Select
             value={preferences.duration}
             onValueChange={(value) => updatePreference("duration", value)}
           >
-            <SelectTrigger>
+            <SelectTrigger className={savedPrefs?.defaultDuration && preferences.duration === savedPrefs.defaultDuration ? "border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-950" : ""}>
               <SelectValue placeholder="How long?" />
             </SelectTrigger>
             <SelectContent>
@@ -157,6 +231,11 @@ export function WorkoutPreferencesForm({ preferences, onPreferencesChange }: Wor
         <Label className="flex items-center gap-2">
           <Dumbbell className="w-4 h-4" />
           Available Equipment
+          {savedPrefs?.availableEquipment && savedPrefs.availableEquipment.some(eq => preferences.equipment.includes(eq)) && (
+            <Badge variant="outline" className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+              Some from Settings
+            </Badge>
+          )}
         </Label>
         {error && (
           <div className="text-sm text-red-500 py-2">
@@ -172,6 +251,11 @@ export function WorkoutPreferencesForm({ preferences, onPreferencesChange }: Wor
           isLoading={isLoading}
           className="w-full"
         />
+        {savedPrefs?.availableEquipment && savedPrefs.availableEquipment.length > 0 && (
+          <div className="text-xs text-muted-foreground">
+            <span className="font-medium">From your settings:</span> {savedPrefs.availableEquipment.join(", ")}
+          </div>
+        )}
       </div>
 
       <div className="space-y-3">

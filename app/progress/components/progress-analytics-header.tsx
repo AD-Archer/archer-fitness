@@ -1,5 +1,6 @@
 "use client"
 import { cn } from "@/lib/utils"
+import { useRouter, useSearchParams } from "next/navigation"
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
@@ -21,7 +22,20 @@ const timeRanges = [
 ]
 
 export function ProgressAnalyticsHeader({ timeRange, setTimeRange }: ProgressAnalyticsHeaderProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
+  // Update URL when timeRange changes
+  const handleTimeRangeChange = (newTimeRange: string) => {
+    setTimeRange(newTimeRange)
+
+    // Update URL with the new time range
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('period', newTimeRange)
+
+    // Update the URL without triggering a page reload
+    router.replace(`?${params.toString()}`, { scroll: false })
+  }
 
   return (
     <div className="flex items-center justify-between bg-card rounded-lg border p-4 mb-6">
@@ -43,7 +57,7 @@ export function ProgressAnalyticsHeader({ timeRange, setTimeRange }: ProgressAna
                 key={range.value}
                 variant={timeRange === range.value ? "default" : "ghost"}
                 size="sm"
-                onClick={() => setTimeRange(range.value)}
+                onClick={() => handleTimeRangeChange(range.value)}
                 className={cn(
                   "text-xs font-medium transition-all duration-200",
                   timeRange === range.value
@@ -58,7 +72,7 @@ export function ProgressAnalyticsHeader({ timeRange, setTimeRange }: ProgressAna
 
           {/* Mobile: Dropdown */}
           <div className="md:hidden">
-            <Select value={timeRange} onValueChange={setTimeRange}>
+            <Select value={timeRange} onValueChange={handleTimeRangeChange}>
               <SelectTrigger className="w-28 h-9">
                 <Calendar className="w-4 h-4 mr-1" />
                 <SelectValue />

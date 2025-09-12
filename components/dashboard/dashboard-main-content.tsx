@@ -7,6 +7,7 @@ import { DashboardStats } from "@/components/dashboard/dashboard-stats"
 import { RecentWorkouts } from "@/app/workouts/components/recent-workouts"
 import { WeeklyProgress } from "@/components/weekly-progress"
 import { TodaysFocus } from "@/components/dashboard/todays-focus"
+import { WeightTracker } from "@/components/dashboard/weight-tracker"
 
 
 export function DashboardMainContent() {
@@ -28,6 +29,9 @@ export function DashboardMainContent() {
 
           {/* Today's Focus */}
           <TodaysFocus />
+
+          {/* Weight Tracking */}
+                    <WeightTracker />
 
           {/* Rest & Recovery */}
           <Card>
