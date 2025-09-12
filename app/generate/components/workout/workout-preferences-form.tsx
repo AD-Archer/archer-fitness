@@ -164,7 +164,7 @@ export function WorkoutPreferencesForm({ preferences, onPreferencesChange }: Wor
         <Label htmlFor="ai-notes">Additional Notes & Preferences</Label>
         <Textarea
           id="ai-notes"
-          placeholder="Tell the AI about any specific preferences, injuries to avoid, favorite exercises, time constraints, or other details that would help create the perfect workout for you..."
+          placeholder="Tell us about any specific preferences, injuries to avoid, favorite exercises, time constraints, or other details that would help create the perfect workout for you..."
           value={preferences.notes}
           onChange={(e) => updatePreference("notes", e.target.value)}
           rows={4}
