@@ -94,7 +94,7 @@ export function ProgressAnalyticsHeader({ timeRange, setTimeRange }: ProgressAna
                 key={range.value}
                 variant={timeRange === range.value ? "default" : "ghost"}
                 size="sm"
-                onClick={() => setTimeRange(range.value)}
+                onClick={() => handleTimeRangeChange(range.value)}
                 className={cn(
                   "text-xs font-medium px-2 transition-all duration-200",
                   timeRange === range.value

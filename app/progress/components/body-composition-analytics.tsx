@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 import { Scale, Target, Plus, Trash2 } from "lucide-react"
 import { useState, useCallback, useEffect } from "react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -19,14 +20,10 @@ interface WeightEntry {
   createdAt: string
 }
 
-interface NutritionProgressEntry {
+interface WeightProgressEntry {
   date: string
-  calories: number
-  protein: number
-  carbs: number
-  fat: number
-  water: number
   weight: number
+  entryCount?: number
 }
 
 interface MacroDistributionEntry {
@@ -41,15 +38,29 @@ interface BodyCompositionAnalyticsProps {
 }
 
 export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyCompositionAnalyticsProps) {
-  const [nutritionProgressData, setNutritionProgressData] = useState<NutritionProgressEntry[]>([])
+  const [nutritionProgressData, setNutritionProgressData] = useState<WeightProgressEntry[]>([])
   const [macroDistributionData, setMacroDistributionData] = useState<MacroDistributionEntry[]>([])
   const [units, setUnits] = useState<string>('imperial')
   const [loading, setLoading] = useState(true)
   const [isWeightModalOpen, setIsWeightModalOpen] = useState(false)
   const [allWeightEntries, setAllWeightEntries] = useState<WeightEntry[]>([])
   const [newWeight, setNewWeight] = useState('')
-  const [newWeightDate, setNewWeightDate] = useState(new Date().toISOString().split('T')[0])
+  const [newWeightDate, setNewWeightDate] = useState('')
   const [newWeightNotes, setNewWeightNotes] = useState('')
+
+  // Helper function to get today's date in YYYY-MM-DD format
+  const getTodayDateString = useCallback(() => {
+    const today = new Date()
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  }, [])
+
+  // Helper function to convert date string to ISO format for API
+  const dateStringToISOString = useCallback((dateString: string) => {
+    const date = new Date(dateString + 'T12:00:00') // Add noon time to avoid timezone shifts
+    return date.toISOString()
+  }, [])
+
+  console.log('BodyCompositionAnalytics rendered with timeRange:', timeRange)
 
   // Helper functions for weight conversion
   const lbsToKg = (lbs: number) => lbs * 0.453592
@@ -65,14 +76,14 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
   // Handle adding new weight entry
   const handleAddWeightEntry = async () => {
     if (!newWeight || isNaN(parseFloat(newWeight))) {
-      alert('Please enter a valid weight')
+      toast.error("Please enter a valid weight value.")
       return
     }
 
     try {
       console.log('Adding weight entry:', {
         weight: parseFloat(newWeight),
-        date: new Date(newWeightDate).toISOString(),
+        date: dateStringToISOString(newWeightDate),
         notes: newWeightNotes || null,
       })
 
@@ -83,7 +94,7 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
         },
         body: JSON.stringify({
           weight: parseFloat(newWeight),
-          date: newWeightDate,
+          date: dateStringToISOString(newWeightDate),
           notes: newWeightNotes || null,
         }),
       })
@@ -97,27 +108,27 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
         // Reset form
         setNewWeight('')
         setNewWeightNotes('')
-        setNewWeightDate(new Date().toISOString().split('T')[0])
+        setNewWeightDate(getTodayDateString())
         
         // Refresh data
         await fetchData()
-        alert('Weight entry added successfully!')
+        toast.success("Weight entry added successfully!")
       } else {
         const errorText = await response.text()
         console.error('Failed to add weight entry:', errorText)
-        alert(`Failed to add weight entry: ${response.status} ${response.statusText}`)
+        toast.error(`Failed to add weight entry: ${response.status} ${response.statusText}`)
       }
     } catch (error) {
       console.error('Error adding weight entry:', error)
-      alert('Error adding weight entry: ' + (error instanceof Error ? error.message : 'Unknown error'))
+      toast.error(`Error adding weight entry: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
   // Handle deleting weight entry
   const handleDeleteWeightEntry = async (entryId: string) => {
-    if (!confirm('Are you sure you want to delete this weight entry?')) {
-      return
-    }
+    // Use a custom confirmation dialog instead of browser confirm
+    const confirmed = window.confirm('Are you sure you want to delete this weight entry?')
+    if (!confirmed) return
 
     try {
       console.log('Deleting weight entry:', entryId)
@@ -134,15 +145,15 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
         
         // Refresh data
         await fetchData()
-        alert('Weight entry deleted successfully!')
+        toast.success("Weight entry deleted successfully!")
       } else {
         const errorText = await response.text()
         console.error('Failed to delete weight entry:', errorText)
-        alert(`Failed to delete weight entry: ${response.status} ${response.statusText}`)
+        toast.error(`Failed to delete weight entry: ${response.status} ${response.statusText}`)
       }
     } catch (error) {
       console.error('Error deleting weight entry:', error)
-      alert('Error deleting weight entry: ' + (error instanceof Error ? error.message : 'Unknown error'))
+      toast.error(`Error deleting weight entry: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -180,26 +191,53 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
       if (weightRes.ok) {
         const weightData = await weightRes.json()
         console.log('Weight data received:', weightData)
+        console.log('Number of entries received:', weightData.entries?.length || 0)
 
         // Store all weight entries for the modal
         if (weightData.entries && weightData.entries.length > 0) {
           setAllWeightEntries(weightData.entries)
-          console.log(`Processing ${weightData.entries.length} weight entries for ${timeRange}`)
+          // Aggregate by date to calculate daily averages
+          const aggregatedData: { [key: string]: { entries: WeightEntry[], averageWeight: number, latestDate: Date } } = {}
+          
+          weightData.entries.forEach((entry: WeightEntry) => {
+            const entryDate = new Date(entry.date)
+            // Use local date components to avoid timezone shifting
+            const dateKey = `${entryDate.getFullYear()}-${String(entryDate.getMonth() + 1).padStart(2, '0')}-${String(entryDate.getDate()).padStart(2, '0')}`
+            
+            if (!aggregatedData[dateKey]) {
+              aggregatedData[dateKey] = {
+                entries: [entry],
+                averageWeight: entry.weight,
+                latestDate: entryDate
+              }
+            } else {
+              aggregatedData[dateKey].entries.push(entry)
+              // Recalculate average
+              const totalWeight = aggregatedData[dateKey].entries.reduce((sum, e) => sum + e.weight, 0)
+              aggregatedData[dateKey].averageWeight = totalWeight / aggregatedData[dateKey].entries.length
+              // Keep the latest date
+              if (entryDate > aggregatedData[dateKey].latestDate) {
+                aggregatedData[dateKey].latestDate = entryDate
+              }
+            }
+          })
 
-          // Convert weight entries to nutrition progress format for chart compatibility
-          const progressData = weightData.entries
-            .sort((a: WeightEntry, b: WeightEntry) => new Date(a.date).getTime() - new Date(b.date).getTime())
-            .map((entry: WeightEntry, index: number) => ({
-              date: new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-              calories: 2200 + (index * 10), // TODO: Replace with real nutrition data
-              protein: 150 + (index * 2), // TODO: Replace with real nutrition data
-              carbs: 240 + (index * 3), // TODO: Replace with real nutrition data
-              fat: 80 + index, // TODO: Replace with real nutrition data
-              water: 2500 + (index * 50), // TODO: Replace with real nutrition data
-              weight: entry.weight, // Real weight data
+          console.log('Aggregated data keys:', Object.keys(aggregatedData))
+          console.log('Daily averages:', Object.entries(aggregatedData).map(([date, data]) => ({
+            date,
+            averageWeight: data.averageWeight.toFixed(2),
+            entryCount: data.entries.length
+          })))
+
+          const progressData: WeightProgressEntry[] = Object.entries(aggregatedData)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([, data]) => ({
+              date: data.latestDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              weight: Math.round(data.averageWeight * 10) / 10, // Round to 1 decimal place
+              entryCount: data.entries.length,
             }))
 
-          console.log('Processed progress data:', progressData)
+          console.log('Final chart data points:', progressData.length)
           setNutritionProgressData(progressData)
         } else {
           console.log(`No weight entries found for ${timeRange}`)
@@ -212,7 +250,7 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
         throw new Error('Failed to fetch weight data')
       }
       
-      // Keep existing macro distribution data (or fetch from nutrition API)
+      // Keep macro distribution data for now (could be moved to nutrition component)
       setMacroDistributionData([
         { name: "Protein", value: 30, color: "#ef4444", grams: 165 },
         { name: "Carbs", value: 45, color: "#3b82f6", grams: 260 },
@@ -238,10 +276,22 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
     fetchData()
   }, [fetchData])
 
+  // Set newWeightDate to today on mount
+  useEffect(() => {
+    setNewWeightDate(getTodayDateString())
+  }, [getTodayDateString])
+
+  // Update newWeightDate to today when modal opens
+  useEffect(() => {
+    if (isWeightModalOpen) {
+      setNewWeightDate(getTodayDateString())
+    }
+  }, [isWeightModalOpen, getTodayDateString])
+
   // Custom tooltip for weight chart
   const WeightTooltip = ({ active, payload, label }: { 
     active?: boolean; 
-    payload?: Array<{ payload: { date: string; weight: number; notes?: string } }>; 
+    payload?: Array<{ payload: { date: string; weight: number; entryCount?: number } }>; 
     label?: string 
   }) => {
     if (active && payload && payload.length) {
@@ -252,6 +302,11 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
           <p className="text-sm text-muted-foreground">
             Weight: {formatWeightDisplay(data.weight)}
           </p>
+          {data.entryCount && data.entryCount > 1 && (
+            <p className="text-xs text-muted-foreground">
+              Average of {data.entryCount} entries
+            </p>
+          )}
         </div>
       )
     }
@@ -314,6 +369,9 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
                           value={newWeightDate}
                           onChange={(e) => setNewWeightDate(e.target.value)}
                         />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Select the date for this weight entry. Change this to enter historical weights.
+                        </p>
                       </div>
                       <div className="flex items-end">
                         <Button onClick={handleAddWeightEntry} className="w-full">
