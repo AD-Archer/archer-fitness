@@ -3,6 +3,7 @@
 import { Sidebar } from "@/components/sidebar"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { DashboardMainContent } from "@/components/dashboard/dashboard-main-content"
+import { PWAInstallPrompt } from "@/components/pwa-install-prompt"
 
 export function AuthenticatedDashboard() {
   return (
@@ -15,6 +16,8 @@ export function AuthenticatedDashboard() {
           <DashboardMainContent />
         </div>
       </main>
+
+      <PWAInstallPrompt />
     </div>
   )
 }
