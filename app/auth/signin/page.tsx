@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, Suspense, useEffect } from "react"
+import { useState, Suspense } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
@@ -19,24 +19,9 @@ function SignInContent() {
   })
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [isGoogleConfigured, setIsGoogleConfigured] = useState<boolean | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get("callbackUrl") || "/"
-
-  useEffect(() => {
-    const checkGoogleConfig = async () => {
-      try {
-        const response = await fetch("/api/auth/google-config")
-        const data = await response.json()
-        setIsGoogleConfigured(data.isGoogleConfigured)
-      } catch {
-        setIsGoogleConfigured(false)
-      }
-    }
-
-    checkGoogleConfig()
-  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -62,11 +47,7 @@ function SignInContent() {
     }
   }
 
-  const handleGoogleSignIn = async () => {
-    if (!isGoogleConfigured) {
-      setError("Please notify owner OAuth has not been set up properly or may be disabled.")
-      return
-    }
+  const handleGoogleSignIn = () => {
     signIn("google", { callbackUrl })
   }
 

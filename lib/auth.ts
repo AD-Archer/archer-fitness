@@ -5,25 +5,23 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 
-export const authOptions = (): NextAuthOptions => {
-  return {
-    adapter: PrismaAdapter(prisma),
-    providers: [
-      // Conditionally include GoogleProvider only if env vars are set at runtime
-      ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET ? [GoogleProvider({
-        clientId: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      })] : []),
-      CredentialsProvider({
-        name: "credentials",
-        credentials: {
-          email: { label: "Email", type: "email" },
-          password: { label: "Password", type: "password" }
-        },
-        async authorize(credentials) {
-          if (!credentials?.email || !credentials?.password) {
-            return null
-          }
+export const authOptions: NextAuthOptions = {
+  adapter: PrismaAdapter(prisma),
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+    CredentialsProvider({
+      name: "credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          return null
+        }
 
           try {
             // Find user in database
@@ -42,30 +40,31 @@ export const authOptions = (): NextAuthOptions => {
               return null
             }
 
-            return {
-              id: user.id,
-              email: user.email,
-              name: user.name,
-              image: user.image,
-            }
-          } catch {
-            return null
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
           }
+        } catch {
+          return null
         }
-      })
-    ],
-    session: {
-      strategy: "jwt"
-    },
-    callbacks: {
-      async signIn({ user, account }) {
-        // Handle OAuth sign-in (Google)
-        if (account?.provider === "google") {
-          try {
-            // Check if user already exists with this email
-            const existingUser = await prisma.user.findUnique({
-              where: { email: user.email! }
-            })
+      }
+    })
+  ],
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  callbacks: {
+    async signIn({ user, account }) {
+      // Handle OAuth sign-in (Google)
+      if (account?.provider === "google") {
+        try {
+          // Check if user already exists with this email
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email! }
+          })
 
             if (existingUser) {
               // If user exists but doesn't have this OAuth account linked, link it
@@ -96,7 +95,7 @@ export const authOptions = (): NextAuthOptions => {
                 }
               })
             }
-            
+
             // Update user ID for session
             user.id = existingUser.id
             return true
@@ -105,7 +104,7 @@ export const authOptions = (): NextAuthOptions => {
           return false
         }
       }
-      
+
       return true
     },
     async jwt({ token, user }) {
@@ -133,4 +132,4 @@ export const authOptions = (): NextAuthOptions => {
   },
   debug: process.env.NODE_ENV === "development",
 }
-}
+
