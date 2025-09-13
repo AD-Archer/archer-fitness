@@ -14,9 +14,24 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Get endpoint from request body or query params
+    // Get parameters from request
     const { searchParams } = new URL(request.url);
     const endpoint = searchParams.get('endpoint');
+    const deleteAll = searchParams.get('all') === 'true';
+
+    if (deleteAll) {
+      // Delete all subscriptions for the user
+      const deletedSubscriptions = await prisma.pushSubscription.deleteMany({
+        where: {
+          userId: session.user.id
+        }
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Deleted ${deletedSubscriptions.count} subscriptions`
+      });
+    }
 
     if (!endpoint) {
       return NextResponse.json(
@@ -25,7 +40,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Delete the subscription
+    // Delete the specific subscription
     const deletedSubscription = await prisma.pushSubscription.deleteMany({
       where: {
         userId: session.user.id,
@@ -40,7 +55,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-
     return NextResponse.json({
       success: true,
       message: 'Subscription deleted successfully'
@@ -49,38 +63,6 @@ export async function DELETE(request: NextRequest) {
   } catch {
     return NextResponse.json(
       { error: 'Failed to delete subscription' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE_ALL() {
-  try {
-    // Get user session
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Delete all subscriptions for the user
-    const deletedSubscriptions = await prisma.pushSubscription.deleteMany({
-      where: {
-        userId: session.user.id
-      }
-    });
-
-
-    return NextResponse.json({
-      success: true,
-      message: `Deleted ${deletedSubscriptions.count} subscriptions`
-    });
-
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to delete subscriptions' },
       { status: 500 }
     );
   }

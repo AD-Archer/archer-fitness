@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, Suspense } from "react"
+import { useState, Suspense, useEffect } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
-import { Chrome } from "lucide-react"
+import { Chrome, AlertTriangle } from "lucide-react"
 
 function SignInContent() {
   const [formData, setFormData] = useState({
@@ -19,9 +19,24 @@ function SignInContent() {
   })
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [isGoogleConfigured, setIsGoogleConfigured] = useState<boolean | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get("callbackUrl") || "/"
+
+  useEffect(() => {
+    const checkGoogleConfig = async () => {
+      try {
+        const response = await fetch("/api/auth/google-config")
+        const data = await response.json()
+        setIsGoogleConfigured(data.isGoogleConfigured)
+      } catch {
+        setIsGoogleConfigured(false)
+      }
+    }
+
+    checkGoogleConfig()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,7 +62,15 @@ function SignInContent() {
     }
   }
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
+    if (isGoogleConfigured === null) {
+      setError("Checking Google OAuth configuration...")
+      return
+    }
+    if (!isGoogleConfigured) {
+      setError("Google OAuth is not configured. Please contact the site administrator.")
+      return
+    }
     signIn("google", { callbackUrl })
   }
 
@@ -74,15 +97,40 @@ function SignInContent() {
             </Alert>
           )}
 
-          <Button
-            variant="outline"
-            type="button"
-            className="w-full"
-            onClick={handleGoogleSignIn}
-          >
-            <Chrome className="mr-2 h-4 w-4" />
-            Continue with Google
-          </Button>
+          {!isGoogleConfigured && isGoogleConfigured !== null && (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Site Owner:</strong> Google OAuth is not configured. 
+                Please set up <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> 
+                environment variables to enable Google sign-in.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {isGoogleConfigured && (
+            <Button
+              variant="outline"
+              type="button"
+              className="w-full"
+              onClick={handleGoogleSignIn}
+            >
+              <Chrome className="mr-2 h-4 w-4" />
+              Continue with Google
+            </Button>
+          )}
+
+          {isGoogleConfigured === null && (
+            <Button
+              variant="outline"
+              type="button"
+              className="w-full"
+              disabled
+            >
+              <Chrome className="mr-2 h-4 w-4" />
+              Checking Google configuration...
+            </Button>
+          )}
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
