@@ -12,7 +12,7 @@ export interface NotificationPayload {
   icon?: string;
   image?: string;
   url?: string;
-  type?: 'workout' | 'weight' | 'nutrition' | 'streak' | 'general';
+  type?: 'workout' | 'weight' | 'nutrition' | 'streak' | 'weigh-in' | 'meal' | 'sleep' | 'exercise' | 'general';
   actions?: NotificationAction[];
 }
 
@@ -238,6 +238,38 @@ export const NotificationTemplates = {
     body: `Don't forget to log your ${mealType} meal!`,
     url: '/nutrition',
     type: 'nutrition'
+  }),
+
+  weighInReminder: (): NotificationPayload => ({
+    title: '⚖️ Weigh-in Time!',
+    body: 'Time to log your weight and track your progress!',
+    url: '/progress',
+    type: 'weigh-in'
+  }),
+
+  mealReminder: (mealType?: string): NotificationPayload => ({
+    title: '🍽️ Meal Time!',
+    body: mealType ? `Time to log your ${mealType}!` : 'Time to log your meal!',
+    url: '/nutrition',
+    type: 'meal'
+  }),
+
+  sleepReminder: (): NotificationPayload => ({
+    title: '😴 Sleep Check-in',
+    body: 'How did you sleep last night? Log your sleep data!',
+    url: '/progress',
+    type: 'sleep'
+  }),
+
+  exerciseReminder: (workoutName: string): NotificationPayload => ({
+    title: '💪 Exercise Time!',
+    body: `Ready for your ${workoutName} workout?`,
+    url: '/track',
+    type: 'exercise',
+    actions: [
+      { action: 'start', title: 'Start Workout' },
+      { action: 'snooze', title: 'Remind Later' }
+    ]
   }),
 
   streakReminder: (streakCount: number): NotificationPayload => ({

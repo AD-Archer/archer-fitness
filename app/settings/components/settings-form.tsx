@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import { User, Dumbbell, Apple, Bell, Shield, Loader2 } from "lucide-react"
 import { UserProfile, WorkoutPrefs, NutritionPrefs, AppPrefs } from "./types"
@@ -78,7 +79,16 @@ export function SettingsForm() {
       weightReminders: true,
       nutritionReminders: true,
       streakReminders: true,
-      reminderTime: "09:00"
+      reminderTime: "09:00",
+      emailNotifications: true,
+      pushNotifications: true,
+      weighInNotifications: true,
+      weighInFrequency: 3 as 1 | 2 | 3,
+      mealNotifications: true,
+      mealFrequency: 3 as 1 | 3,
+      sleepNotifications: true,
+      exerciseNotifications: true,
+      workoutTime: "18:00"
     }
   }), [])
 
@@ -131,7 +141,16 @@ export function SettingsForm() {
       weightReminders: true,
       nutritionReminders: true,
       streakReminders: true,
-      reminderTime: "09:00"
+      reminderTime: "09:00",
+      emailNotifications: true,
+      pushNotifications: true,
+      weighInNotifications: true,
+      weighInFrequency: 3 as 1 | 2 | 3,
+      mealNotifications: true,
+      mealFrequency: 3 as 1 | 3,
+      sleepNotifications: true,
+      exerciseNotifications: true,
+      workoutTime: "18:00"
     }
   })
 
@@ -187,7 +206,18 @@ export function SettingsForm() {
           if (data?.preferences) {
             setWorkoutPrefs({ ...defaultWorkoutPrefs, ...data.preferences.workoutPrefs })
             setNutritionPrefs({ ...defaultNutritionPrefs, ...data.preferences.nutritionPrefs })
-            setAppPrefs({ ...defaultAppPrefs, ...data.preferences.appPrefs })
+            setAppPrefs({
+              ...defaultAppPrefs,
+              ...data.preferences.appPrefs,
+              adminNotifications: {
+                ...defaultAppPrefs.adminNotifications,
+                ...data.preferences.appPrefs?.adminNotifications
+              },
+              notificationPrefs: {
+                ...defaultAppPrefs.notificationPrefs,
+                ...data.preferences.appPrefs?.notificationPrefs
+              }
+            })
           } else {
             // Use defaults if no preferences exist
             setWorkoutPrefs(defaultWorkoutPrefs)
@@ -362,26 +392,68 @@ export function SettingsForm() {
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5">
+        {/* Mobile Dropdown */}
+        <div className="block md:hidden">
+          <Select value={activeTab} onValueChange={handleTabChange}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="profile">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Profile
+                </div>
+              </SelectItem>
+              <SelectItem value="workout">
+                <div className="flex items-center gap-2">
+                  <Dumbbell className="h-4 w-4" />
+                  Workout
+                </div>
+              </SelectItem>
+              <SelectItem value="nutrition">
+                <div className="flex items-center gap-2">
+                  <Apple className="h-4 w-4" />
+                  Nutrition
+                </div>
+              </SelectItem>
+              <SelectItem value="notifications">
+                <div className="flex items-center gap-2">
+                  <Bell className="h-4 w-4" />
+                  App
+                </div>
+              </SelectItem>
+              <SelectItem value="privacy">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Privacy
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Desktop Tabs */}
+        <TabsList className="hidden md:grid w-full grid-cols-5">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />
-            <span className="hidden sm:inline">Profile</span>
+            <span className="hidden lg:inline">Profile</span>
           </TabsTrigger>
           <TabsTrigger value="workout" className="flex items-center gap-2">
             <Dumbbell className="h-4 w-4" />
-            <span className="hidden sm:inline">Workout</span>
+            <span className="hidden lg:inline">Workout</span>
           </TabsTrigger>
           <TabsTrigger value="nutrition" className="flex items-center gap-2">
             <Apple className="h-4 w-4" />
-            <span className="hidden sm:inline">Nutrition</span>
+            <span className="hidden lg:inline">Nutrition</span>
           </TabsTrigger>
           <TabsTrigger value="notifications" className="flex items-center gap-2">
             <Bell className="h-4 w-4" />
-            <span className="hidden sm:inline">App</span>
+            <span className="hidden lg:inline">App</span>
           </TabsTrigger>
           <TabsTrigger value="privacy" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
-            <span className="hidden sm:inline">Privacy</span>
+            <span className="hidden lg:inline">Privacy</span>
           </TabsTrigger>
         </TabsList>
 

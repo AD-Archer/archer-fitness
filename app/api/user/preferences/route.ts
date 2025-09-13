@@ -3,53 +3,180 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
+import { logger } from "@/lib/logger"
 
 export const dynamic = 'force-dynamic';
 
 const workoutPrefsSchema = z.object({
-  defaultDuration: z.string(),
-  difficultyLevel: z.string(),
-  preferredTime: z.string(),
-  availableEquipment: z.array(z.string()),
-  restDayReminders: z.boolean(),
+  defaultDuration: z.string().default("45"),
+  difficultyLevel: z.string().default("intermediate"),
+  preferredTime: z.string().default("morning"),
+  availableEquipment: z.array(z.string()).default(["dumbbells", "barbell", "bodyweight"]),
+  restDayReminders: z.boolean().default(true),
+}).default({
+  defaultDuration: "45",
+  difficultyLevel: "intermediate",
+  preferredTime: "morning",
+  availableEquipment: ["dumbbells", "barbell", "bodyweight"],
+  restDayReminders: true,
 })
 
 const nutritionPrefsSchema = z.object({
-  dailyCalories: z.string(),
-  proteinTarget: z.string(),
-  carbTarget: z.string(),
-  fatTarget: z.string(),
-  dietaryRestrictions: z.array(z.string()),
-  trackWater: z.boolean(),
-  waterTarget: z.string(),
-  useSmartCalculations: z.boolean(),
+  dailyCalories: z.string().default("2200"),
+  proteinTarget: z.string().default("150"),
+  carbTarget: z.string().default("250"),
+  fatTarget: z.string().default("80"),
+  dietaryRestrictions: z.array(z.string()).default([]),
+  trackWater: z.boolean().default(true),
+  waterTarget: z.string().default("2500"),
+  useSmartCalculations: z.boolean().default(true),
+}).default({
+  dailyCalories: "2200",
+  proteinTarget: "150",
+  carbTarget: "250",
+  fatTarget: "80",
+  dietaryRestrictions: [],
+  trackWater: true,
+  waterTarget: "2500",
+  useSmartCalculations: true,
 })
 
 const appPrefsSchema = z.object({
-  theme: z.string(),
-  units: z.string(),
-  notifications: z.boolean(),
-  weeklyReports: z.boolean(),
-  dataSharing: z.boolean(),
+  theme: z.string().default("system"),
+  units: z.string().default("imperial"),
+  notifications: z.boolean().default(true),
+  weeklyReports: z.boolean().default(true),
+  dataSharing: z.boolean().default(false),
   adminNotifications: z.object({
-    enabled: z.boolean(),
-    methods: z.array(z.enum(['smtp'])),
-    errorAlerts: z.boolean(),
-    startupAlerts: z.boolean(),
-  }).optional(),
+    enabled: z.boolean().default(true),
+    methods: z.array(z.enum(['smtp'])).default(['smtp']),
+    errorAlerts: z.boolean().default(true),
+    startupAlerts: z.boolean().default(true),
+  }).optional().default({
+    enabled: true,
+    methods: ['smtp'],
+    errorAlerts: true,
+    startupAlerts: true
+  }),
   notificationPrefs: z.object({
-    workoutReminders: z.boolean(),
-    weightReminders: z.boolean(),
-    nutritionReminders: z.boolean(),
-    streakReminders: z.boolean(),
-    reminderTime: z.string(),
-  }).optional(),
+    workoutReminders: z.boolean().default(true),
+    weightReminders: z.boolean().default(true),
+    nutritionReminders: z.boolean().default(true),
+    streakReminders: z.boolean().default(true),
+    reminderTime: z.string().default("09:00"),
+    emailNotifications: z.boolean().default(true),
+    pushNotifications: z.boolean().default(true),
+    weighInNotifications: z.boolean().default(true),
+    weighInFrequency: z.union([z.literal(1), z.literal(2), z.literal(3), z.string()]).transform(val => {
+      if (typeof val === 'string') return parseInt(val) as 1 | 2 | 3
+      return val
+    }).default(3),
+    mealNotifications: z.boolean().default(true),
+    mealFrequency: z.union([z.literal(1), z.literal(3), z.string()]).transform(val => {
+      if (typeof val === 'string') return parseInt(val) as 1 | 3
+      return val
+    }).default(3),
+    sleepNotifications: z.boolean().default(true),
+    exerciseNotifications: z.boolean().default(true),
+    workoutTime: z.string().default("18:00"),
+  }).optional().default({
+    workoutReminders: true,
+    weightReminders: true,
+    nutritionReminders: true,
+    streakReminders: true,
+    reminderTime: "09:00",
+    emailNotifications: true,
+    pushNotifications: true,
+    weighInNotifications: true,
+    weighInFrequency: 3,
+    mealNotifications: true,
+    mealFrequency: 3,
+    sleepNotifications: true,
+    exerciseNotifications: true,
+    workoutTime: "18:00"
+  }),
+}).default({
+  theme: "system",
+  units: "imperial",
+  notifications: true,
+  weeklyReports: true,
+  dataSharing: false,
+  adminNotifications: {
+    enabled: true,
+    methods: ['smtp'],
+    errorAlerts: true,
+    startupAlerts: true
+  },
+  notificationPrefs: {
+    workoutReminders: true,
+    weightReminders: true,
+    nutritionReminders: true,
+    streakReminders: true,
+    reminderTime: "09:00",
+    emailNotifications: true,
+    pushNotifications: true,
+    weighInNotifications: true,
+    weighInFrequency: 1,
+    mealNotifications: true,
+    mealFrequency: 3,
+    sleepNotifications: true,
+    exerciseNotifications: true
+  }
 })
 
 const preferencesSchema = z.object({
-  workoutPrefs: workoutPrefsSchema,
-  nutritionPrefs: nutritionPrefsSchema,
-  appPrefs: appPrefsSchema,
+  workoutPrefs: workoutPrefsSchema.optional(),
+  nutritionPrefs: nutritionPrefsSchema.optional(),
+  appPrefs: appPrefsSchema.optional(),
+}).optional().transform((data) => {
+  return {
+    workoutPrefs: data?.workoutPrefs || {
+      defaultDuration: "45",
+      difficultyLevel: "intermediate",
+      preferredTime: "morning",
+      availableEquipment: ["dumbbells", "barbell", "bodyweight"],
+      restDayReminders: true,
+    },
+    nutritionPrefs: data?.nutritionPrefs || {
+      dailyCalories: "2200",
+      proteinTarget: "150",
+      carbTarget: "250",
+      fatTarget: "80",
+      dietaryRestrictions: [],
+      trackWater: true,
+      waterTarget: "2500",
+      useSmartCalculations: true,
+    },
+    appPrefs: data?.appPrefs || {
+      theme: "system",
+      units: "imperial",
+      notifications: true,
+      weeklyReports: true,
+      dataSharing: false,
+      adminNotifications: {
+        enabled: true,
+        methods: ['smtp'],
+        errorAlerts: true,
+        startupAlerts: true
+      },
+      notificationPrefs: {
+        workoutReminders: true,
+        weightReminders: true,
+        nutritionReminders: true,
+        streakReminders: true,
+        reminderTime: "09:00",
+        emailNotifications: true,
+        pushNotifications: true,
+        weighInNotifications: true,
+        weighInFrequency: 1,
+        mealNotifications: true,
+        mealFrequency: 3,
+        sleepNotifications: true,
+        exerciseNotifications: true,
+        workoutTime: "18:00"
+      }
+    }
+  }
 })
 
 export async function GET() {
@@ -96,7 +223,10 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
+
+    // Parse with defaults to ensure all required fields are present
     const parsed = preferencesSchema.parse(body)
+
     const delegate = prisma.userPreference
     if (!delegate) {
       return NextResponse.json(
@@ -104,6 +234,7 @@ export async function PUT(request: NextRequest) {
         { status: 503 }
       )
     }
+
     const updated = await delegate.upsert({
       where: { userId: session.user.id },
       update: {
@@ -134,11 +265,17 @@ export async function PUT(request: NextRequest) {
     })
   } catch (error) {
     if (error instanceof z.ZodError) {
+      logger.error("Zod validation error:", error.errors)
       return NextResponse.json(
-        { error: "Invalid input", details: error.errors },
+        {
+          error: "Invalid input",
+          details: error.errors,
+          message: "Please check that all required fields are provided with correct types"
+        },
         { status: 400 }
       )
     }
+    logger.error("Preferences PUT error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

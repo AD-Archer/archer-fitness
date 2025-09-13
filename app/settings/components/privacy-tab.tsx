@@ -92,10 +92,16 @@ export function PrivacyTab({ appPrefs, setAppPrefs }: PrivacyTabProps) {
               <p className="text-sm text-muted-foreground">Allow the app to send error reports directly to the admin when issues occur</p>
             </div>
             <Switch
-              checked={appPrefs.adminNotifications.enabled}
+              checked={appPrefs.adminNotifications?.enabled ?? true}
               onCheckedChange={(checked) => setAppPrefs({
                 ...appPrefs,
-                adminNotifications: { ...appPrefs.adminNotifications, enabled: checked }
+                adminNotifications: {
+                  ...appPrefs.adminNotifications,
+                  enabled: checked,
+                  methods: appPrefs.adminNotifications?.methods ?? ['smtp'],
+                  errorAlerts: appPrefs.adminNotifications?.errorAlerts ?? true,
+                  startupAlerts: appPrefs.adminNotifications?.startupAlerts ?? true
+                }
               })}
             />
           </div>

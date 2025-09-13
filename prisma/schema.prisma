@@ -338,6 +338,61 @@ model UserPreference {
   @@map("user_preferences")
 }
 
+/*
+model UserPreference {
+  userId     String   @id @map("user_id")
+
+  // Workout preferences
+  defaultDuration String @default("45")
+  difficultyLevel String @default("intermediate")
+  preferredTime   String @default("morning")
+  availableEquipment Json // Array of equipment strings
+  restDayReminders Boolean @default(true)
+
+  // Nutrition preferences
+  dailyCalories String @default("2200")
+  proteinTarget String @default("150")
+  carbTarget    String @default("250")
+  fatTarget     String @default("80")
+  dietaryRestrictions Json // Array of restriction strings
+  trackWater    Boolean @default(true)
+  waterTarget   String @default("2500")
+  useSmartCalculations Boolean @default(true)
+
+  // App preferences
+  theme         String @default("system")
+  units         String @default("imperial")
+  notifications Boolean @default(true)
+  weeklyReports Boolean @default(true)
+  dataSharing   Boolean @default(false)
+
+  // Email notification preferences
+  emailNotifications   Boolean @default(true)
+  pushNotifications    Boolean @default(true)
+  weighInNotifications Boolean @default(true)
+  weighInFrequency     Int @default(1) // 1, 2, or 3
+  mealNotifications    Boolean @default(true)
+  mealFrequency        Int @default(3) // 1 or 3
+  sleepNotifications   Boolean @default(true)
+  exerciseNotifications Boolean @default(true)
+  workoutReminders     Boolean @default(true)
+  weightReminders      Boolean @default(true)
+  nutritionReminders   Boolean @default(true)
+  streakReminders      Boolean @default(true)
+  reminderTime         String @default("09:00")
+
+  // Admin notification settings
+  adminNotifications Json // { enabled: boolean, methods: string[], errorAlerts: boolean, startupAlerts: boolean }
+
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+*/
+
 model Food {
   id          String   @id @default(cuid())
   name        String

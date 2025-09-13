@@ -49,5 +49,15 @@ export interface AppPrefs {
     nutritionReminders: boolean
     streakReminders: boolean
     reminderTime: string // HH:MM format
+    emailNotifications: boolean // Enable email notifications
+    pushNotifications: boolean // Enable push notifications
+    // New preset notification types
+    weighInNotifications: boolean
+    weighInFrequency: 1 | 2 | 3 // times per day
+    mealNotifications: boolean
+    mealFrequency: 1 | 3 // times per day
+    sleepNotifications: boolean
+    exerciseNotifications: boolean
+    workoutTime: string // HH:MM format for preferred workout time
   }
 }

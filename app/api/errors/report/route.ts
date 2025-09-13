@@ -40,12 +40,22 @@ export async function POST(request: NextRequest) {
 
     // Always send admin notifications for errors to the configured ADMIN_EMAIL
     const adminEmail = process.env.ADMIN_EMAIL;
+    const isProduction = process.env.NODE_ENV === 'production';
 
     if (!adminEmail) {
       logger.warn('ADMIN_EMAIL not configured, skipping admin error notification');
       return NextResponse.json({
         success: false,
         message: 'Admin email not configured'
+      });
+    }
+
+    if (!isProduction) {
+      logger.info('Skipping admin error notification - not in production environment');
+      return NextResponse.json({
+        success: true,
+        message: 'Error logged (development mode - no email sent)',
+        environment: 'development'
       });
     }
 
