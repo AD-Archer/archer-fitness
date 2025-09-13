@@ -1,5 +1,5 @@
 # 🏋️ Archer Fitness
-
+https://fitness.archer.software/sitebanner.webp
 An AI-powered fitness tracking application built by Antonio Archer, a software developer from Philadelphia. Track workouts, monitor nutrition, and analyze your fitness progress with intelligent insights and personalized recommendations.
 
 ![Archer Fitness](https://img.shields.io/badge/Archer-Fitness-blue?style=for-the-badge&logo=fitness&logoColor=white)
