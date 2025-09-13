@@ -194,14 +194,18 @@ export default function RootLayout({
         >
           {`
             if ('serviceWorker' in navigator) {
+              // Wait for page to fully load before registering service worker
               window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js')
-                  .then(function(registration) {
-                    console.log('Service Worker registered with scope:', registration.scope);
-                  })
-                  .catch(function(error) {
-                    console.log('Service Worker registration failed:', error);
-                  });
+                // Small delay to ensure static files are available
+                setTimeout(() => {
+                  navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                    .then(function(registration) {
+                      console.log('Service Worker registered with scope:', registration.scope);
+                    })
+                    .catch(function(error) {
+                      console.log('Service Worker registration failed:', error);
+                    });
+                }, 100);
               });
             }
           `}

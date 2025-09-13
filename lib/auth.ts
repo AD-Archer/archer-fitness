@@ -7,16 +7,23 @@ import bcrypt from "bcryptjs"
 
 // Check if Google OAuth is properly configured
 export const isGoogleOAuthConfigured = () => {
+  // For build time, we'll assume it's configured and handle at runtime
+  if (typeof window !== 'undefined') {
+    // Client-side check using public env var
+    return !!(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID)
+  }
+  // Server-side check using private env vars
   return !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
 }
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
-    ...(isGoogleOAuthConfigured() ? [GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    })] : []),
+    // Always include GoogleProvider but it will be conditionally used
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID || "placeholder-client-id",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "placeholder-client-secret",
+    }),
     CredentialsProvider({
       name: "credentials",
       credentials: {
@@ -64,6 +71,11 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account }) {
       // Handle OAuth sign-in (Google)
       if (account?.provider === "google") {
+        // Check if Google OAuth is actually configured
+        if (!isGoogleOAuthConfigured()) {
+          return false
+        }
+
         try {
           // Check if user already exists with this email
           const existingUser = await prisma.user.findUnique({

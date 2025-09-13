@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
-import { Chrome, AlertTriangle } from "lucide-react"
+import { Chrome } from "lucide-react"
 
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
@@ -123,14 +123,9 @@ export default function SignUpPage() {
           )}
 
           {!isGoogleConfigured && isGoogleConfigured !== null && (
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Site Owner:</strong> Google OAuth is not configured. 
-                Please set up <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> 
-                environment variables to enable Google sign-in.
-              </AlertDescription>
-            </Alert>
+            <div className="text-xs text-muted-foreground text-center py-1">
+              Owner has not set up Google OAuth
+            </div>
           )}
 
           {isGoogleConfigured && (
