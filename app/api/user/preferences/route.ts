@@ -31,6 +31,19 @@ const appPrefsSchema = z.object({
   notifications: z.boolean(),
   weeklyReports: z.boolean(),
   dataSharing: z.boolean(),
+  adminNotifications: z.object({
+    enabled: z.boolean(),
+    methods: z.array(z.enum(['smtp'])),
+    errorAlerts: z.boolean(),
+    startupAlerts: z.boolean(),
+  }).optional(),
+  notificationPrefs: z.object({
+    workoutReminders: z.boolean(),
+    weightReminders: z.boolean(),
+    nutritionReminders: z.boolean(),
+    streakReminders: z.boolean(),
+    reminderTime: z.string(),
+  }).optional(),
 })
 
 const preferencesSchema = z.object({

@@ -5,14 +5,33 @@ import { emailNotificationManager } from '../lib/email-notifications.js';
 async function sendStartupNotification() {
   try {
     console.log('Sending startup notification to admin...');
-    const success = await emailNotificationManager.sendStartupNotification();
-    if (success) {
-      console.log('Startup notification sent successfully.');
+
+    // Check if ADMIN_EMAIL is configured
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const shouldSendStartupNotification = !!adminEmail;
+
+    if (!adminEmail) {
+      console.log('ADMIN_EMAIL not configured, skipping startup notification');
+      return;
+    }
+
+    let emailSuccess = false;
+
+    if (shouldSendStartupNotification) {
+      // Send email to the configured admin email
+      emailSuccess = await emailNotificationManager.sendStartupNotification();
     } else {
-      console.log('Failed to send startup notification (likely due to missing config).');
+      console.log('Startup notifications disabled (no admin email configured).');
+    }
+
+    if (emailSuccess) {
+      console.log('Startup notification sent successfully.');
+      console.log('- Email sent');
+    } else {
+      console.log('Failed to send startup notification (likely due to missing config or disabled notifications).');
     }
   } catch (error) {
-    console.error('Error sending startup notification:', error);
+    console.error('Error sending startup notification:', error.message);
   }
 }
 

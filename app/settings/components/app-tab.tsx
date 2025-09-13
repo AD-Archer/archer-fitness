@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { AppPrefs } from "./types"
 import { useNotifications } from "@/hooks/use-notifications"
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { toast } from "sonner"
 
 interface AppTabProps {
@@ -19,12 +19,19 @@ interface AppTabProps {
 export function AppTab({ appPrefs, setAppPrefs }: AppTabProps) {
   const { isSupported, permission, isSubscribed, isLoading, toggleNotifications, sendTestNotification } = useNotifications()
 
+  const appPrefsRef = useRef(appPrefs)
+
+  // Keep ref in sync with props
+  useEffect(() => {
+    appPrefsRef.current = appPrefs
+  }, [appPrefs])
+
   // Sync the notifications preference with the actual subscription status
   useEffect(() => {
-    if (isSupported && permission === 'granted') {
-      setAppPrefs({ ...appPrefs, notifications: isSubscribed })
+    if (isSupported && permission === 'granted' && appPrefsRef.current.notifications !== isSubscribed) {
+      setAppPrefs({ ...appPrefsRef.current, notifications: isSubscribed })
     }
-  }, [isSupported, permission, isSubscribed, appPrefs, setAppPrefs])
+  }, [isSupported, permission, isSubscribed, setAppPrefs])
 
   const handleNotificationsToggle = async (enabled: boolean) => {
     if (!isSupported) {

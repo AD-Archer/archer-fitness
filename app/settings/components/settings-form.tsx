@@ -67,6 +67,12 @@ export function SettingsForm() {
     notifications: true,
     weeklyReports: true,
     dataSharing: false,
+    adminNotifications: {
+      enabled: true,
+      methods: ['smtp'] as ('smtp')[],
+      errorAlerts: true,
+      startupAlerts: true
+    },
     notificationPrefs: {
       workoutReminders: true,
       weightReminders: true,
@@ -114,6 +120,12 @@ export function SettingsForm() {
     notifications: true,
     weeklyReports: true,
     dataSharing: false,
+    adminNotifications: {
+      enabled: true,
+      methods: ['smtp'],
+      errorAlerts: true,
+      startupAlerts: true
+    },
     notificationPrefs: {
       workoutReminders: true,
       weightReminders: true,

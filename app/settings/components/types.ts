@@ -37,6 +37,12 @@ export interface AppPrefs {
   notifications: boolean
   weeklyReports: boolean
   dataSharing: boolean
+  adminNotifications: {
+    enabled: boolean
+    methods: ('smtp')[]
+    errorAlerts: boolean
+    startupAlerts: boolean
+  }
   notificationPrefs: {
     workoutReminders: boolean
     weightReminders: boolean

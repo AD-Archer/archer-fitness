@@ -83,8 +83,12 @@ export class NotificationManager {
     }
 
     try {
-      // Get VAPID public key from environment or use default for development
-      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BDefaultPublicKeyForDevelopment';
+      // Get VAPID public key from environment
+      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+
+      if (!vapidPublicKey || vapidPublicKey === 'BDefaultPublicKeyForDevelopment') {
+        throw new Error('VAPID keys not configured. Please generate and set NEXT_PUBLIC_VAPID_PUBLIC_KEY in your environment variables.');
+      }
 
       const subscription = await this.swRegistration.pushManager.subscribe({
         userVisibleOnly: true,
@@ -134,21 +138,35 @@ export class NotificationManager {
 
   // Send test notification (for development)
   async sendTestNotification(): Promise<void> {
+    if (!this.isSupported()) {
+      throw new Error('Notifications are not supported in this browser');
+    }
+
+    // Check permission first
+    const currentPermission = this.getPermissionStatus();
+    if (currentPermission !== 'granted') {
+      throw new Error('Notification permission not granted');
+    }
+
     if (!this.swRegistration) {
       throw new Error('Service worker not registered');
     }
 
-    const notification = new Notification('Test Notification', {
+    // Use service worker to show notification instead of creating directly
+    const notificationPayload = {
+      title: 'Test Notification',
       body: 'This is a test push notification from Archer Fitness!',
       icon: '/logo.webp',
       badge: '/logo.webp',
-      tag: 'test-notification'
-    });
-
-    notification.onclick = () => {
-      window.focus();
-      notification.close();
+      url: '/',
+      type: 'general'
     };
+
+    // Send message to service worker to show notification
+    await this.swRegistration.active?.postMessage({
+      type: 'SHOW_NOTIFICATION',
+      payload: notificationPayload
+    });
   }
 
   // Schedule a local notification (for immediate notifications)

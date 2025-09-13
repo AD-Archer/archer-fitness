@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { RefreshCw, Home, AlertTriangle, Bug } from 'lucide-react'
+import { RefreshCw, Home, AlertTriangle, Bug, Mail, Settings } from 'lucide-react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { logger } from "@/lib/logger"
@@ -17,30 +17,71 @@ interface ErrorProps {
 export default function Error({ error, reset }: ErrorProps) {
   const { data: session } = useSession()
   const userId = session?.user?.id
+  const [adminNotificationsEnabled, setAdminNotificationsEnabled] = useState<boolean>(true)
+  const [emailSent, setEmailSent] = useState<boolean>(false)
+  const [isReporting, setIsReporting] = useState<boolean>(false)
+
+  useEffect(() => {
+    // Fetch user preferences to check admin notifications setting
+    const fetchPreferences = async () => {
+      if (!userId) return
+      try {
+        const response = await fetch('/api/user/preferences')
+        if (response.ok) {
+          const data = await response.json()
+          const enabled = data?.preferences?.appPrefs?.adminNotifications?.enabled ?? true
+          setAdminNotificationsEnabled(enabled)
+        }
+      } catch (err) {
+        logger.error('Failed to fetch user preferences:', err)
+      }
+    }
+
+    fetchPreferences()
+  }, [userId])
+
+  const reportError = useCallback(async () => {
+    setIsReporting(true)
+    try {
+      const response = await fetch('/api/errors/report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          error: {
+            message: error.message,
+            stack: error.stack,
+            digest: error.digest,
+          },
+          context: 'Client-side error in Archer Fitness app',
+          userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'Server-side',
+          url: typeof window !== 'undefined' ? window.location.href : 'Server-side',
+          userId: userId || 'Anonymous',
+          timestamp: new Date().toISOString(),
+        }),
+      })
+      if (response.ok) {
+        setEmailSent(true)
+      } else {
+        logger.error('Failed to report error to admin')
+      }
+    } catch (err) {
+      logger.error('Failed to report error to admin:', err)
+    } finally {
+      setIsReporting(false)
+    }
+  }, [error.message, error.stack, error.digest, userId])
 
   useEffect(() => {
     // Log the error to an error reporting service
     logger.error('Application error:', error)
 
-    // Report error to admin via API (async, don't await to avoid blocking UI)
-    fetch('/api/errors/report', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        error: {
-          message: error.message,
-          stack: error.stack,
-          digest: error.digest,
-        },
-        context: 'Client-side error in Archer Fitness app',
-        userId: userId, // Include userId if available
-      }),
-    }).catch(err => {
-      logger.error('Failed to report error to admin:', err)
-    })
-  }, [error, userId])
+    // Report error to admin if enabled
+    if (adminNotificationsEnabled) {
+      reportError()
+    }
+  }, [error, userId, adminNotificationsEnabled, reportError])
 
   const isDevelopment = process.env.NODE_ENV === 'development'
 
@@ -109,6 +150,31 @@ export default function Error({ error, reset }: ErrorProps) {
             </Button>
           </div>
 
+          {/* Email Notification */}
+          {emailSent && (
+            <Alert>
+              <Mail className="h-4 w-4" />
+              <AlertDescription>
+                An email has been sent to the owners with details about this error.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Manual Send Email */}
+          {!adminNotificationsEnabled && !emailSent && (
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button 
+                onClick={reportError}
+                disabled={isReporting}
+                variant="outline"
+                className="flex-1 flex items-center gap-2"
+              >
+                <Mail className="h-4 w-4" />
+                {isReporting ? 'Sending...' : 'Send Error Report'}
+              </Button>
+            </div>
+          )}
+
           {/* Additional Help */}
           <div className="text-center space-y-3 pt-4 border-t">
             <p className="text-sm text-muted-foreground">
@@ -134,6 +200,12 @@ export default function Error({ error, reset }: ErrorProps) {
                 Error ID: {error.digest || 'Unknown'} • 
                 Time: {new Date().toLocaleString()}
               </p>
+              <Button variant="link" asChild className="text-xs p-0 h-auto">
+                <Link href="/settings?tab=privacy" className="flex items-center gap-1">
+                  <Settings className="h-3 w-3" />
+                  Manage error reporting settings
+                </Link>
+              </Button>
             </div>
           </div>
         </CardContent>

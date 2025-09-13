@@ -71,12 +71,34 @@ export function PrivacyTab({ appPrefs, setAppPrefs }: PrivacyTabProps) {
           <div className="space-y-0.5">
             <Label>Anonymous Data Sharing</Label>
             <p className="text-sm text-muted-foreground">Help improve the app by sharing anonymous usage data and error reports</p>
-            <p className="text-xs text-muted-foreground">When disabled, error reports and admin notifications will not be sent</p>
           </div>
           <Switch
             checked={appPrefs.dataSharing}
             onCheckedChange={(checked) => setAppPrefs({ ...appPrefs, dataSharing: checked })}
           />
+        </div>
+
+        <Separator />
+
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">Error Reporting</h3>
+          <p className="text-sm text-muted-foreground">
+            Control how application errors are handled and reported
+          </p>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>Send Error Reports to Admin</Label>
+              <p className="text-sm text-muted-foreground">Allow the app to send error reports directly to the admin when issues occur</p>
+            </div>
+            <Switch
+              checked={appPrefs.adminNotifications.enabled}
+              onCheckedChange={(checked) => setAppPrefs({
+                ...appPrefs,
+                adminNotifications: { ...appPrefs.adminNotifications, enabled: checked }
+              })}
+            />
+          </div>
         </div>
 
         <Separator />

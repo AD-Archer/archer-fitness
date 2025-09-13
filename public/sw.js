@@ -85,16 +85,35 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Background sync for offline functionality (optional)
-self.addEventListener('sync', (event) => {
-  console.log('Service Worker: Background sync', event.tag);
+// Message event - handle messages from the main thread
+self.addEventListener('message', (event) => {
+  console.log('Service Worker: Message received', event.data);
 
-  if (event.tag === 'background-sync') {
-    event.waitUntil(doBackgroundSync());
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const payload = event.data.payload;
+    const options = {
+      body: payload.body,
+      icon: payload.icon || '/logo.webp',
+      badge: payload.badge || '/logo.webp',
+      image: payload.image,
+      vibrate: [200, 100, 200],
+      data: {
+        url: payload.url || '/',
+        type: payload.type || 'general'
+      },
+      actions: payload.actions || [],
+      requireInteraction: true,
+      silent: false
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(payload.title || 'Archer Fitness', options)
+        .then(() => {
+          console.log('Service Worker: Notification shown successfully');
+        })
+        .catch((error) => {
+          console.error('Service Worker: Failed to show notification:', error);
+        })
+    );
   }
 });
-
-async function doBackgroundSync() {
-  // Handle background sync tasks here
-  console.log('Performing background sync...');
-}

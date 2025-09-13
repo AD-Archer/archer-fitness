@@ -17,17 +17,19 @@ export function useNotifications() {
         setIsSupported(supported);
 
         if (supported) {
+          // Register service worker regardless of permission status
+          try {
+            await notificationManager.registerServiceWorker();
+          } catch (swError) {
+            logger.warn('Failed to register service worker:', swError);
+          }
+
           const currentPermission = notificationManager.getPermissionStatus();
           setPermission(currentPermission);
 
           // Check if already subscribed
           const subscription = await notificationManager.getCurrentSubscription();
           setIsSubscribed(!!subscription);
-
-          // Register service worker if not already done
-          if (currentPermission === 'granted') {
-            await notificationManager.registerServiceWorker();
-          }
         }
       } catch (error) {
         logger.error('Failed to initialize notifications:', error);
@@ -51,8 +53,8 @@ export function useNotifications() {
 
       if (newPermission === 'granted') {
         try {
-          // Register service worker and subscribe
-          await notificationManager.registerServiceWorker();
+          // Service worker should already be registered from init
+          // Just subscribe to push notifications
           const subscriptionData = await notificationManager.subscribeToPush();
 
           if (subscriptionData) {
@@ -90,7 +92,7 @@ export function useNotifications() {
           // Check if VAPID keys are configured
           const errorMessage = subscriptionError instanceof Error ? subscriptionError.message : String(subscriptionError);
           if (errorMessage.includes('VAPID') || errorMessage.includes('applicationServerKey')) {
-            toast.error('Notifications not configured. Please set up VAPID keys.');
+            toast.error('Notifications not configured. Please check VAPID keys in environment variables.');
           } else {
             toast.error('Failed to set up push notifications. Local notifications only.');
           }
@@ -156,17 +158,31 @@ export function useNotifications() {
 
   // Send test notification
   const sendTestNotification = async () => {
-    if (!isSupported || permission !== 'granted') {
-      toast.error('Notifications are not enabled');
+    if (!isSupported) {
+      toast.error('Notifications are not supported in this browser');
+      return;
+    }
+
+    if (permission !== 'granted') {
+      toast.error('Please enable notifications first by toggling the switch above');
       return;
     }
 
     try {
+      // Ensure service worker is registered before sending test
+      if (!isSubscribed) {
+        await notificationManager.registerServiceWorker();
+        const subscriptionData = await notificationManager.subscribeToPush();
+        if (subscriptionData) {
+          setIsSubscribed(true);
+        }
+      }
+
       await notificationManager.sendTestNotification();
       toast.success('Test notification sent!');
     } catch (error) {
       logger.error('Failed to send test notification:', error);
-      toast.error('Failed to send test notification. Check browser permissions.');
+      toast.error('Failed to send test notification. Please try enabling notifications first.');
     }
   };
 
