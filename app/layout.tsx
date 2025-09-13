@@ -62,15 +62,42 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  manifest: '/manifest.json',
+  manifest: '/site.webmanifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'Archer Fitness',
   },
   icons: {
-    icon: '/logo.webp',
-    apple: '/logo.webp',
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+    other: [
+      {
+        rel: 'icon',
+        url: '/favicon-16x16.png',
+        sizes: '16x16',
+        type: 'image/png',
+      },
+      {
+        rel: 'icon',
+        url: '/favicon-32x32.png',
+        sizes: '32x32',
+        type: 'image/png',
+      },
+      {
+        rel: 'icon',
+        url: '/android-chrome-192x192.png',
+        sizes: '192x192',
+        type: 'image/png',
+      },
+      {
+        rel: 'icon',
+        url: '/android-chrome-512x512.png',
+        sizes: '512x512',
+        type: 'image/png',
+      },
+    ],
   },
 };
 
@@ -140,8 +167,12 @@ export default function RootLayout({
             }),
           }}
         />
-        <link rel="icon" href="/logo.webp" type="image/webp" />
-        <link rel="apple-touch-icon" href="/logo.webp" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png" />
+        <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="icon" href="/android-chrome-192x192.png" sizes="192x192" type="image/png" />
+        <link rel="icon" href="/android-chrome-512x512.png" sizes="512x512" type="image/png" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="theme-color" content="#000000" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
