@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -21,22 +21,7 @@ export default function SignUpPage() {
   })
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [isGoogleConfigured, setIsGoogleConfigured] = useState<boolean | null>(null)
   const router = useRouter()
-
-  useEffect(() => {
-    const checkGoogleConfig = async () => {
-      try {
-        const response = await fetch("/api/auth/google-config")
-        const data = await response.json()
-        setIsGoogleConfigured(data.isGoogleConfigured)
-      } catch {
-        setIsGoogleConfigured(false)
-      }
-    }
-
-    checkGoogleConfig()
-  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -88,14 +73,6 @@ export default function SignUpPage() {
   }
 
   const handleGoogleSignIn = () => {
-    if (isGoogleConfigured === null) {
-      setError("Checking Google OAuth configuration...")
-      return
-    }
-    if (!isGoogleConfigured) {
-      setError("Google OAuth is not configured. Please contact the site administrator.")
-      return
-    }
     signIn("google", { callbackUrl: "/" })
   }
 
@@ -122,35 +99,15 @@ export default function SignUpPage() {
             </Alert>
           )}
 
-          {!isGoogleConfigured && isGoogleConfigured !== null && (
-            <div className="text-xs text-muted-foreground text-center py-1">
-              Owner has not set up Google OAuth
-            </div>
-          )}
-
-          {isGoogleConfigured && (
-            <Button
-              variant="outline"
-              type="button"
-              className="w-full"
-              onClick={handleGoogleSignIn}
-            >
-              <Chrome className="mr-2 h-4 w-4" />
-              Continue with Google
-            </Button>
-          )}
-
-          {isGoogleConfigured === null && (
-            <Button
-              variant="outline"
-              type="button"
-              className="w-full"
-              disabled
-            >
-              <Chrome className="mr-2 h-4 w-4" />
-              Checking Google configuration...
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            type="button"
+            className="w-full"
+            onClick={handleGoogleSignIn}
+          >
+            <Chrome className="mr-2 h-4 w-4" />
+            Continue with Google
+          </Button>
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">

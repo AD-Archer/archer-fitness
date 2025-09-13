@@ -29,8 +29,15 @@ const configureWebPush = async () => {
 
 export async function POST(request: NextRequest) {
   try {
-    const { error, context, userAgent, url, userId, timestamp } = await request.json();
+    const body = await request.json();
+    const { error, context, userAgent, url, userId, timestamp, type } = body;
 
+    // Handle startup notifications
+    if (type === 'startup') {
+      return await handleStartupNotification();
+    }
+
+    // Handle error reporting (existing functionality) - only if error field is present
     if (!error) {
       return NextResponse.json({ error: 'Error data is required' }, { status: 400 });
     }
@@ -42,11 +49,23 @@ export async function POST(request: NextRequest) {
     const adminEmail = process.env.ADMIN_EMAIL;
     const isProduction = process.env.NODE_ENV === 'production';
 
+    // Debug logging
+    logger.info('Environment check:', {
+      adminEmail: adminEmail ? 'SET' : 'NOT SET',
+      adminEmailValue: adminEmail,
+      nodeEnv: process.env.NODE_ENV,
+      allEnvKeys: Object.keys(process.env).filter(key => key.includes('EMAIL') || key.includes('ADMIN'))
+    });
+
     if (!adminEmail) {
       logger.warn('ADMIN_EMAIL not configured, skipping admin error notification');
       return NextResponse.json({
         success: false,
-        message: 'Admin email not configured'
+        message: 'Admin email not configured',
+        debug: {
+          adminEmail: adminEmail,
+          envKeys: Object.keys(process.env).filter(key => key.includes('EMAIL'))
+        }
       });
     }
 
@@ -86,6 +105,50 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     logger.error('Error in error reporting API:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// Handle startup notifications
+async function handleStartupNotification() {
+  try {
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // Debug logging
+    logger.info('Startup notification - Environment check:', {
+      adminEmail: adminEmail ? 'SET' : 'NOT SET',
+      adminEmailValue: adminEmail,
+      nodeEnv: process.env.NODE_ENV,
+      isProduction
+    });
+
+    if (!adminEmail) {
+      logger.warn('ADMIN_EMAIL not configured, skipping startup notification');
+      return NextResponse.json({
+        success: false,
+        message: 'Admin email not configured',
+        debug: {
+          adminEmail: adminEmail,
+          envKeys: Object.keys(process.env).filter(key => key.includes('EMAIL'))
+        }
+      });
+    }
+
+    // Send startup notification regardless of environment (unlike errors which only send in production)
+    const emailSuccess = await emailNotificationManager.sendStartupNotification();
+
+    return NextResponse.json({
+      success: emailSuccess,
+      methods: {
+        email: emailSuccess
+      },
+      message: emailSuccess
+        ? 'Startup notification sent to admin'
+        : 'Failed to send startup notification'
+    });
+  } catch (error) {
+    logger.error('Error sending startup notification:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
