@@ -146,6 +146,7 @@ The repository includes automated CI/CD pipelines for building, testing, and dep
    # Google OAuth (Optional)
    GOOGLE_CLIENT_ID="your-google-client-id"
    GOOGLE_CLIENT_SECRET="your-google-client-secret"
+   NEXT_PUBLIC_GOOGLE_CLIENT_ID="your-google-client-id"
 
    # Optional: Analytics
    VERCEL_ANALYTICS_ID="your-vercel-analytics-id"
@@ -165,7 +166,7 @@ The repository includes automated CI/CD pipelines for building, testing, and dep
    8. Add authorized redirect URIs:
       - For development: `http://localhost:3000/api/auth/callback/google`
       - For production: `https://yourdomain.com/api/auth/callback/google`
-   9. Copy the Client ID and Client Secret to your `.env.local` file
+   9. Copy the Client ID and Client Secret to your `.env.local` file as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Also set `NEXT_PUBLIC_GOOGLE_CLIENT_ID` to the same Client ID value for client-side detection.
 
 5. **Generate VAPID keys for push notifications**
    ```bash

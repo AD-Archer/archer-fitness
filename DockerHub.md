@@ -116,6 +116,7 @@ At a minimum, set:
 - ADMIN_EMAIL — admin email for error and startup notifications (optional)
 - GOOGLE_CLIENT_ID — Google OAuth client ID (optional)
 - GOOGLE_CLIENT_SECRET — Google OAuth client secret (optional)
+- NEXT_PUBLIC_GOOGLE_CLIENT_ID — Google OAuth client ID for client-side detection (optional)
 
 ### Generate VAPID Keys
 
