@@ -26,16 +26,37 @@ export interface NotificationAction {
 
 // VAPID keys for push notifications (in production, these should be environment variables)
 const vapidKeys = {
-  publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BDefaultPublicKeyForDevelopment',
-  privateKey: process.env.VAPID_PRIVATE_KEY || 'DefaultPrivateKeyForDevelopment'
+  publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+  privateKey: process.env.VAPID_PRIVATE_KEY
 };
 
-// Configure web-push with VAPID keys
-webpush.setVapidDetails(
-  `mailto:${process.env.VAPID_EMAIL || 'admin@archer-fitness.com'}`,
-  vapidKeys.publicKey,
-  vapidKeys.privateKey
-);
+// Track if VAPID keys have been set
+let vapidKeysInitialized = false;
+
+// Lazy initialization of VAPID keys
+function initializeVapidKeys() {
+  if (vapidKeysInitialized) return;
+
+  // Only initialize if we have valid keys
+  if (vapidKeys.publicKey && vapidKeys.privateKey &&
+      vapidKeys.publicKey !== 'BDefaultPublicKeyForDevelopment' &&
+      vapidKeys.privateKey !== 'DefaultPrivateKeyForDevelopment') {
+
+    try {
+      webpush.setVapidDetails(
+        `mailto:${process.env.VAPID_EMAIL || 'admin@archer-fitness.com'}`,
+        vapidKeys.publicKey,
+        vapidKeys.privateKey
+      );
+      vapidKeysInitialized = true;
+    } catch {
+      // Silently fail VAPID initialization during build
+      vapidKeysInitialized = false;
+    }
+  }
+}
+
+// Configure web-push with VAPID keys (removed from module level)
 
 // Server-side function to send push notifications
 export async function sendPushNotification(
@@ -43,6 +64,9 @@ export async function sendPushNotification(
   payload: NotificationPayload
 ): Promise<void> {
   try {
+    // Initialize VAPID keys if not already done
+    initializeVapidKeys();
+
     await webpush.sendNotification(
       {
         endpoint: subscription.endpoint,

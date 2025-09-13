@@ -5,13 +5,18 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 
+// Check if Google OAuth is properly configured
+export const isGoogleOAuthConfigured = () => {
+  return !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
+}
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
-    GoogleProvider({
+    ...(isGoogleOAuthConfigured() ? [GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
+    })] : []),
     CredentialsProvider({
       name: "credentials",
       credentials: {
@@ -35,7 +40,7 @@ export const authOptions: NextAuthOptions = {
 
           // Verify password
           const isValid = await bcrypt.compare(credentials.password, user.password)
-          
+
           if (!isValid) {
             return null
           }

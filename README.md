@@ -143,14 +143,31 @@ The repository includes automated CI/CD pipelines for building, testing, and dep
    VAPID_PRIVATE_KEY="your-vapid-private-key"
    VAPID_EMAIL="admin@yourdomain.com"
 
-   # Admin Email for Error and Startup Notifications (Optional)
-   ADMIN_EMAIL="admin@yourdomain.com"
+   # Google OAuth (Optional)
+   GOOGLE_CLIENT_ID="your-google-client-id"
+   GOOGLE_CLIENT_SECRET="your-google-client-secret"
 
    # Optional: Analytics
    VERCEL_ANALYTICS_ID="your-vercel-analytics-id"
    ```
 
-3. **Generate VAPID keys for push notifications**
+4. **Set up Google OAuth (Optional)**
+   
+   If you want to enable Google sign-in for your users:
+   
+   1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
+   2. Create a new project or select an existing one
+   3. Enable the Google+ API
+   4. Go to "Credentials" in the left sidebar
+   5. Click "Create Credentials" → "OAuth 2.0 Client IDs"
+   6. Configure the OAuth consent screen if prompted
+   7. Set the application type to "Web application"
+   8. Add authorized redirect URIs:
+      - For development: `http://localhost:3000/api/auth/callback/google`
+      - For production: `https://yourdomain.com/api/auth/callback/google`
+   9. Copy the Client ID and Client Secret to your `.env.local` file
+
+5. **Generate VAPID keys for push notifications**
    ```bash
    node scripts/generate-vapid-keys.js
    ```

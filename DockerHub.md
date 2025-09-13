@@ -114,6 +114,8 @@ At a minimum, set:
 - VAPID_PRIVATE_KEY — VAPID private key for push notifications
 - VAPID_EMAIL — contact email for VAPID
 - ADMIN_EMAIL — admin email for error and startup notifications (optional)
+- GOOGLE_CLIENT_ID — Google OAuth client ID (optional)
+- GOOGLE_CLIENT_SECRET — Google OAuth client secret (optional)
 
 ### Generate VAPID Keys
 
@@ -146,6 +148,27 @@ VAPID_EMAIL="admin@yourdomain.com"
 ADMIN_EMAIL="admin@yourdomain.com"
 # Optional: PORT is read by Docker Compose when using dotenv. Set if you want a custom port.
 PORT=3000
+```
+
+## Google OAuth Setup (Optional)
+
+If you want to enable Google sign-in for your users:
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the Google+ API
+4. Go to "Credentials" in the left sidebar
+5. Click "Create Credentials" → "OAuth 2.0 Client IDs"
+6. Configure the OAuth consent screen if prompted
+7. Set the application type to "Web application"
+8. Add authorized redirect URIs:
+   - For development: `http://localhost:3000/api/auth/callback/google`
+   - For production: `https://yourdomain.com/api/auth/callback/google`
+9. Copy the Client ID and Client Secret to your `.env` file
+
+**Note:** If Google OAuth is not configured, users will see a warning message on the sign-in and sign-up pages, but can still use email/password authentication.
+
+## Generate VAPID Keys
 ```
 
 ## Build locally (optional)
