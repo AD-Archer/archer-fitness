@@ -29,3 +29,18 @@ next-env.d.ts
 
 exercise-summary.json
 .vscode/
+.DS_Store
+.idea/
+.vscode-test/
+*.swp
+*.swo
+*.swn
+*.bak
+*.tmp
+*.orig
+*.rej
+*.log
+*.gz
+*.zip
+*.tar
+*.rar

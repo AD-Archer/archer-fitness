@@ -13,7 +13,7 @@ const baseUrl = process.env.NEXTAUTH_URL || 'https://fitness.archer.software'
 export const metadata: Metadata = {
   title: 'Archer Fitness | AI Workout Dashboard',
   description:
-    'AI-powered fitness app by Antonio Archer, a software developer from Philadelphia. Track workouts, nutrition, and progress with intelligent insights.',
+    'AI-powered fitness app by Antonio Archer. Track workouts, nutrition, and progress with intelligent insights.',
   metadataBase: new URL(baseUrl),
   alternates: {
     canonical: baseUrl,
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Archer Fitness | AI Workout Dashboard',
     description:
-      'AI-powered fitness app by Antonio Archer, a software developer from Philadelphia. Track workouts, nutrition, and progress with intelligent insights.',
+      'AI-powered fitness app by Antonio Archer. Track workouts, nutrition, and progress with intelligent insights.',
     url: baseUrl,
     siteName: 'Archer Fitness',
     images: [
