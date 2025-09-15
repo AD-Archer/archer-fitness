@@ -1,22 +1,24 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Check, Pause, Play, Square, Target, Timer, Save, X, Trash2 } from "lucide-react"
+import { Check, Pause, Play, Square, Target, Timer, Save, X, Trash2, Edit2 } from "lucide-react"
 import Image from "next/image"
 import { AddSetForm } from "./add-set-form"
 import { RestTimer } from "./rest-timer"
 import { ExerciseTimer } from "./exercise-timer"
 import { formatTime, getExerciseProgress, isExerciseCompleted, getCompletedExercisesCount } from "../utils"
-import { formatWeight } from "@/lib/weight-utils"
+import { formatWeight, getWeightUnitAbbr } from "@/lib/weight-utils"
 import { useUserPreferences } from "@/hooks/use-user-preferences"
 import { logger } from "@/lib/logger"
 
 interface ExerciseSet {
+  id?: string
   reps: number
   weight?: number
   completed: boolean
@@ -73,6 +75,8 @@ interface WorkoutSessionProps {
   onStopWorkout: () => void
   onBackToSelection: () => void
   onAddSet: (exerciseId: string, reps: number, weight?: number) => void
+  onEditSet: (setId: string, reps: number, weight?: number) => void
+  onDeleteSet: (setId: string) => void
   onAddExercise: () => void
   onRemoveExercise: (exerciseId: string) => void
   onNextExercise: () => void
@@ -96,6 +100,8 @@ export function WorkoutSession({
   onStopWorkout,
   onBackToSelection,
   onAddSet,
+  onEditSet,
+  onDeleteSet,
   onAddExercise,
   onRemoveExercise,
   onNextExercise,
@@ -108,6 +114,12 @@ export function WorkoutSession({
   const currentExercise = session.exercises[currentExerciseIndex]
   const workoutHeaderRef = useRef<HTMLDivElement>(null)
   const { units } = useUserPreferences()
+  
+  // State for editing sets
+  const [editingSetId, setEditingSetId] = useState<string | null>(null)
+  const [editReps, setEditReps] = useState("")
+  const [editWeight, setEditWeight] = useState("")
+  const [editIsBodyweight, setEditIsBodyweight] = useState(false)
 
   // Handle add exercise with scroll to top
   const handleAddExercise = () => {
@@ -125,6 +137,39 @@ export function WorkoutSession({
       reps: lastSet.reps,
       weight: lastSet.weight,
       isBodyweight: lastSet.weight === undefined
+    }
+  }
+
+  // Handle set editing
+  const startEditingSet = (set: ExerciseSet) => {
+    if (!set.id) return
+    setEditingSetId(set.id)
+    setEditReps(set.reps.toString())
+    setEditWeight(set.weight ? set.weight.toString() : "")
+    setEditIsBodyweight(!set.weight || set.weight === 0)
+  }
+
+  const cancelEditingSet = () => {
+    setEditingSetId(null)
+    setEditReps("")
+    setEditWeight("")
+    setEditIsBodyweight(false)
+  }
+
+  const saveEditedSet = () => {
+    if (!editingSetId || !editReps) return
+    
+    const reps = parseInt(editReps)
+    const weight = editIsBodyweight ? undefined : parseFloat(editWeight) || undefined
+    
+    onEditSet(editingSetId, reps, weight)
+    cancelEditingSet()
+  }
+
+  const handleDeleteSet = (setId: string) => {
+    if (!setId) return
+    if (confirm("Are you sure you want to delete this set?")) {
+      onDeleteSet(setId)
     }
   }
 
@@ -435,21 +480,109 @@ export function WorkoutSession({
             <h3 className="font-medium">Sets</h3>
 
             {/* Completed Sets */}
-      {currentExercise.sets.map((set, index) => (
+            {currentExercise.sets.map((set, index) => (
               <div
-                key={index}
+                key={set.id || index}
                 className="flex items-center justify-between p-3 rounded-lg border bg-green-50 dark:bg-green-950"
               >
-                <div className="flex items-center gap-3">
-                  <Badge variant="secondary">Set {index + 1}</Badge>
-                  <span className="text-sm">
-                    {currentExercise.targetType === "time"
-                      ? `${Math.floor(set.reps / 60)}:${(set.reps % 60).toString().padStart(2, "0")}`
-                      : `${set.reps} reps × ${set.weight !== null && set.weight !== undefined ? formatWeight(set.weight, units) : "bodyweight"}`
-                    }
-                  </span>
-                </div>
-                <Check className="w-4 h-4 text-green-600" />
+                {editingSetId === set.id ? (
+                  // Edit mode
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">Set {index + 1}</Badge>
+                      <span className="text-sm text-muted-foreground">Editing</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Input
+                          type="number"
+                          placeholder="Reps"
+                          value={editReps}
+                          onChange={(e) => setEditReps(e.target.value)}
+                          className="h-8"
+                        />
+                      </div>
+                      <div>
+                        <Input
+                          type="number"
+                          step="0.5"
+                          placeholder={`Weight (${getWeightUnitAbbr(units)})`}
+                          value={editWeight}
+                          onChange={(e) => setEditWeight(e.target.value)}
+                          disabled={editIsBodyweight}
+                          className="h-8"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id={`edit-bodyweight-${index}`}
+                        checked={editIsBodyweight}
+                        onChange={(e) => setEditIsBodyweight(e.target.checked)}
+                        className="h-4 w-4"
+                      />
+                      <label htmlFor={`edit-bodyweight-${index}`} className="text-xs">
+                        Bodyweight
+                      </label>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={saveEditedSet}
+                        className="h-7 px-2 text-xs bg-green-600 hover:bg-green-700"
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={cancelEditingSet}
+                        className="h-7 px-2 text-xs"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  // View mode
+                  <>
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary">Set {index + 1}</Badge>
+                      <span className="text-sm">
+                        {currentExercise.targetType === "time"
+                          ? `${Math.floor(set.reps / 60)}:${(set.reps % 60).toString().padStart(2, "0")}`
+                          : `${set.reps} reps × ${set.weight !== null && set.weight !== undefined ? formatWeight(set.weight, units) : "bodyweight"}`
+                        }
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {set.id && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => startEditingSet(set)}
+                            className="h-7 w-7 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            title="Edit set"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeleteSet(set.id!)}
+                            className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            title="Delete set"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </>
+                      )}
+                      <Check className="w-4 h-4 text-green-600" />
+                    </div>
+                  </>
+                )}
               </div>
             ))}
 

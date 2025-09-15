@@ -119,7 +119,8 @@ export function useWorkoutActions(
             ex.id === exerciseId
               ? {
                   ...ex,
-                  sets: (updated.sets || []).map((s: { reps?: number; weight?: number | null; completed: boolean }) => ({
+                  sets: (updated.sets || []).map((s: { id?: string; reps?: number; weight?: number | null; completed: boolean }) => ({
+                    id: s.id,
                     reps: s.reps ?? 0,
                     weight: s.weight === null ? undefined : s.weight,
                     completed: s.completed
@@ -205,12 +206,86 @@ export function useWorkoutActions(
     }
   }
 
+  const editSet = async (setId: string, reps: number, weight?: number) => {
+    if (!session) return
+
+    try {
+      const res = await fetch(`/api/workout-tracker/sets/${setId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reps, weight: weight ?? null }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        const updated = data.exercise
+        setSession((prev) => {
+          if (!prev) return prev
+          const updatedExercises = prev.exercises.map((ex) =>
+            ex.id === updated.id
+              ? {
+                  ...ex,
+                  sets: (updated.sets || []).map((s: { id?: string; reps?: number; weight?: number | null; completed: boolean }) => ({
+                    id: s.id,
+                    reps: s.reps ?? 0,
+                    weight: s.weight === null ? undefined : s.weight,
+                    completed: s.completed
+                  })),
+                  completed: false,
+                }
+              : ex
+          )
+          return { ...prev, exercises: updatedExercises }
+        })
+      }
+    } catch (e) {
+      logger.error("Failed to edit set", e)
+    }
+  }
+
+  const deleteSet = async (setId: string) => {
+    if (!session) return
+
+    try {
+      const res = await fetch(`/api/workout-tracker/sets/${setId}`, {
+        method: "DELETE",
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        const updated = data.exercise
+        setSession((prev) => {
+          if (!prev) return prev
+          const updatedExercises = prev.exercises.map((ex) =>
+            ex.id === updated.id
+              ? {
+                  ...ex,
+                  sets: (updated.sets || []).map((s: { id?: string; reps?: number; weight?: number | null; completed: boolean }) => ({
+                    id: s.id,
+                    reps: s.reps ?? 0,
+                    weight: s.weight === null ? undefined : s.weight,
+                    completed: s.completed
+                  })),
+                  completed: false,
+                }
+              : ex
+          )
+          return { ...prev, exercises: updatedExercises }
+        })
+      }
+    } catch (e) {
+      logger.error("Failed to delete set", e)
+    }
+  }
+
   return {
     isAddingExercise,
     saveWorkout,
     finishWorkout,
     stopWorkout,
     addSet,
+    editSet,
+    deleteSet,
     addExercise,
   }
 }

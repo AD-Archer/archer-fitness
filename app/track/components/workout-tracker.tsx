@@ -60,6 +60,8 @@ export function WorkoutTracker() {
   const {
     isAddingExercise,
     addSet,
+    editSet,
+    deleteSet,
     addExercise,
   } = useWorkoutActions(session, setSession)
 
@@ -443,6 +445,8 @@ export function WorkoutTracker() {
           backToSelection()
         }}
         onAddSet={addSetWithRest}
+        onEditSet={editSet}
+        onDeleteSet={deleteSet}
         onAddExercise={addExerciseMidWorkout}
         onRemoveExercise={removeExercise}
         onNextExercise={nextExercise}

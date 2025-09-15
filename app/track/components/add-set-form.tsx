@@ -126,7 +126,7 @@ export function AddSetForm({
                 <Input
                   id="reps"
                   type="number"
-                  placeholder="12"
+                  placeholder="Reps"
                   value={reps}
                   onChange={(e) => setReps(e.target.value)}
                   className="h-8"
