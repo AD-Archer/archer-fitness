@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse notification data
-    const { type, workoutName, scheduledTime, mealType, streakCount } = await request.json();
+    const { type, workoutName, scheduledTime, streakCount } = await request.json();
 
     let success = false;
 
@@ -32,15 +32,6 @@ export async function POST(request: NextRequest) {
 
       case 'weight':
         success = await emailNotificationManager.sendWeightReminder(session.user.email);
-        break;
-
-      case 'nutrition':
-        if (mealType) {
-          success = await emailNotificationManager.sendNutritionReminder(
-            session.user.email,
-            mealType
-          );
-        }
         break;
 
       case 'streak':

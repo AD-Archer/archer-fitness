@@ -15,7 +15,6 @@ const emailSettingsSchema = z.object({
   exerciseNotifications: z.boolean(),
   workoutReminders: z.boolean(),
   weightReminders: z.boolean(),
-  nutritionReminders: z.boolean(),
   streakReminders: z.boolean(),
   reminderTime: z.string(),
 })
@@ -45,7 +44,6 @@ export async function GET() {
           exerciseNotifications: true,
           workoutReminders: true,
           weightReminders: true,
-          nutritionReminders: true,
           streakReminders: true,
           reminderTime: "09:00",
         }
@@ -66,7 +64,6 @@ export async function GET() {
         exerciseNotifications: notificationPrefs.exerciseNotifications ?? true,
         workoutReminders: notificationPrefs.workoutReminders ?? true,
         weightReminders: notificationPrefs.weightReminders ?? true,
-        nutritionReminders: notificationPrefs.nutritionReminders ?? true,
         streakReminders: notificationPrefs.streakReminders ?? true,
         reminderTime: notificationPrefs.reminderTime ?? "09:00",
       }

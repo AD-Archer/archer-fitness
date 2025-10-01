@@ -7,12 +7,11 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
-import { User, Dumbbell, Apple, Bell, Shield, Loader2 } from "lucide-react"
-import { UserProfile, WorkoutPrefs, NutritionPrefs, AppPrefs } from "./types"
-import { calculateGoalCalories, calculateMacros, calculateWaterTarget, convertHeightToCm } from "./utils"
+import { User, Dumbbell, Bell, Shield, Loader2 } from "lucide-react"
+import { UserProfile, WorkoutPrefs, AppPrefs } from "./types"
+import { convertHeightToCm } from "./utils"
 import { ProfileTab } from "./profile-tab"
 import { WorkoutTab } from "./workout-tab"
-import { NutritionTab } from "./nutrition-tab"
 import { AppTab } from "./app-tab"
 import { PrivacyTab } from "./privacy-tab"
 import { logger } from "@/lib/logger"
@@ -30,7 +29,7 @@ export function SettingsForm() {
   // Sync tab with URL on mount
   useEffect(() => {
     const tabFromUrl = searchParams.get("tab")
-    if (tabFromUrl && ["profile", "workout", "nutrition", "notifications", "privacy"].includes(tabFromUrl)) {
+    if (tabFromUrl && ["profile", "workout", "notifications", "privacy"].includes(tabFromUrl)) {
       setActiveTab(tabFromUrl)
     }
   }, [searchParams])
@@ -51,17 +50,6 @@ export function SettingsForm() {
     restDayReminders: true,
   }), [])
   
-  const defaultNutritionPrefs = useMemo(() => ({
-    dailyCalories: "2200",
-    proteinTarget: "150",
-    carbTarget: "250",
-    fatTarget: "80",
-    dietaryRestrictions: [],
-    trackWater: true,
-    waterTarget: "2500",
-    useSmartCalculations: true,
-  }), [])
-  
   const defaultAppPrefs = useMemo(() => ({
     theme: "system",
     units: "imperial",
@@ -77,7 +65,6 @@ export function SettingsForm() {
     notificationPrefs: {
       workoutReminders: true,
       weightReminders: true,
-      nutritionReminders: true,
       streakReminders: true,
       reminderTime: "09:00",
       emailNotifications: true,
@@ -113,17 +100,6 @@ export function SettingsForm() {
     restDayReminders: true,
   })
 
-  const [nutritionPrefs, setNutritionPrefs] = useState<NutritionPrefs>({
-    dailyCalories: "2200",
-    proteinTarget: "150",
-    carbTarget: "250",
-    fatTarget: "80",
-    dietaryRestrictions: [],
-    trackWater: true,
-    waterTarget: "2500",
-    useSmartCalculations: true,
-  })
-
   const [appPrefs, setAppPrefs] = useState<AppPrefs>({
     theme: "system",
     units: "imperial",
@@ -139,7 +115,6 @@ export function SettingsForm() {
     notificationPrefs: {
       workoutReminders: true,
       weightReminders: true,
-      nutritionReminders: true,
       streakReminders: true,
       reminderTime: "09:00",
       emailNotifications: true,
@@ -205,7 +180,6 @@ export function SettingsForm() {
           const data = await prefsRes.json()
           if (data?.preferences) {
             setWorkoutPrefs({ ...defaultWorkoutPrefs, ...data.preferences.workoutPrefs })
-            setNutritionPrefs({ ...defaultNutritionPrefs, ...data.preferences.nutritionPrefs })
             setAppPrefs({
               ...defaultAppPrefs,
               ...data.preferences.appPrefs,
@@ -221,13 +195,11 @@ export function SettingsForm() {
           } else {
             // Use defaults if no preferences exist
             setWorkoutPrefs(defaultWorkoutPrefs)
-            setNutritionPrefs(defaultNutritionPrefs)
             setAppPrefs(defaultAppPrefs)
           }
         } else {
           // Use defaults if API fails
           setWorkoutPrefs(defaultWorkoutPrefs)
-          setNutritionPrefs(defaultNutritionPrefs)
           setAppPrefs(defaultAppPrefs)
         }
       } catch (error) {
@@ -239,35 +211,7 @@ export function SettingsForm() {
     }
 
         loadUserData()
-  }, [session, defaultWorkoutPrefs, defaultNutritionPrefs, defaultAppPrefs])  // Auto-calculate nutrition values when smart calculations are enabled
-  useEffect(() => {
-    if (nutritionPrefs.useSmartCalculations) {
-      const goalCalories = calculateGoalCalories(profile, appPrefs.units)
-      const macros = calculateMacros(profile, appPrefs.units)
-      const waterTarget = calculateWaterTarget(profile, appPrefs.units)
-
-      setNutritionPrefs((prev) => ({
-        ...prev,
-        dailyCalories: goalCalories.toString(),
-        proteinTarget: macros.protein.toString(),
-        carbTarget: macros.carbs.toString(),
-        fatTarget: macros.fat.toString(),
-        waterTarget: waterTarget.toString(),
-      }))
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    profile.age,
-    profile.weight,
-    profile.heightFeet,
-    profile.heightInches,
-    profile.heightCm,
-    profile.gender,
-    profile.fitnessGoals,
-    profile.activityLevel,
-    nutritionPrefs.useSmartCalculations,
-    appPrefs.units,
-  ])
+  }, [session, defaultWorkoutPrefs, defaultAppPrefs])
 
   // Convert height when units change
   useEffect(() => {
@@ -314,7 +258,6 @@ export function SettingsForm() {
       activityLevel: "moderate",
     })
     setWorkoutPrefs(defaultWorkoutPrefs)
-    setNutritionPrefs(defaultNutritionPrefs)
     setAppPrefs(defaultAppPrefs)
   }
 
@@ -358,7 +301,7 @@ export function SettingsForm() {
       const prefsRes = await fetch("/api/user/preferences", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workoutPrefs, nutritionPrefs, appPrefs }),
+        body: JSON.stringify({ workoutPrefs, appPrefs }),
       })
 
       if (!prefsRes.ok) {
@@ -411,12 +354,6 @@ export function SettingsForm() {
                   Workout
                 </div>
               </SelectItem>
-              <SelectItem value="nutrition">
-                <div className="flex items-center gap-2">
-                  <Apple className="h-4 w-4" />
-                  Nutrition
-                </div>
-              </SelectItem>
               <SelectItem value="notifications">
                 <div className="flex items-center gap-2">
                   <Bell className="h-4 w-4" />
@@ -434,7 +371,7 @@ export function SettingsForm() {
         </div>
 
         {/* Desktop Tabs */}
-        <TabsList className="hidden md:grid w-full grid-cols-5">
+        <TabsList className="hidden md:grid w-full grid-cols-4">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             <span className="hidden lg:inline">Profile</span>
@@ -442,10 +379,6 @@ export function SettingsForm() {
           <TabsTrigger value="workout" className="flex items-center gap-2">
             <Dumbbell className="h-4 w-4" />
             <span className="hidden lg:inline">Workout</span>
-          </TabsTrigger>
-          <TabsTrigger value="nutrition" className="flex items-center gap-2">
-            <Apple className="h-4 w-4" />
-            <span className="hidden lg:inline">Nutrition</span>
           </TabsTrigger>
           <TabsTrigger value="notifications" className="flex items-center gap-2">
             <Bell className="h-4 w-4" />
@@ -461,17 +394,8 @@ export function SettingsForm() {
           <ProfileTab profile={profile} setProfile={setProfile} units={appPrefs.units} />
         </TabsContent>
 
-        <TabsContent value="workout" className="space-y-4">
+        <TabsContent value="workout" className="flex items-center gap-2">
           <WorkoutTab workoutPrefs={workoutPrefs} setWorkoutPrefs={setWorkoutPrefs} />
-        </TabsContent>
-
-        <TabsContent value="nutrition" className="space-y-4">
-          <NutritionTab 
-            profile={profile}
-            nutritionPrefs={nutritionPrefs} 
-            setNutritionPrefs={setNutritionPrefs} 
-            units={appPrefs.units}
-          />
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-4">

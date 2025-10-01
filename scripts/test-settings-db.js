@@ -44,7 +44,6 @@ async function testSettingsSaveLoad() {
         notificationPrefs: {
           workoutReminders: true,
           weightReminders: true,
-          nutritionReminders: true,
           streakReminders: true,
           reminderTime: '09:00',
         },

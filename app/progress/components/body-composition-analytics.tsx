@@ -1,8 +1,8 @@
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
-import { Scale, Target, Plus, Trash2 } from "lucide-react"
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import { Scale, Plus, Trash2 } from "lucide-react"
 import { useState, useCallback, useEffect } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -29,20 +29,12 @@ interface WeightProgressEntry {
   entryCount?: number
 }
 
-interface MacroDistributionEntry {
-  name: string
-  value: number
-  color: string
-  grams: number
-}
-
 interface BodyCompositionAnalyticsProps {
   timeRange?: string
 }
 
 export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyCompositionAnalyticsProps) {
   const [nutritionProgressData, setNutritionProgressData] = useState<WeightProgressEntry[]>([])
-  const [macroDistributionData, setMacroDistributionData] = useState<MacroDistributionEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [isWeightModalOpen, setIsWeightModalOpen] = useState(false)
   const [allWeightEntries, setAllWeightEntries] = useState<WeightEntry[]>([])
@@ -235,23 +227,11 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
   logger.error('Weight API request failed:', { status: weightRes.status, statusText: weightRes.statusText })
         throw new Error('Failed to fetch weight data')
       }
-      
-      // Keep macro distribution data for now (could be moved to nutrition component)
-      setMacroDistributionData([
-        { name: "Protein", value: 30, color: "#ef4444", grams: 165 },
-        { name: "Carbs", value: 45, color: "#3b82f6", grams: 260 },
-        { name: "Fat", value: 25, color: "#10b981", grams: 88 },
-      ])
     } catch (error) {
       logger.error('Error fetching body composition data:', error)
       // Set empty data if API fails - no hardcoded fallback
       setNutritionProgressData([])
       setAllWeightEntries([])
-      setMacroDistributionData([
-        { name: "Protein", value: 30, color: "#ef4444", grams: 0 },
-        { name: "Carbs", value: 45, color: "#3b82f6", grams: 0 },
-        { name: "Fat", value: 25, color: "#10b981", grams: 0 },
-      ])
     } finally {
       setLoading(false)
     }
@@ -305,7 +285,7 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -454,66 +434,7 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
             )}
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="w-5 h-5 text-emerald-600" />
-              Macro Distribution
-            </CardTitle>
-            <CardDescription>Current macronutrient breakdown</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={macroDistributionData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {macroDistributionData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
       </div>
-
-      {/* Macro Breakdown Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Macronutrient Breakdown</CardTitle>
-          <CardDescription>Current intake vs recommended ranges</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {macroDistributionData.map((macro, index) => (
-            <div key={index} className="flex items-center justify-between p-3 rounded-lg border bg-card/50">
-              <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: macro.color }} />
-                <div>
-                  <span className="font-medium">{macro.name}</span>
-                  <p className="text-sm text-muted-foreground">{macro.grams}g daily average</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="font-bold">{macro.value}%</span>
-                <p className="text-xs text-muted-foreground">
-                  {macro.name === "Protein" ? "Optimal" : macro.name === "Carbs" ? "Good" : "Within range"}
-                </p>
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
 
       {/* Body Composition Insights */}
       <Card>
@@ -521,25 +442,6 @@ export function BodyCompositionAnalytics({ timeRange = "3months" }: BodyComposit
           <CardTitle>Body Composition Insights</CardTitle>
           <CardDescription>AI analysis of your progress and recommendations</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800">
-            <p className="text-sm text-green-800 dark:text-green-200">
-              <strong>Excellent progress!</strong> You&apos;ve lost {formatWeight(2.64, units)} while maintaining high protein intake,
-              indicating healthy fat loss.
-            </p>
-          </div>
-          <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
-            <p className="text-sm text-blue-800 dark:text-blue-200">
-              <strong>Hydration on track:</strong> Your water intake has improved 27% over the tracking period.
-            </p>
-          </div>
-          <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800">
-            <p className="text-sm text-purple-800 dark:text-purple-200">
-              <strong>Macro balance:</strong> Your 30/45/25 protein/carb/fat split is optimal for your muscle gain
-              goals.
-            </p>
-          </div>
-        </CardContent>
       </Card>
     </div>
   )

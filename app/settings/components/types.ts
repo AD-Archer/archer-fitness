@@ -46,7 +46,6 @@ export interface AppPrefs {
   notificationPrefs: {
     workoutReminders: boolean
     weightReminders: boolean
-    nutritionReminders: boolean
     streakReminders: boolean
     reminderTime: string // HH:MM format
     emailNotifications: boolean // Enable email notifications

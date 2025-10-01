@@ -8,7 +8,6 @@ import { ProgressAnalyticsHeader } from "./progress-analytics-header"
 import { KeyMetricsCards } from "./key-metrics-cards"
 import { StrengthAnalytics } from "./strength-analytics"
 import { VolumeAnalytics } from "./volume-analytics"
-import { NutritionAnalytics } from "./nutrition-analytics"
 import { DistributionAnalytics } from "./distribution-analytics"
 import { BodyCompositionAnalytics } from "./body-composition-analytics"
 import { AchievementsAnalytics } from "./achievements-analytics"
@@ -76,7 +75,6 @@ export function ProgressAnalytics() {
             <SelectItem value="strength" className="justify-center text-center">Strength</SelectItem>
             <SelectItem value="volume" className="justify-center text-center">Volume</SelectItem>
             <SelectItem value="distribution" className="justify-center text-center">Muscle Distribution</SelectItem>
-            <SelectItem value="nutrition" className="justify-center text-center">Nutrition</SelectItem>
             <SelectItem value="body" className="justify-center text-center">Body</SelectItem>
             <SelectItem value="achievements" className="justify-center text-center">Achievements</SelectItem>
           </SelectContent>
@@ -84,12 +82,11 @@ export function ProgressAnalytics() {
       </div>
       <div className="hidden lg:block">
         <Tabs value={tab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="strength">Strength</TabsTrigger>
             <TabsTrigger value="volume">Volume</TabsTrigger>
             <TabsTrigger value="distribution">Muscle Distribution</TabsTrigger>
-            <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
             <TabsTrigger value="body">Body Comp</TabsTrigger>
             <TabsTrigger value="achievements">Achievements</TabsTrigger>
           </TabsList>
@@ -102,7 +99,6 @@ export function ProgressAnalytics() {
         {tab === "strength" && <StrengthAnalytics timeRange={timeRange} />}
         {tab === "volume" && <VolumeAnalytics timeRange={timeRange} />}
         {tab === "distribution" && <DistributionAnalytics timeRange={timeRange} />}
-        {tab === "nutrition" && <NutritionAnalytics timeRange={timeRange} />}
         {tab === "body" && <BodyCompositionAnalytics timeRange={timeRange} />}
         {tab === "achievements" && <AchievementsAnalytics timeRange={timeRange} />}
       </div>

@@ -449,25 +449,6 @@ export function DashboardStats() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Today&#39;s Nutrition</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center text-muted-foreground">
-                <p>Nutrition tracking - to be added</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center text-muted-foreground">
-                <p>Water intake tracking - to be added</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
 
       <div>
         <h2 className="text-lg font-semibold mb-4">Workout Overview</h2>
