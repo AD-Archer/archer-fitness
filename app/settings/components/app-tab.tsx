@@ -21,7 +21,6 @@ export function AppTab({ appPrefs, setAppPrefs }: AppTabProps) {
   const notificationPrefs = appPrefs?.notificationPrefs || {
     workoutReminders: true,
     weightReminders: true,
-    nutritionReminders: true,
     streakReminders: true,
     reminderTime: "09:00",
     emailNotifications: true,
@@ -209,17 +208,6 @@ export function AppTab({ appPrefs, setAppPrefs }: AppTabProps) {
                 <Switch
                   checked={notificationPrefs.weightReminders}
                   onCheckedChange={(checked) => updateNotificationPrefs({ weightReminders: checked })}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Nutrition Reminders</Label>
-                  <p className="text-sm text-muted-foreground">Reminders to log your meals</p>
-                </div>
-                <Switch
-                  checked={notificationPrefs.nutritionReminders}
-                  onCheckedChange={(checked) => updateNotificationPrefs({ nutritionReminders: checked })}
                 />
               </div>
 

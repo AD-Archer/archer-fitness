@@ -69,15 +69,6 @@ export async function POST(request: NextRequest) {
           success = await emailNotificationManager.sendWeightReminder(email);
           break;
 
-        case 'nutrition':
-          if (data?.mealType) {
-            success = await emailNotificationManager.sendNutritionReminder(
-              email,
-              data.mealType
-            );
-          }
-          break;
-
         case 'weigh-in':
           success = await emailNotificationManager.sendWeighInReminder(email);
           break;

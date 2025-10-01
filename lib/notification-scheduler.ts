@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 
 export interface ScheduledNotification {
   id: string;
-  type: 'workout' | 'weight' | 'nutrition' | 'streak' | 'weigh-in' | 'meal' | 'sleep' | 'exercise';
+  type: 'workout' | 'weight' | 'streak' | 'weigh-in' | 'meal' | 'sleep' | 'exercise';
   title: string;
   body: string;
   scheduledTime: Date;
@@ -227,9 +227,8 @@ export class NotificationScheduler {
       case 'weigh-in':
       case 'sleep':
         return '/progress';
-      case 'nutrition':
       case 'meal':
-        return '/nutrition';
+        return '/dashboard';
       case 'streak':
         return '/dashboard';
       default:
@@ -252,7 +251,6 @@ export class NotificationScheduler {
           { action: 'log', title: 'Log Weight' },
           { action: 'dismiss', title: 'Later' }
         ];
-      case 'nutrition':
       case 'meal':
         return [
           { action: 'log', title: 'Log Meal' },
@@ -369,29 +367,6 @@ export const scheduleWeightReminder = (
     body: 'Time to log your weight and track your progress!',
     scheduledTime: scheduledDate,
     recurring: recurring ? { frequency: 'daily', interval: 1 } : undefined
-  });
-};
-
-export const scheduleNutritionReminder = (
-  userId: string,
-  userEmail: string,
-  mealType: string,
-  scheduledTime: string,
-  recurring: boolean = true,
-  userPrefs?: { emailNotifications: boolean; pushNotifications: boolean }
-): string => {
-  const scheduledDate = new Date(scheduledTime);
-
-  return notificationScheduler.scheduleNotification({
-    userId,
-    userEmail,
-    userPrefs,
-    type: 'nutrition',
-    title: '🍎 Nutrition Time',
-    body: `Don't forget to log your ${mealType} meal!`,
-    scheduledTime: scheduledDate,
-    recurring: recurring ? { frequency: 'daily', interval: 1 } : undefined,
-    data: { mealType, scheduledTime }
   });
 };
 

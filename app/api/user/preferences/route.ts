@@ -61,7 +61,6 @@ const appPrefsSchema = z.object({
   notificationPrefs: z.object({
     workoutReminders: z.boolean().default(true),
     weightReminders: z.boolean().default(true),
-    nutritionReminders: z.boolean().default(true),
     streakReminders: z.boolean().default(true),
     reminderTime: z.string().default("09:00"),
     emailNotifications: z.boolean().default(true),
@@ -82,7 +81,6 @@ const appPrefsSchema = z.object({
   }).optional().default({
     workoutReminders: true,
     weightReminders: true,
-    nutritionReminders: true,
     streakReminders: true,
     reminderTime: "09:00",
     emailNotifications: true,
@@ -110,7 +108,6 @@ const appPrefsSchema = z.object({
   notificationPrefs: {
     workoutReminders: true,
     weightReminders: true,
-    nutritionReminders: true,
     streakReminders: true,
     reminderTime: "09:00",
     emailNotifications: true,
@@ -162,7 +159,6 @@ const preferencesSchema = z.object({
       notificationPrefs: {
         workoutReminders: true,
         weightReminders: true,
-        nutritionReminders: true,
         streakReminders: true,
         reminderTime: "09:00",
         emailNotifications: true,

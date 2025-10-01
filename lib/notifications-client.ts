@@ -12,7 +12,7 @@ export interface NotificationPayload {
   icon?: string;
   image?: string;
   url?: string;
-  type?: 'workout' | 'weight' | 'nutrition' | 'streak' | 'weigh-in' | 'meal' | 'sleep' | 'exercise' | 'general';
+  type?: 'workout' | 'weight' | 'streak' | 'weigh-in' | 'meal' | 'sleep' | 'exercise' | 'general';
   actions?: NotificationAction[];
 }
 
@@ -231,13 +231,6 @@ export const NotificationTemplates = {
     body: 'Time to log your weight and track your progress!',
     url: '/progress',
     type: 'weight'
-  }),
-
-  nutritionReminder: (mealType: string): NotificationPayload => ({
-    title: '🍎 Nutrition Time',
-    body: `Don't forget to log your ${mealType} meal!`,
-    url: '/nutrition',
-    type: 'nutrition'
   }),
 
   weighInReminder: (): NotificationPayload => ({
