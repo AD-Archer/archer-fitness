@@ -1,30 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Zap, RefreshCw } from "lucide-react"
 import { WorkoutPreferencesForm } from "./workout-preferences-form"
 import { WorkoutDisplay } from "./workout-display"
 import { logger } from "@/lib/logger"
-
-interface Exercise {
-  name: string
-  sets: number
-  reps: string
-  rest: string
-  instructions: string
-  targetMuscles: string[]
-}
-
-interface WorkoutPlan {
-  name: string
-  duration: number
-  difficulty: string
-  exercises: Exercise[]
-  warmup: string[]
-  cooldown: string[]
-}
+import type { Exercise, WorkoutPlan } from "@/lib/workout-utils"
+import { ExerciseSelectorDialog, ExerciseOption, CustomExerciseInput } from "./exercise-selector-dialog"
+import { toast } from "sonner"
 
 interface SavedWorkoutPrefs {
   defaultDuration: string
@@ -68,6 +53,662 @@ interface ApiExercise {
   instructions?: string
   muscles?: ApiMuscle[]
   equipments?: ApiEquipment[]
+}
+
+type WorkoutConfig = {
+  workoutType: string
+  sets: number
+  reps: string
+  rest: string
+  exerciseCount: number
+}
+
+const slugify = (value: string): string =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+
+const toTitleCase = (value: string): string =>
+  value
+    .replace(/[_-]/g, " ")
+    .replace(/\w/g, (char) => char.toUpperCase())
+
+const normalizeEquipmentName = (value: string): string =>
+  value.toLowerCase().replace(/[^a-z0-9]/g, "")
+
+const formatLabel = (value: string): string => {
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return value
+  }
+
+  const normalized = trimmed.toLowerCase()
+  if (normalized === "hiit") {
+    return "HIIT"
+  }
+  if (normalized === "amrap") {
+    return "AMRAP"
+  }
+
+  return toTitleCase(trimmed)
+}
+
+const uniqueDisplayStrings = (values: string[]): string[] => {
+  const seen = new Set<string>()
+  const result: string[] = []
+
+  values.forEach((value) => {
+    if (!value) {
+      return
+    }
+    const trimmed = value.trim()
+    if (!trimmed) {
+      return
+    }
+    const normalized = trimmed.toLowerCase()
+    if (seen.has(normalized)) {
+      return
+    }
+    seen.add(normalized)
+    result.push(formatLabel(trimmed))
+  })
+
+  return result
+}
+
+const getExerciseId = (exercise: Pick<DatabaseExercise, "exerciseId" | "name">): string =>
+  exercise.exerciseId || slugify(exercise.name)
+
+const getWorkoutExerciseId = (exercise: Exercise): string => exercise.id ?? slugify(exercise.name)
+
+const determineIsTimeBased = (config: WorkoutConfig): boolean =>
+  ["cardio", "hiit"].includes(config.workoutType) || /sec|min|hold|\bs\b/i.test(config.reps)
+
+const convertToWorkoutExercise = (dbExercise: DatabaseExercise, config: WorkoutConfig): Exercise => {
+  const instructions = dbExercise.instructions.join(" ").trim()
+  const targetMuscles = uniqueDisplayStrings([
+    ...dbExercise.targetMuscles,
+    ...dbExercise.secondaryMuscles,
+    ...dbExercise.bodyParts,
+    dbExercise.bodyPart,
+    dbExercise.target,
+  ])
+  const equipment = uniqueDisplayStrings(
+    dbExercise.equipments.length > 0
+      ? dbExercise.equipments
+      : [dbExercise.equipment || "bodyweight"]
+  )
+
+  return {
+    id: getExerciseId(dbExercise),
+    name: formatLabel(dbExercise.name),
+    sets: config.sets,
+    reps: config.reps,
+    rest: config.rest,
+    instructions: instructions || "Focus on controlled tempo and keep great form throughout the movement.",
+    targetMuscles: targetMuscles.length > 0 ? targetMuscles : ["Full Body"],
+    equipment: equipment.length > 0 ? equipment : ["Bodyweight"],
+    source: dbExercise.source ?? "database",
+    isTimeBased: determineIsTimeBased(config),
+  }
+}
+
+const uniqueById = (exercises: DatabaseExercise[]): DatabaseExercise[] => {
+  const map = new Map<string, DatabaseExercise>()
+  exercises.forEach((exercise) => {
+    map.set(getExerciseId(exercise), exercise)
+  })
+  return Array.from(map.values())
+}
+
+const FALLBACK_DATABASE_EXERCISES: Record<string, () => DatabaseExercise[]> = {
+  bodyweight: () => [
+    {
+      exerciseId: "fallback-high-knees",
+      name: "High Knees Sprint",
+      bodyParts: ["cardio", "legs", "core"],
+      targetMuscles: ["legs", "core"],
+      equipments: ["bodyweight"],
+      instructions: [
+        "Jog in place driving knees toward hip height while pumping your arms.",
+        "Land softly and maintain an upright chest the entire time.",
+      ],
+      secondaryMuscles: ["calves", "glutes"],
+      bodyPart: "legs",
+      target: "legs",
+      equipment: "bodyweight",
+      gifUrl: "",
+      source: "fallback",
+    },
+    {
+      exerciseId: "fallback-burpees",
+      name: "Burpees",
+      bodyParts: ["full body"],
+      targetMuscles: ["legs", "chest", "core"],
+      equipments: ["bodyweight"],
+      instructions: [
+        "From standing, squat down, plant your hands, and kick your feet to a plank.",
+        "Lower into a push-up if desired, jump feet back forward, and finish with an explosive jump.",
+      ],
+      secondaryMuscles: ["shoulders", "arms"],
+      bodyPart: "full body",
+      target: "legs",
+      equipment: "bodyweight",
+      gifUrl: "",
+      source: "fallback",
+    },
+    {
+      exerciseId: "fallback-plank-shoulder-taps",
+      name: "Plank Shoulder Taps",
+      bodyParts: ["core", "shoulders"],
+      targetMuscles: ["core"],
+      equipments: ["bodyweight"],
+      instructions: [
+        "Hold a strong high plank with feet slightly wider than hips.",
+        "Alternate tapping opposite shoulders while resisting hip sway.",
+      ],
+      secondaryMuscles: ["shoulders", "glutes"],
+      bodyPart: "core",
+      target: "core",
+      equipment: "bodyweight",
+      gifUrl: "",
+      source: "fallback",
+    },
+  ],
+  dumbbell: () => [
+    {
+      exerciseId: "fallback-dumbbell-rdl",
+      name: "Dumbbell Romanian Deadlift",
+      bodyParts: ["posterior chain", "legs"],
+      targetMuscles: ["hamstrings", "glutes"],
+      equipments: ["dumbbell"],
+      instructions: [
+        "Hold dumbbells at your thighs, hinge at the hips maintaining a neutral spine.",
+        "Lower until you feel a hamstring stretch, then drive hips forward to stand tall.",
+      ],
+      secondaryMuscles: ["lower back", "core"],
+      bodyPart: "legs",
+      target: "hamstrings",
+      equipment: "dumbbell",
+      gifUrl: "",
+      source: "fallback",
+    },
+    {
+      exerciseId: "fallback-single-arm-row",
+      name: "Single-Arm Dumbbell Row",
+      bodyParts: ["back", "arms"],
+      targetMuscles: ["lats", "upper back"],
+      equipments: ["dumbbell"],
+      instructions: [
+        "Brace one hand on a bench, keep spine long, and pull the dumbbell toward your hip.",
+        "Squeeze shoulder blade at the top and control the lowering phase.",
+      ],
+      secondaryMuscles: ["biceps", "core"],
+      bodyPart: "back",
+      target: "back",
+      equipment: "dumbbell",
+      gifUrl: "",
+      source: "fallback",
+    },
+    {
+      exerciseId: "fallback-dumbbell-push-press",
+      name: "Dumbbell Push Press",
+      bodyParts: ["shoulders", "full body"],
+      targetMuscles: ["shoulders", "triceps"],
+      equipments: ["dumbbell"],
+      instructions: [
+        "Stand tall with dumbbells at shoulder height, dip through knees slightly, and drive weights overhead.",
+        "Lock out elbows and lower under control before the next rep.",
+      ],
+      secondaryMuscles: ["legs", "core"],
+      bodyPart: "shoulders",
+      target: "shoulders",
+      equipment: "dumbbell",
+      gifUrl: "",
+      source: "fallback",
+    },
+  ],
+  kettlebell: () => [
+    {
+      exerciseId: "fallback-kettlebell-swing",
+      name: "Kettlebell Swing",
+      bodyParts: ["posterior chain", "cardio"],
+      targetMuscles: ["glutes", "hamstrings"],
+      equipments: ["kettlebell"],
+      instructions: [
+        "Hinge at the hips, hike the kettlebell back, then explosively drive hips forward to swing chest height.",
+        "Keep lats engaged and avoid overextending the lower back.",
+      ],
+      secondaryMuscles: ["core", "shoulders"],
+      bodyPart: "legs",
+      target: "glutes",
+      equipment: "kettlebell",
+      gifUrl: "",
+      source: "fallback",
+    },
+    {
+      exerciseId: "fallback-kettlebell-goblet-squat",
+      name: "Kettlebell Goblet Squat",
+      bodyParts: ["legs"],
+      targetMuscles: ["quads", "glutes"],
+      equipments: ["kettlebell"],
+      instructions: [
+        "Hold the kettlebell at chest height, keep elbows close, and squat until hips are below parallel.",
+        "Drive through mid-foot to stand while keeping chest tall.",
+      ],
+      secondaryMuscles: ["core"],
+      bodyPart: "legs",
+      target: "quads",
+      equipment: "kettlebell",
+      gifUrl: "",
+      source: "fallback",
+    },
+    {
+      exerciseId: "fallback-kettlebell-high-pull",
+      name: "Kettlebell High Pull",
+      bodyParts: ["shoulders", "posterior chain"],
+      targetMuscles: ["shoulders", "upper back"],
+      equipments: ["kettlebell"],
+      instructions: [
+        "From a hinge position, drive hips forward and pull kettlebell toward chest height keeping elbows high.",
+        "Control the return and reset your stance between reps.",
+      ],
+      secondaryMuscles: ["glutes", "hamstrings"],
+      bodyPart: "shoulders",
+      target: "shoulders",
+      equipment: "kettlebell",
+      gifUrl: "",
+      source: "fallback",
+    },
+  ],
+  barbell: () => [
+    {
+      exerciseId: "fallback-barbell-deadlift",
+      name: "Barbell Deadlift",
+      bodyParts: ["posterior chain"],
+      targetMuscles: ["glutes", "hamstrings"],
+      equipments: ["barbell"],
+      instructions: [
+        "Set feet hip-width, brace core, drive floor away as you stand with the bar close to your shins.",
+        "Lower with control, keeping spine neutral and lats engaged.",
+      ],
+      secondaryMuscles: ["upper back", "core"],
+      bodyPart: "back",
+      target: "glutes",
+      equipment: "barbell",
+      gifUrl: "",
+      source: "fallback",
+    },
+    {
+      exerciseId: "fallback-barbell-row",
+      name: "Barbell Bent-Over Row",
+      bodyParts: ["back"],
+      targetMuscles: ["lats", "mid back"],
+      equipments: ["barbell"],
+      instructions: [
+        "Hinge forward to a 45° torso angle and pull the bar toward your lower ribs.",
+        "Squeeze shoulder blades together and control the lowering phase.",
+      ],
+      secondaryMuscles: ["biceps", "posterior delts"],
+      bodyPart: "back",
+      target: "back",
+      equipment: "barbell",
+      gifUrl: "",
+      source: "fallback",
+    },
+    {
+      exerciseId: "fallback-barbell-press",
+      name: "Standing Barbell Press",
+      bodyParts: ["shoulders"],
+      targetMuscles: ["shoulders", "triceps"],
+      equipments: ["barbell"],
+      instructions: [
+        "Press the bar overhead while bracing your glutes and core to prevent lean-back.",
+        "Lower under control until the bar is at chin level.",
+      ],
+      secondaryMuscles: ["core", "upper back"],
+      bodyPart: "shoulders",
+      target: "shoulders",
+      equipment: "barbell",
+      gifUrl: "",
+      source: "fallback",
+    },
+  ],
+  resistanceband: () => [
+    {
+      exerciseId: "fallback-band-row",
+      name: "Resistance Band Row",
+      bodyParts: ["back"],
+      targetMuscles: ["mid back", "lats"],
+      equipments: ["resistance band"],
+      instructions: [
+        "Anchor the band at chest height, step back to create tension, and pull elbows toward your ribs.",
+        "Pause with shoulder blades squeezed and control the return.",
+      ],
+      secondaryMuscles: ["biceps"],
+      bodyPart: "back",
+      target: "back",
+      equipment: "resistance band",
+      gifUrl: "",
+      source: "fallback",
+    },
+    {
+      exerciseId: "fallback-band-squat",
+      name: "Banded Squat to Press",
+      bodyParts: ["legs", "shoulders"],
+      targetMuscles: ["quads", "shoulders"],
+      equipments: ["resistance band"],
+      instructions: [
+        "Stand on the band, hold handles at shoulders, sit into a squat, then stand and press overhead.",
+        "Keep knees tracking over toes and core braced.",
+      ],
+      secondaryMuscles: ["glutes", "core"],
+      bodyPart: "legs",
+      target: "legs",
+      equipment: "resistance band",
+      gifUrl: "",
+      source: "fallback",
+    },
+    {
+      exerciseId: "fallback-band-pallof",
+      name: "Pallof Press",
+      bodyParts: ["core"],
+      targetMuscles: ["core", "obliques"],
+      equipments: ["resistance band"],
+      instructions: [
+        "Stand perpendicular to the anchor, press the band straight out, resisting rotation.",
+        "Hold briefly then return hands to chest before the next rep.",
+      ],
+      secondaryMuscles: ["shoulders"],
+      bodyPart: "core",
+      target: "core",
+      equipment: "resistance band",
+      gifUrl: "",
+      source: "fallback",
+    },
+  ],
+  pullupbar: () => [
+    {
+      exerciseId: "fallback-pull-up",
+      name: "Pull-Ups",
+      bodyParts: ["back", "arms"],
+      targetMuscles: ["lats", "biceps"],
+      equipments: ["pull-up bar"],
+      instructions: [
+        "Hang from the bar with active shoulders and pull your chest toward the bar.",
+        "Lower with control and keep core braced to avoid swinging.",
+      ],
+      secondaryMuscles: ["core", "forearms"],
+      bodyPart: "back",
+      target: "back",
+      equipment: "pull-up bar",
+      gifUrl: "",
+      source: "fallback",
+    },
+    {
+      exerciseId: "fallback-hanging-knee-raise",
+      name: "Hanging Knee Raise",
+      bodyParts: ["core", "hip flexors"],
+      targetMuscles: ["core"],
+      equipments: ["pull-up bar"],
+      instructions: [
+        "Hang with a neutral grip, brace abs, and draw knees toward chest without swinging.",
+        "Lower slowly to maintain control.",
+      ],
+      secondaryMuscles: ["hip flexors"],
+      bodyPart: "core",
+      target: "core",
+      equipment: "pull-up bar",
+      gifUrl: "",
+      source: "fallback",
+    },
+    {
+      exerciseId: "fallback-negative-pull-up",
+      name: "Negative Pull-Up",
+      bodyParts: ["back", "arms"],
+      targetMuscles: ["lats", "biceps"],
+      equipments: ["pull-up bar"],
+      instructions: [
+        "Use a box to start at the top of the pull-up and slowly lower for 3-5 seconds.",
+        "Reset and repeat, focusing on control.",
+      ],
+      secondaryMuscles: ["core"],
+      bodyPart: "back",
+      target: "back",
+      equipment: "pull-up bar",
+      gifUrl: "",
+      source: "fallback",
+    },
+  ],
+  bench: () => [
+    {
+      exerciseId: "fallback-bench-press",
+      name: "Dumbbell Bench Press",
+      bodyParts: ["chest", "arms"],
+      targetMuscles: ["chest", "triceps"],
+      equipments: ["bench", "dumbbell"],
+      instructions: [
+        "Lie on the bench, press dumbbells over the chest, wrists stacked, elbows at ~45°.",
+        "Lower until elbows are just below bench height then press back up.",
+      ],
+      secondaryMuscles: ["shoulders"],
+      bodyPart: "chest",
+      target: "chest",
+      equipment: "bench",
+      gifUrl: "",
+      source: "fallback",
+    },
+    {
+      exerciseId: "fallback-bulgarian-split-squat",
+      name: "Bulgarian Split Squat",
+      bodyParts: ["legs"],
+      targetMuscles: ["quads", "glutes"],
+      equipments: ["bench"],
+      instructions: [
+        "Place rear foot on the bench, descend until front thigh is parallel, keeping torso tall.",
+        "Drive through front heel to stand and maintain balance.",
+      ],
+      secondaryMuscles: ["hamstrings", "core"],
+      bodyPart: "legs",
+      target: "legs",
+      equipment: "bench",
+      gifUrl: "",
+      source: "fallback",
+    },
+    {
+      exerciseId: "fallback-bench-tricep-dip",
+      name: "Bench Tricep Dip",
+      bodyParts: ["arms"],
+      targetMuscles: ["triceps"],
+      equipments: ["bench"],
+      instructions: [
+        "With hands on the bench behind you, lower hips by bending elbows to ~90°.",
+        "Press back up without locking elbows completely.",
+      ],
+      secondaryMuscles: ["shoulders", "chest"],
+      bodyPart: "arms",
+      target: "arms",
+      equipment: "bench",
+      gifUrl: "",
+      source: "fallback",
+    },
+  ],
+}
+
+const createGenericEquipmentFallback = (equipmentName: string): DatabaseExercise[] => {
+  const slug = normalizeEquipmentName(equipmentName) || "equipment"
+  const label = formatLabel(equipmentName || "Equipment")
+
+  return [
+    {
+      exerciseId: `fallback-${slug}-complex`,
+      name: `${label} Complex`,
+      bodyParts: ["full body"],
+      targetMuscles: ["full body"],
+      equipments: [equipmentName],
+      instructions: [
+        `Cycle through 3 movements using your ${label.toLowerCase()} for a strength-and-cardio blast.`,
+        "Keep transitions crisp and rest minimally between rounds.",
+      ],
+      secondaryMuscles: ["core"],
+      bodyPart: "full body",
+      target: "full body",
+      equipment: equipmentName,
+      gifUrl: "",
+      source: "fallback",
+    },
+    {
+      exerciseId: `fallback-${slug}-strength`,
+      name: `${label} Strength Ladder`,
+      bodyParts: ["strength"],
+      targetMuscles: ["full body"],
+      equipments: [equipmentName],
+      instructions: [
+        `Pick two staple moves with your ${label.toLowerCase()} and ladder reps 10→8→6.`,
+        "Focus on crisp form and controlled tempo throughout.",
+      ],
+      secondaryMuscles: ["stability"],
+      bodyPart: "full body",
+      target: "full body",
+      equipment: equipmentName,
+      gifUrl: "",
+      source: "fallback",
+    },
+  ]
+}
+
+const buildFallbackExercisePool = (equipment: string[]): DatabaseExercise[] => {
+  const normalized = equipment.length > 0 ? equipment.map(normalizeEquipmentName) : ["bodyweight"]
+  const pool: DatabaseExercise[] = []
+
+  normalized.forEach((key, index) => {
+    const generator = FALLBACK_DATABASE_EXERCISES[key]
+    if (generator) {
+      pool.push(...generator())
+    } else if (equipment[index]) {
+      pool.push(...createGenericEquipmentFallback(equipment[index]))
+    }
+  })
+
+  if (pool.length === 0) {
+    pool.push(...FALLBACK_DATABASE_EXERCISES.bodyweight())
+  }
+
+  return uniqueById(pool)
+}
+
+const selectVariedExercises = (exercises: DatabaseExercise[], count: number): DatabaseExercise[] => {
+  if (exercises.length <= count) {
+    return shuffleArray(exercises)
+  }
+
+  const muscleGroups: Record<string, DatabaseExercise[]> = {}
+  exercises.forEach((exercise) => {
+    const key = exercise.targetMuscles[0] || exercise.bodyParts[0] || "general"
+    muscleGroups[key] = muscleGroups[key] ? [...muscleGroups[key], exercise] : [exercise]
+  })
+
+  const muscleKeys = Object.keys(muscleGroups)
+  muscleKeys.forEach((key) => {
+    muscleGroups[key] = shuffleArray(muscleGroups[key])
+  })
+
+  const selected: DatabaseExercise[] = []
+  const selectedIds = new Set<string>()
+  let guard = 0
+
+  while (selected.length < count && guard < count * muscleKeys.length * 2) {
+    const key = muscleKeys[guard % muscleKeys.length]
+    const bucket = muscleGroups[key]
+    if (bucket && bucket.length > 0) {
+      const candidate = bucket.shift()!
+      const candidateId = getExerciseId(candidate)
+      if (!selectedIds.has(candidateId)) {
+        selected.push(candidate)
+        selectedIds.add(candidateId)
+      }
+    }
+    guard++
+  }
+
+  if (selected.length < count) {
+    const remaining = shuffleArray(
+      exercises.filter((exercise) => !selectedIds.has(getExerciseId(exercise)))
+    )
+    selected.push(...remaining.slice(0, count - selected.length))
+  }
+
+  return selected.slice(0, count)
+}
+
+const createWorkoutPlan = (
+  workoutType: string,
+  duration: number,
+  equipment: string[],
+  targetBodyParts: string[],
+  targetMuscles: string[],
+  exercises: Exercise[]
+): WorkoutPlan => {
+  const formattedEquipment = equipment.length > 0 ? formatListForName(equipment) : []
+  const formattedBodyParts = targetBodyParts.length > 0 ? formatListForName(targetBodyParts) : []
+  const formattedMuscles = targetMuscles.length > 0 ? formatListForName(targetMuscles) : []
+
+  const equipmentText = formattedEquipment.length > 0 ? ` (${formattedEquipment.join(", ")})` : ""
+  const bodyPartText = formattedBodyParts.length > 0 ? ` - ${formattedBodyParts.join(", ")}` : ""
+  const muscleText = formattedMuscles.length > 0 && formattedBodyParts.length === 0 ? ` - ${formattedMuscles.join(", ")}` : ""
+
+  return {
+    name: `${formatLabel(workoutType)} Workout${equipmentText}${bodyPartText}${muscleText}`,
+    duration,
+    difficulty: "Custom",
+    exercises,
+    warmup: [
+      "5 minutes light cardio (marching, arm swings)",
+      "Dynamic stretching (leg swings, arm circles)",
+      "Joint mobility (shoulder rolls, hip circles)",
+    ],
+    cooldown: [
+      "5 minutes walking or light movement",
+      "Static stretching (hold 30 seconds each)",
+      "Deep breathing and relaxation",
+    ],
+  }
+}
+
+const formatListForName = (values: string[]): string[] => values.map(formatLabel)
+
+const buildFallbackWorkout = (
+  workoutType: string,
+  duration: number,
+  targetMuscles: string[],
+  targetBodyParts: string[],
+  equipment: string[],
+  config: WorkoutConfig
+): {
+  workout: WorkoutPlan
+  pool: DatabaseExercise[]
+  pinnedId: string
+} => {
+  const fallbackPool = buildFallbackExercisePool(equipment)
+  const varied = selectVariedExercises(fallbackPool, config.exerciseCount)
+  const exercises = varied
+    .slice(0, config.exerciseCount)
+    .map((exercise) => convertToWorkoutExercise(exercise, config))
+
+  return {
+    workout: createWorkoutPlan(
+      workoutType,
+      duration,
+      equipment,
+      targetBodyParts,
+      targetMuscles,
+      exercises
+    ),
+    pool: fallbackPool,
+    pinnedId: '',
+  }
 }
 
 // Load exercise database from API with filters
@@ -347,23 +988,6 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled
 }
 
-// Convert database exercise to workout exercise
-const convertToWorkoutExercise = (
-  dbExercise: DatabaseExercise,
-  sets: number,
-  reps: string,
-  rest: string
-): Exercise => {
-  return {
-    name: dbExercise.name,
-    sets,
-    reps,
-    rest,
-    instructions: dbExercise.instructions.join(' '),
-    targetMuscles: dbExercise.targetMuscles
-  }
-}
-
 // Load saved workout preferences from user settings
 const loadSavedWorkoutPreferences = async (): Promise<SavedWorkoutPrefs | null> => {
   try {
@@ -395,6 +1019,9 @@ export function AIWorkoutGenerator() {
   const [isLoadingPrefs, setIsLoadingPrefs] = useState(true)
   const [generatedWorkout, setGeneratedWorkout] = useState<WorkoutPlan | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [exercisePool, setExercisePool] = useState<DatabaseExercise[]>([])
+  const [currentConfig, setCurrentConfig] = useState<WorkoutConfig | null>(null)
+  const [isExercisePickerOpen, setIsExercisePickerOpen] = useState(false)
 
   // Load saved preferences on component mount
   useEffect(() => {
@@ -422,273 +1049,223 @@ export function AIWorkoutGenerator() {
 
   const generateWorkout = async () => {
     setIsGenerating(true)
+    setIsExercisePickerOpen(false)
+
+    const { workoutType, duration, targetMuscles, targetBodyParts, equipment } = preferences
+    const parsedDuration = Number.parseInt(duration || "0", 10)
+    const durationMinutes = Number.isNaN(parsedDuration) ? 30 : parsedDuration
+    const normalizedBodyParts = targetBodyParts || []
+
+    const workoutParams = calculateWorkoutParameters(workoutType, durationMinutes)
+    const config: WorkoutConfig = {
+      workoutType: workoutType || "custom",
+      sets: workoutParams.sets,
+      reps: workoutParams.reps,
+      rest: workoutParams.rest,
+      exerciseCount: workoutParams.exerciseCount,
+    }
+
+    setCurrentConfig(config)
 
     try {
-      const { workoutType, duration, targetMuscles, targetBodyParts, equipment } = preferences
-      const durationNum = Number.parseInt(duration)
-
-      // Calculate workout parameters first
-      const workoutParams = calculateWorkoutParameters(workoutType, durationNum)
-
-      // Load exercise database with filters and calculated limit
       const exercises = await loadExerciseDatabase(
         workoutType,
         targetMuscles,
-        targetBodyParts || [],
+        normalizedBodyParts,
         equipment,
         workoutParams.exerciseCount
       )
 
-      // If we don't have enough exercises, throw error to trigger fallback
       if (exercises.length === 0) {
         throw new Error('No exercises match the selected criteria')
       }
 
-      // For better variety, try to distribute exercises across different muscle groups
-      const selectVariedExercises = (exercises: DatabaseExercise[], count: number): DatabaseExercise[] => {
-        if (exercises.length <= count) {
-          return shuffleArray(exercises)
-        }
+      const uniqueExercises = uniqueById(exercises)
+      const variedExercises = selectVariedExercises(uniqueExercises, workoutParams.exerciseCount)
+      const workoutExercises = variedExercises
+        .slice(0, workoutParams.exerciseCount)
+        .map((dbExercise) => convertToWorkoutExercise(dbExercise, config))
 
-        // Group exercises by primary target muscle
-        const muscleGroups: { [key: string]: DatabaseExercise[] } = {}
-        exercises.forEach(exercise => {
-          const primaryMuscle = exercise.targetMuscles[0] || 'general'
-          if (!muscleGroups[primaryMuscle]) {
-            muscleGroups[primaryMuscle] = []
-          }
-          muscleGroups[primaryMuscle].push(exercise)
-        })
-
-        // Shuffle exercises within each muscle group
-        Object.keys(muscleGroups).forEach(muscle => {
-          muscleGroups[muscle] = shuffleArray(muscleGroups[muscle])
-        })
-
-        // Select exercises in round-robin fashion from different muscle groups
-        const selected: DatabaseExercise[] = []
-        const muscleKeys = Object.keys(muscleGroups)
-        let currentIndex = 0
-
-        while (selected.length < count && selected.length < exercises.length) {
-          const muscle = muscleKeys[currentIndex % muscleKeys.length]
-          if (muscleGroups[muscle].length > 0) {
-            selected.push(muscleGroups[muscle].shift()!)
-          }
-          currentIndex++
-          
-          // If we've gone through all muscle groups and still need more exercises
-          if (currentIndex >= muscleKeys.length * 10) { // Prevent infinite loop
-            break
-          }
-        }
-
-        return selected
-      }
-
-      // Select exercises with better variety
-      const selectedDbExercises = selectVariedExercises(exercises, workoutParams.exerciseCount)
-
-      // Convert to workout exercises
-      const selectedExercises = selectedDbExercises.map(dbExercise =>
-        convertToWorkoutExercise(dbExercise, workoutParams.sets, workoutParams.reps, workoutParams.rest)
+      const workout = createWorkoutPlan(
+        config.workoutType,
+        durationMinutes,
+        equipment,
+        normalizedBodyParts,
+        targetMuscles,
+        workoutExercises
       )
 
-      // Create workout name
-      const equipmentText = equipment.length > 0 ? ` (${equipment.join(", ")})` : ""
-      const bodyPartText = (targetBodyParts || []).length > 0 ? ` - ${(targetBodyParts || []).join(", ")}` : ""
-      const muscleText = targetMuscles.length > 0 && !(targetBodyParts || []).length ? ` - ${targetMuscles.join(", ")}` : ""
-
-      const workout: WorkoutPlan = {
-        name: `${workoutType.charAt(0).toUpperCase() + workoutType.slice(1)} Workout${equipmentText}${bodyPartText}${muscleText}`,
-        duration: durationNum,
-        difficulty: "Custom",
-        exercises: selectedExercises,
-        warmup: [
-          "5 minutes light cardio (marching, arm swings)",
-          "Dynamic stretching (leg swings, arm circles)",
-          "Joint mobility (shoulder rolls, hip circles)",
-        ],
-        cooldown: [
-          "5 minutes walking or light movement",
-          "Static stretching (hold 30 seconds each)",
-          "Deep breathing and relaxation",
-        ],
-      }
-
-      setGeneratedWorkout(workout)
+  setGeneratedWorkout(workout)
+  setExercisePool(uniqueExercises)
     } catch (error) {
       logger.error('Failed to generate workout:', error)
-      // Fallback to a basic workout if database fails to load
-      const { workoutType, targetMuscles, targetBodyParts, equipment } = preferences
-      const durationNum = Number.parseInt(preferences.duration)
-      const workoutParams = calculateWorkoutParameters(workoutType, durationNum)
+      const fallback = buildFallbackWorkout(
+        config.workoutType,
+        durationMinutes,
+        targetMuscles,
+        normalizedBodyParts,
+        equipment,
+        config
+      )
+  setGeneratedWorkout(fallback.workout)
+  setExercisePool(uniqueById(fallback.pool))
+      toast.info('Showing a curated backup workout while we refresh the exercise library.')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
 
-      let fallbackExercises: Exercise[] = []
-
-      // Create workout-type specific fallback exercises
-      switch (workoutType) {
-        case 'cardio':
-          fallbackExercises = [
-            {
-              name: "High Knees",
-              sets: workoutParams.sets,
-              reps: workoutParams.reps,
-              rest: workoutParams.rest,
-              instructions: "Run in place, bringing knees up to hip level",
-              targetMuscles: ["legs", "core"],
-            },
-            {
-              name: "Jumping Jacks",
-              sets: workoutParams.sets,
-              reps: workoutParams.reps,
-              rest: workoutParams.rest,
-              instructions: "Jump feet out while raising arms overhead, then return to start",
-              targetMuscles: ["full body", "legs"],
-            },
-            {
-              name: "Burpees",
-              sets: workoutParams.sets,
-              reps: workoutParams.reps,
-              rest: workoutParams.rest,
-              instructions: "Squat down, kick feet back to plank, do a push-up, jump feet forward, then jump up",
-              targetMuscles: ["full body", "chest", "legs"],
-            },
-          ]
-          break
-        case 'strength':
-          fallbackExercises = [
-            {
-              name: "Push-ups",
-              sets: workoutParams.sets,
-              reps: workoutParams.reps,
-              rest: workoutParams.rest,
-              instructions: "Keep body straight, lower chest to floor",
-              targetMuscles: ["chest", "triceps"],
-            },
-            {
-              name: "Bodyweight Squats",
-              sets: workoutParams.sets,
-              reps: workoutParams.reps,
-              rest: workoutParams.rest,
-              instructions: "Feet shoulder-width apart, lower until thighs parallel",
-              targetMuscles: ["legs", "glutes"],
-            },
-            {
-              name: "Plank",
-              sets: workoutParams.sets,
-              reps: workoutParams.reps,
-              rest: workoutParams.rest,
-              instructions: "Hold straight line from head to heels",
-              targetMuscles: ["core"],
-            },
-          ]
-          break
-        case 'hiit':
-          fallbackExercises = [
-            {
-              name: "Burpee",
-              sets: workoutParams.sets,
-              reps: workoutParams.reps,
-              rest: workoutParams.rest,
-              instructions: "Squat, kick back to plank, push-up, jump forward, jump up",
-              targetMuscles: ["full body"],
-            },
-            {
-              name: "Mountain Climber",
-              sets: workoutParams.sets,
-              reps: workoutParams.reps,
-              rest: workoutParams.rest,
-              instructions: "In plank position, alternate driving knees toward chest",
-              targetMuscles: ["core", "legs"],
-            },
-            {
-              name: "Jump Squat",
-              sets: workoutParams.sets,
-              reps: workoutParams.reps,
-              rest: workoutParams.rest,
-              instructions: "Squat down then jump up explosively",
-              targetMuscles: ["legs", "glutes"],
-            },
-          ]
-          break
-        case 'flexibility':
-          fallbackExercises = [
-            {
-              name: "Downward Dog",
-              sets: workoutParams.sets,
-              reps: workoutParams.reps,
-              rest: workoutParams.rest,
-              instructions: "Start in plank, lift hips up and back, forming inverted V",
-              targetMuscles: ["back", "legs"],
-            },
-            {
-              name: "Warrior Pose",
-              sets: workoutParams.sets,
-              reps: workoutParams.reps,
-              rest: workoutParams.rest,
-              instructions: "Step forward into lunge, raise arms overhead",
-              targetMuscles: ["legs", "shoulders"],
-            },
-            {
-              name: "Child's Pose",
-              sets: workoutParams.sets,
-              reps: workoutParams.reps,
-              rest: workoutParams.rest,
-              instructions: "Kneel and fold forward, arms extended",
-              targetMuscles: ["back"],
-            },
-          ]
-          break
-        default:
-          fallbackExercises = [
-            {
-              name: "Push-ups",
-              sets: workoutParams.sets,
-              reps: workoutParams.reps,
-              rest: workoutParams.rest,
-              instructions: "Keep body straight, lower chest to floor",
-              targetMuscles: ["chest", "triceps"],
-            },
-            {
-              name: "Bodyweight Squats",
-              sets: workoutParams.sets,
-              reps: workoutParams.reps,
-              rest: workoutParams.rest,
-              instructions: "Feet shoulder-width apart, lower until thighs parallel",
-              targetMuscles: ["legs", "glutes"],
-            },
-            {
-              name: "Plank",
-              sets: workoutParams.sets,
-              reps: workoutParams.reps,
-              rest: workoutParams.rest,
-              instructions: "Hold straight line from head to heels",
-              targetMuscles: ["core"],
-            },
-          ]
-      }
-
-      const fallbackWorkout: WorkoutPlan = {
-        name: `${workoutType.charAt(0).toUpperCase() + workoutType.slice(1)} Workout${equipment.length > 0 ? ` (${equipment.join(", ")})` : ""}${(targetBodyParts || []).length > 0 ? ` - ${(targetBodyParts || []).join(", ")}` : ""}${targetMuscles.length > 0 && !(targetBodyParts || []).length ? ` - ${targetMuscles.join(", ")}` : ""}`,
-        duration: durationNum,
-        difficulty: "Custom",
-        exercises: fallbackExercises.slice(0, workoutParams.exerciseCount),
-        warmup: [
-          "5 minutes light cardio (marching, arm swings)",
-          "Dynamic stretching (leg swings, arm circles)",
-          "Joint mobility (shoulder rolls, hip circles)",
-        ],
-        cooldown: [
-          "5 minutes walking or light movement",
-          "Static stretching (hold 30 seconds each)",
-          "Deep breathing and relaxation",
-        ],
-      }
-      setGeneratedWorkout(fallbackWorkout)
+  const exerciseOptions = useMemo<ExerciseOption[]>(() => {
+    if (exercisePool.length === 0) {
+      return []
     }
 
-    setIsGenerating(false)
+    return exercisePool.map((exercise) => ({
+      id: getExerciseId(exercise),
+      name: formatLabel(exercise.name),
+      targetMuscles: uniqueDisplayStrings([
+        ...exercise.targetMuscles,
+        ...exercise.secondaryMuscles,
+        ...exercise.bodyParts,
+      ]),
+      equipment: uniqueDisplayStrings(
+        exercise.equipments.length > 0 ? exercise.equipments : [exercise.equipment || 'bodyweight']
+      ),
+      instructions: exercise.instructions.join(' '),
+      source: exercise.source ? formatLabel(exercise.source) : undefined,
+    }))
+  }, [exercisePool])
+
+  const selectedExerciseIds = useMemo(() => {
+    if (!generatedWorkout) {
+      return new Set<string>()
+    }
+
+    return new Set(generatedWorkout.exercises.map((exercise) => getWorkoutExerciseId(exercise)))
+  }, [generatedWorkout])
+
+  const handleRemoveExercise = (exerciseId: string) => {
+    if (!generatedWorkout) {
+      return
+    }
+
+    setGeneratedWorkout((previous) => {
+      if (!previous) {
+        return previous
+      }
+
+      const updatedExercises = previous.exercises.filter(
+        (exercise) => getWorkoutExerciseId(exercise) !== exerciseId
+      )
+
+      return { ...previous, exercises: updatedExercises }
+    })
+  }
+
+  const handleRegenerateExercise = (exerciseId: string) => {
+    if (!generatedWorkout || !currentConfig) {
+      return
+    }
+
+    const index = generatedWorkout.exercises.findIndex(
+      (exercise) => getWorkoutExerciseId(exercise) === exerciseId
+    )
+
+    if (index === -1) {
+      return
+    }
+
+    const usedIds = new Set(
+      generatedWorkout.exercises
+        .filter((_, idx) => idx !== index)
+        .map((exercise) => getWorkoutExerciseId(exercise))
+    )
+
+    const poolToSearch =
+      exercisePool.length > 0 ? exercisePool : buildFallbackExercisePool(preferences.equipment)
+    if (poolToSearch.length === 0) {
+      toast.error('No additional exercises are available to swap in right now.')
+      return
+    }
+
+    const availableCandidates = poolToSearch.filter(
+      (exercise) => !usedIds.has(getExerciseId(exercise)) && getExerciseId(exercise) !== exerciseId
+    )
+
+    const candidatePool = availableCandidates.length > 0 ? availableCandidates : poolToSearch
+    const replacementDb = shuffleArray(candidatePool)[0]
+
+    if (!replacementDb) {
+      toast.error('No additional exercises are available to swap in right now.')
+      return
+    }
+
+    const replacementExercise = convertToWorkoutExercise(replacementDb, currentConfig)
+
+    setGeneratedWorkout((previous) => {
+      if (!previous) {
+        return previous
+      }
+
+      const updatedExercises = [...previous.exercises]
+      updatedExercises[index] = replacementExercise
+      return { ...previous, exercises: updatedExercises }
+    })
+  }
+
+  const handleAddExerciseFromOption = (option: ExerciseOption) => {
+    if (!generatedWorkout || !currentConfig) {
+      return
+    }
+
+    if (selectedExerciseIds.has(option.id)) {
+      toast.info('That exercise is already part of your plan.')
+      return
+    }
+
+    const databaseExercise = exercisePool.find((exercise) => getExerciseId(exercise) === option.id)
+
+    if (!databaseExercise) {
+      toast.error('Exercise not found in database. Please try a different exercise.')
+      return
+    }
+
+    const workoutExercise = convertToWorkoutExercise(databaseExercise, currentConfig)
+
+    setGeneratedWorkout((previous) =>
+      previous ? { ...previous, exercises: [...previous.exercises, workoutExercise] } : previous
+    )
+  }
+
+  const handleCreateCustomExercise = (custom: CustomExerciseInput) => {
+    if (!generatedWorkout) {
+      return
+    }
+
+    const exerciseId = `custom-${slugify(custom.name)}-${Date.now()}`
+    const workoutExercise: Exercise = {
+      id: exerciseId,
+      name: formatLabel(custom.name),
+      sets: custom.sets,
+      reps: custom.reps,
+      rest: custom.rest,
+      instructions:
+        custom.instructions || 'Include precise coaching cues so you remember how this should feel.',
+      targetMuscles:
+        custom.targetMuscles.length > 0
+          ? custom.targetMuscles.map(formatLabel)
+          : ['Full Body'],
+      equipment:
+        custom.equipment.length > 0
+          ? custom.equipment.map(formatLabel)
+          : ['Bodyweight'],
+      source: 'custom',
+      isTimeBased: custom.isTimeBased,
+    }
+
+    setGeneratedWorkout((previous) =>
+      previous ? { ...previous, exercises: [...previous.exercises, workoutExercise] } : previous
+    )
   }
 
   const canGenerate = preferences.workoutType && preferences.duration
@@ -732,11 +1309,31 @@ export function AIWorkoutGenerator() {
       </Card>
 
       {generatedWorkout && (
-        <WorkoutDisplay
-          workout={generatedWorkout}
-          userNotes={preferences.notes}
-          onRegenerate={generateWorkout}
-        />
+        <>
+          <WorkoutDisplay
+            workout={generatedWorkout}
+            userNotes={preferences.notes}
+            onRegeneratePlan={generateWorkout}
+            onRemoveExercise={handleRemoveExercise}
+            onRegenerateExercise={handleRegenerateExercise}
+            onAddExercise={() => setIsExercisePickerOpen(true)}
+          />
+
+          <ExerciseSelectorDialog
+            open={isExercisePickerOpen}
+            onOpenChange={setIsExercisePickerOpen}
+            exercises={exerciseOptions}
+            selectedExerciseIds={selectedExerciseIds}
+            onSelectExercise={handleAddExerciseFromOption}
+            onCreateCustomExercise={handleCreateCustomExercise}
+            defaultSets={currentConfig?.sets ?? 3}
+            defaultReps={currentConfig?.reps ?? '8-12'}
+            defaultRest={currentConfig?.rest ?? '60s'}
+            workoutType={currentConfig?.workoutType ?? preferences.workoutType}
+            defaultTargetMuscles={preferences.targetMuscles}
+            defaultEquipment={preferences.equipment}
+          />
+        </>
       )}
     </div>
   )

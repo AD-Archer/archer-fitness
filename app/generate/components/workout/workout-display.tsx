@@ -4,44 +4,37 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Target, Clock, Dumbbell, Play, RefreshCw, Zap } from "lucide-react"
+import { Target, Clock, Dumbbell, Play, RefreshCw, Zap, PlusCircle } from "lucide-react"
 import { ExerciseCard } from "./exercise-card"
 import { WarmupCooldownSection } from "./warmup-cooldown-section"
-import { 
-  transformWorkoutPlanToTemplate, 
+import {
+  transformWorkoutPlanToTemplate,
   transformWorkoutPlanToSession,
   saveWorkoutAsTemplate,
-  startWorkoutSession
+  startWorkoutSession,
+  WorkoutPlan,
 } from "@/lib/workout-utils"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
 
-interface Exercise {
-  name: string
-  sets: number
-  reps: string
-  rest: string
-  instructions: string
-  targetMuscles: string[]
-}
-
-interface WorkoutPlan {
-  name: string
-  duration: number
-  difficulty: string
-  exercises: Exercise[]
-  warmup: string[]
-  cooldown: string[]
-}
-
 interface WorkoutDisplayProps {
   workout: WorkoutPlan
   userNotes?: string
-  onRegenerate: () => void
+  onRegeneratePlan?: () => void
+  onRemoveExercise?: (exerciseId: string) => void
+  onRegenerateExercise?: (exerciseId: string) => void
+  onAddExercise?: () => void
 }
 
-export function WorkoutDisplay({ workout, userNotes, onRegenerate }: WorkoutDisplayProps) {
+export function WorkoutDisplay({
+  workout,
+  userNotes,
+  onRegeneratePlan,
+  onRemoveExercise,
+  onRegenerateExercise,
+  onAddExercise,
+}: WorkoutDisplayProps) {
   const router = useRouter()
   const [isSaving, setIsSaving] = useState(false)
   const [isStarting, setIsStarting] = useState(false)
@@ -128,12 +121,30 @@ export function WorkoutDisplay({ workout, userNotes, onRegenerate }: WorkoutDisp
 
         <Separator />
 
-        <div>
-          <h3 className="font-semibold mb-4 text-blue-600">Main Workout</h3>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-semibold text-blue-600">Main Workout</h3>
+            {onAddExercise && (
+              <Button size="sm" variant="outline" onClick={onAddExercise} className="flex items-center gap-2">
+                <PlusCircle className="h-4 w-4" />
+                Add exercise
+              </Button>
+            )}
+          </div>
           <div className="space-y-4">
-            {workout.exercises.map((exercise, index) => (
-              <ExerciseCard key={index} exercise={exercise} />
-            ))}
+            {workout.exercises.map((exercise, index) => {
+              const exerciseId = exercise.id ?? `${exercise.name.toLowerCase().replace(/\s+/g, "-")}-${index}`
+
+              return (
+                <ExerciseCard
+                  key={exerciseId}
+                  exercise={exercise}
+                  isPinned={false}
+                  onRegenerate={onRegenerateExercise ? () => onRegenerateExercise(exerciseId) : undefined}
+                  onRemove={onRemoveExercise ? () => onRemoveExercise(exerciseId) : undefined}
+                />
+              )
+            })}
           </div>
         </div>
 
@@ -145,16 +156,21 @@ export function WorkoutDisplay({ workout, userNotes, onRegenerate }: WorkoutDisp
           colorClass="text-purple-600"
         />
 
-                <div className="flex gap-3 pt-4">
-          <Button variant="outline" className="flex-1 bg-transparent" onClick={handleSaveWorkout} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save Workout"}
-          </Button>
-          <Button variant="outline" className="flex-1 bg-transparent">
-            Share
-          </Button>
-          <Button onClick={onRegenerate} variant="outline">
-            <RefreshCw className="w-4 h-4" />
-          </Button>
+        <div className="flex flex-wrap gap-3 pt-4">
+          {onAddExercise && (
+            <Button variant="outline" className="bg-transparent" onClick={onAddExercise}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add exercise
+            </Button>
+          )}
+          <div className="ml-auto flex gap-3">
+            <Button variant="outline" className="bg-transparent" onClick={handleSaveWorkout} disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save Workout"}
+            </Button>
+            <Button onClick={onRegeneratePlan} variant="outline">
+              <RefreshCw className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

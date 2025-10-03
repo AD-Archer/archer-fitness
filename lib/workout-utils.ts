@@ -1,11 +1,15 @@
 // Workout types - matching those in workout-display.tsx
 export interface Exercise {
+  id?: string
   name: string
   sets: number
   reps: string
   rest: string
   instructions: string
   targetMuscles: string[]
+  equipment?: string[]
+  source?: string
+  isTimeBased?: boolean
 }
 
 export interface WorkoutPlan {
@@ -54,7 +58,7 @@ export function transformWorkoutPlanToTemplate(workout: WorkoutPlan): SaveWorkou
       name: exercise.name,
       targetSets: exercise.sets,
       targetReps: exercise.reps,
-      targetType: exercise.reps.includes("seconds") || exercise.reps.includes("min") ? "time" : "reps",
+      targetType: isTimeBasedExercise(exercise) ? "time" : "reps",
       restTime: parseRestTime(exercise.rest),
       notes: exercise.instructions,
     })),
@@ -69,11 +73,19 @@ export function transformWorkoutPlanToSession(workout: WorkoutPlan): StartWorkou
       name: exercise.name,
       targetSets: exercise.sets,
       targetReps: exercise.reps,
-      targetType: exercise.reps.includes("seconds") || exercise.reps.includes("min") ? "time" : "reps",
+      targetType: isTimeBasedExercise(exercise) ? "time" : "reps",
       restTime: parseRestTime(exercise.rest),
       notes: exercise.instructions,
     })),
   }
+}
+
+function isTimeBasedExercise(exercise: Exercise): boolean {
+  if (typeof exercise.isTimeBased === "boolean") {
+    return exercise.isTimeBased
+  }
+  const repsLower = exercise.reps.toLowerCase()
+  return repsLower.includes("sec") || repsLower.includes("min") || repsLower.includes("s")
 }
 
 function parseRestTime(restString: string): number {
