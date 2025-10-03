@@ -18,13 +18,14 @@ interface WorkoutSession {
   exercises: Array<{
     exerciseId: string
     exerciseName: string
+    targetSets?: number
     sets: Array<{
       reps: number
       weight?: number
       completed: boolean
     }>
   }>
-  status: "completed" | "in_progress" | "skipped"
+  status: "active" | "completed" | "paused" | "cancelled" | "skipped" | "in_progress"
   notes?: string
   templateId?: string
 }

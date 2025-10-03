@@ -19,13 +19,16 @@ interface WorkoutSession {
   exercises: Array<{
     exerciseId: string
     exerciseName: string
+  targetSets?: number
+    targetReps?: string
+    targetType?: "reps" | "time"
     sets: Array<{
       reps: number
       weight?: number
       completed: boolean
     }>
   }>
-  status: "completed" | "in_progress" | "skipped"
+  status: "active" | "completed" | "paused" | "cancelled" | "skipped" | "in_progress"
   performanceStatus?: WorkoutPerformanceStatus
   completionRate?: number
   perfectionScore?: number
@@ -43,6 +46,9 @@ interface ApiWorkoutSession {
       id: string
       name: string
     }
+    targetSets: number
+    targetReps: string
+    targetType?: string
     sets: Array<{
       reps: number
       weight?: number
@@ -67,15 +73,10 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
         const response = await fetch('/api/workout-tracker/workout-sessions?limit=10')
         if (response.ok) {
           const data = await response.json()
-          
-          // Filter out workouts that are not completed
-          const filteredData = data.filter((session: ApiWorkoutSession) => {
-            // Only include workouts that are marked as completed by the API
-            const isCompleted = session.performanceStatus === 'completed' || session.performanceStatus === 'perfect'
-            
-            return isCompleted
-          })
-          
+
+          // Filter out cancelled/discarded workouts before transforming
+          const filteredData = data.filter((session: ApiWorkoutSession) => session.status !== "cancelled")
+
           // Transform API data to match component expectations
           const transformedData = filteredData.map((session: ApiWorkoutSession) => ({
             id: session.id,
@@ -85,7 +86,14 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
             exercises: session.exercises?.map(ex => ({
               exerciseId: ex.exerciseId,
               exerciseName: ex.exercise?.name || 'Unknown Exercise',
-              sets: ex.sets || []
+              targetSets: ex.targetSets ?? 0,
+              targetReps: ex.targetReps,
+              targetType: (ex.targetType as "reps" | "time") || "reps",
+              sets: (ex.sets || []).map(set => ({
+                reps: set.reps,
+                weight: set.weight,
+                completed: set.completed,
+              }))
             })) || [],
             status: session.status,
             performanceStatus: session.performanceStatus as WorkoutPerformanceStatus,
@@ -119,23 +127,31 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
     })
   }
 
-  const getWorkoutPerformanceStatus = (workout: WorkoutSession): WorkoutPerformanceStatus => {
-    // Calculate completion rate first
-    const totalSets = workout.exercises.reduce((total, exercise) => total + exercise.sets.length, 0)
-    if (totalSets === 0) return "unfinished"
+  const getCompletionRate = (workout: WorkoutSession) => {
+    if (typeof workout.completionRate === "number") {
+      return workout.completionRate
+    }
+
+    const totalTargetSets = workout.exercises.reduce((total, exercise) => total + (exercise.targetSets ?? 0), 0)
+    if (totalTargetSets === 0) {
+      return 0
+    }
 
     const completedSets = workout.exercises.reduce((total, exercise) =>
       total + exercise.sets.filter(set => set.completed).length, 0)
-    const completionRate = Math.round((completedSets / totalSets) * 100)
 
-    // If 100% complete, return completed
-    if (completionRate >= 100) {
-      return "completed"
+    return Math.min((completedSets / totalTargetSets) * 100, 100)
+  }
+
+  const getWorkoutPerformanceStatus = (workout: WorkoutSession): WorkoutPerformanceStatus => {
+    const completionRate = getCompletionRate(workout)
+
+    if (workout.performanceStatus === "perfect" || (completionRate >= 95 && (workout.perfectionScore ?? 0) >= 85)) {
+      return "perfect"
     }
 
-    // Otherwise use the stored performance status or default to unfinished
-    if (workout.performanceStatus) {
-      return workout.performanceStatus
+    if (completionRate >= 50) {
+      return "completed"
     }
 
     return "unfinished"
@@ -243,6 +259,8 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
           ) : (
             workoutHistory.map((workout, idx) => {
               const stats = calculateWorkoutStats(workout)
+              const completionRateValue = getCompletionRate(workout)
+              const roundedCompletionRate = Math.round(completionRateValue)
               const hasNewerStarted = workoutHistory.some((w, i) => i < idx && new Date(w.date).getTime() > new Date(workout.date).getTime())
               return (
                 <div key={workout.id} className="p-4 rounded-lg border bg-card/50 hover:bg-card/80 transition-colors">
@@ -271,12 +289,12 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
                           </Badge>
                         )
                       })()}
-                      {workout.performanceStatus && workout.completionRate !== undefined && (
+                      {(roundedCompletionRate > 0 || workout.perfectionScore !== undefined) && (
                         <div className="text-xs text-muted-foreground text-right">
-                          {workout.completionRate.toFixed(0)}% complete
+                          {roundedCompletionRate}% complete
                           {workout.perfectionScore !== undefined && (
                             <>
-                              <br />Score: {workout.perfectionScore.toFixed(0)}/100
+                              <br />Score: {Math.round(workout.perfectionScore)}/100
                             </>
                           )}
                         </div>

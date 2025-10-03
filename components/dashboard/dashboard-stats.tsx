@@ -79,11 +79,17 @@ export function DashboardStats() {
 
   // Helper function to determine if a workout is completed based on API performance status
   const isWorkoutCompleted = useCallback((session: WorkoutSession): boolean => {
-    // Use the same logic as recent-workouts: completed/perfect status OR any progress
-    const isCompleted = session.performanceStatus === 'completed' || session.performanceStatus === 'perfect'
-    const hasProgress = session.completionRate !== undefined && session.completionRate > 0
-    
-    return isCompleted || hasProgress
+    const completionRate = session.completionRate ?? 0
+
+    if (session.performanceStatus === 'perfect') {
+      return true
+    }
+
+    if (completionRate >= 50) {
+      return true
+    }
+
+    return false
   }, [])
 
 
@@ -115,14 +121,13 @@ export function DashboardStats() {
           logger.info('Number of workouts returned:', workoutData.length)
           
           // Filter out workouts that are not completed or don't have meaningful progress
-          const filteredWorkouts = workoutData.filter((session: any) => {
-            // Only include workouts that are marked as completed by the API or have some progress
-            const isCompleted = session.performanceStatus === 'completed' || session.performanceStatus === 'perfect'
-            const hasProgress = session.completionRate && session.completionRate > 0
-            
-            logger.info(`Filtering workout ${session.name}: status=${session.status}, performanceStatus=${session.performanceStatus}, completionRate=${session.completionRate}%, isCompleted=${isCompleted}, hasProgress=${hasProgress}`)
-            
-            return isCompleted || hasProgress
+          const filteredWorkouts = workoutData.filter((session: WorkoutSession) => {
+            const completionRate = session.completionRate ?? 0
+            const completed = isWorkoutCompleted(session)
+
+            logger.info(`Filtering workout ${session.name}: status=${session.status}, performanceStatus=${session.performanceStatus}, completionRate=${completionRate}%, meetsThreshold=${completed}`)
+
+            return completed
           })
           
           logger.info(`Filtered ${filteredWorkouts.length} out of ${workoutData.length} total workouts`)

@@ -43,7 +43,12 @@ export async function GET(request: NextRequest) {
           }
         }),
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        instructions: true,
+        gifUrl: true,
         muscles: {
           include: {
             muscle: true
@@ -93,7 +98,12 @@ export async function GET(request: NextRequest) {
     // Get predefined exercises with relationships
     const predefinedExercises = await prisma.exercise.findMany({
       where: whereClause,
-      include: {
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        instructions: true,
+        gifUrl: true,
         muscles: {
           include: {
             muscle: true

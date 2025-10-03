@@ -8,6 +8,17 @@ export function useWorkoutActions(
 ) {
   const [isAddingExercise, setIsAddingExercise] = useState(false)
 
+  const mapExerciseSets = (sets: Array<{ id: string; setNumber: number; reps?: number | null; weight?: number | null; duration?: number | null; notes?: string | null; completed: boolean }>) =>
+    sets.map((s) => ({
+      id: s.id,
+      setNumber: s.setNumber,
+        reps: s.reps ?? null,
+        duration: s.duration ?? null,
+      weight: s.weight === null || s.weight === undefined ? undefined : s.weight,
+      notes: s.notes ?? undefined,
+      completed: s.completed,
+    }))
+
   const saveWorkout = async () => {
     if (!session) return
 
@@ -119,11 +130,7 @@ export function useWorkoutActions(
             ex.id === exerciseId
               ? {
                   ...ex,
-                  sets: (updated.sets || []).map((s: { reps?: number; weight?: number | null; completed: boolean }) => ({
-                    reps: s.reps ?? 0,
-                    weight: s.weight === null ? undefined : s.weight,
-                    completed: s.completed
-                  })),
+                  sets: mapExerciseSets(updated.sets || []),
                   completed: false,
                 }
               : ex
@@ -133,6 +140,70 @@ export function useWorkoutActions(
       }
     } catch (e) {
       logger.error("Failed to add set", e)
+    }
+  }
+
+  const updateSet = async (
+    exerciseId: string,
+    setId: string,
+    payload: { reps?: number; weight?: number; duration?: number; notes?: string }
+  ) => {
+    if (!session) return
+
+    try {
+      const res = await fetch(`/api/workout-tracker/workout-sessions/${session.id}/exercises/${exerciseId}/sets/${setId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        const updated = data.exercise
+        setSession((prev) => {
+          if (!prev) return prev
+          const updatedExercises = prev.exercises.map((ex) =>
+            ex.id === exerciseId
+              ? {
+                  ...ex,
+                  sets: mapExerciseSets(updated.sets || []),
+                }
+              : ex
+          )
+          return { ...prev, exercises: updatedExercises }
+        })
+      }
+    } catch (e) {
+      logger.error("Failed to update set", e)
+    }
+  }
+
+  const deleteSet = async (exerciseId: string, setId: string) => {
+    if (!session) return
+
+    try {
+      const res = await fetch(`/api/workout-tracker/workout-sessions/${session.id}/exercises/${exerciseId}/sets/${setId}`, {
+        method: "DELETE",
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        const updated = data.exercise
+        setSession((prev) => {
+          if (!prev) return prev
+          const updatedExercises = prev.exercises.map((ex) =>
+            ex.id === exerciseId
+              ? {
+                  ...ex,
+                  sets: mapExerciseSets(updated.sets || []),
+                }
+              : ex
+          )
+          return { ...prev, exercises: updatedExercises }
+        })
+      }
+    } catch (e) {
+      logger.error("Failed to delete set", e)
     }
   }
 
@@ -211,6 +282,8 @@ export function useWorkoutActions(
     finishWorkout,
     stopWorkout,
     addSet,
+    updateSet,
+    deleteSet,
     addExercise,
   }
 }

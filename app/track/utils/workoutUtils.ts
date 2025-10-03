@@ -119,6 +119,7 @@ export const transformSessionFromAPI = (sessionData: unknown): WorkoutSession =>
       targetSets: number
       targetReps: string
       targetType?: string
+      completed?: boolean
       sets?: unknown[]
     }
 
@@ -130,14 +131,26 @@ export const transformSessionFromAPI = (sessionData: unknown): WorkoutSession =>
       targetType: (exercise.targetType as "reps" | "time") || "reps",
       instructions: exercise.exercise?.instructions,
       sets: (exercise.sets || []).map((s: unknown) => {
-        const set = s as { reps?: number; weight?: number | null; completed: boolean }
+        const set = s as {
+          id: string
+          setNumber: number
+          reps?: number | null
+          duration?: number | null
+          weight?: number | null
+          notes?: string | null
+          completed: boolean
+        }
         return {
-          reps: set.reps ?? 0,
-          weight: set.weight === null ? undefined : set.weight,
-          completed: set.completed
+          id: set.id,
+          setNumber: set.setNumber,
+          reps: set.reps ?? null,
+          duration: set.duration ?? null,
+          weight: set.weight === null || set.weight === undefined ? undefined : set.weight,
+          notes: set.notes ?? undefined,
+          completed: set.completed,
         }
       }),
-      completed: false,
+      completed: exercise.completed ?? false,
       // Include the full exercise data with muscles, equipments, and gifUrl
       exercise: exercise.exercise ? {
         id: exercise.exercise.id || "",

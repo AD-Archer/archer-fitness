@@ -30,6 +30,11 @@ export function WorkoutSelection({
 }: WorkoutSelectionProps) {
   const [showCustomWorkoutDialog, setShowCustomWorkoutDialog] = useState(false)
   const [editingWorkout, setEditingWorkout] = useState<WorkoutTemplate | null>(null)
+  
+  // Filter out premade workouts, only show AI-generated and custom workouts
+  const filteredWorkouts = availableWorkouts.filter(workout => 
+    workout.isAIGenerated || workout.isCustom || workout.name.toLowerCase().includes('ai-generated')
+  )
   const getWorkoutTypeInfo = (workout: WorkoutTemplate) => {
     if (workout.isAIGenerated || workout.name.toLowerCase().includes('ai-generated')) {
       return {
@@ -73,7 +78,7 @@ export function WorkoutSelection({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {availableWorkouts.map((workout) => {
+            {filteredWorkouts.map((workout) => {
               const typeInfo = getWorkoutTypeInfo(workout)
               const Icon = typeInfo.icon
               

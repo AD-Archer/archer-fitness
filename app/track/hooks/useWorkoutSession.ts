@@ -205,6 +205,7 @@ export function useWorkoutSession() {
 
   const backToSelection = () => {
     setSession(null)
+    setSavedState(null)
     setShowWorkoutSelection(true)
   }
 

@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Plus, Trash2 } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Search, Plus, Trash2, Eye, Target } from "lucide-react"
 import Fuse from 'fuse.js'
 import { logger } from "@/lib/logger"
 
@@ -20,6 +21,7 @@ interface Exercise {
   muscles?: Array<{ muscle: { id: string; name: string }; isPrimary: boolean }>
   equipments?: Array<{ equipment: { id: string; name: string } }>
   isCustom?: boolean
+  gifUrl?: string
   // Additional possible fields for debugging
   bodyPartId?: string
   bodyPartIds?: string[]
@@ -66,6 +68,8 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
   const [savingCustomExercise, setSavingCustomExercise] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [isSearching, setIsSearching] = useState(false)
+  const [showGifModal, setShowGifModal] = useState(false)
+  const [selectedGifExercise, setSelectedGifExercise] = useState<Exercise | null>(null)
 
   // Create Fuse instance with all exercises - memoized with stable options
   const fuse = useMemo(() => {
@@ -312,6 +316,11 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
     }
   }
 
+  const handleViewGif = (exercise: Exercise) => {
+    setSelectedGifExercise(exercise)
+    setShowGifModal(true)
+  }
+
   const isCustomExercise = (exercise: Exercise) => {
     // An exercise is custom if:
     // 1. It has the isCustom flag explicitly set to true
@@ -495,6 +504,20 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
                   <div className="flex-1 cursor-pointer" onClick={() => onSelect(exercise)}>
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="font-semibold text-lg">{exercise.name}</h3>
+                      {exercise.gifUrl && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="p-1 h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewGif(exercise);
+                          }}
+                          title="View exercise demonstration"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      )}
                       {isCustomExercise(exercise) && (
                         <span className="text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-medium">
                           Custom
@@ -599,6 +622,59 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
           )}
         </div>
       </div>
+
+      {/* GIF Modal */}
+      <Dialog open={showGifModal} onOpenChange={setShowGifModal}>
+        <DialogContent className="w-[95vw] mx-auto max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg md:text-xl">
+              <Target className="w-5 h-5 text-green-600" />
+              {selectedGifExercise?.name} - Exercise Demo
+            </DialogTitle>
+            <DialogDescription>
+              Watch the proper form for this exercise
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex justify-center py-4">
+            {selectedGifExercise?.gifUrl ? (
+              <div className="relative w-full max-w-2xl">
+                <img
+                  src={selectedGifExercise.gifUrl}
+                  alt={`${selectedGifExercise.name} exercise demonstration`}
+                  className="w-full h-auto rounded-lg shadow-lg"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent) {
+                      const errorDiv = document.createElement('div');
+                      errorDiv.className = 'text-center py-12 text-muted-foreground';
+                      errorDiv.innerHTML = `
+                        <div class="text-lg mb-2">GIF not available</div>
+                        <div class="text-sm">The demonstration video for this exercise is not currently available.</div>
+                      `;
+                      parent.appendChild(errorDiv);
+                    }
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                <Target className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                <div className="text-lg mb-2">GIF not available</div>
+                <div className="text-sm">The demonstration video for this exercise is not currently available.</div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button onClick={() => setShowGifModal(false)} className="w-full sm:w-auto">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

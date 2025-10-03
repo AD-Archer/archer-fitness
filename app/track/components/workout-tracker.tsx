@@ -61,6 +61,8 @@ export function WorkoutTracker() {
     isAddingExercise,
     addSet,
     addExercise,
+    updateSet,
+    deleteSet,
   } = useWorkoutActions(session, setSession)
 
   // Enhanced save workout that includes timer state
@@ -73,40 +75,75 @@ export function WorkoutTracker() {
   const saveSessionOnly = async () => {
     if (!session) return
 
+    const completionPercent = Math.round(getWorkoutProgress(session))
+    const shouldMarkCompleted = completionPercent >= 50
+
     setIsSavingWorkout(true)
     try {
-      // Save workout state to the server with current timer values
-      await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          currentExerciseIndex,
-          timer,
-          exerciseTimer,
-          isTimerRunning,
-          isResting,
-          restTimer,
-          lastSetData: session.exercises[currentExerciseIndex]?.sets.length > 0
-            ? {
-                reps: session.exercises[currentExerciseIndex].sets[session.exercises[currentExerciseIndex].sets.length - 1].reps,
-                weight: session.exercises[currentExerciseIndex].sets[session.exercises[currentExerciseIndex].sets.length - 1].weight,
-                isBodyweight: session.exercises[currentExerciseIndex].sets[session.exercises[currentExerciseIndex].sets.length - 1].weight === undefined
-              }
-            : null
-        }),
-      })
+      if (shouldMarkCompleted) {
+        const completeResponse = await fetch(`/api/workout-tracker/workout-sessions/${session.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: "completed",
+            endTime: new Date().toISOString(),
+            duration: timer,
+          }),
+        })
 
-      // Update session status to paused
-      await fetch(`/api/workout-tracker/workout-sessions/${session.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: "paused",
-          duration: timer,
-        }),
-      })
+        if (!completeResponse.ok) {
+          const errorText = await completeResponse.text()
+          throw new Error(`Failed to mark workout completed: ${errorText || completeResponse.status}`)
+        }
 
-      // Reset everything and go back to selection
+        try {
+          await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
+            method: "DELETE",
+          })
+        } catch (stateError) {
+          logger.info("No saved state to clear after marking workout complete", stateError)
+        }
+      } else {
+        const saveStateResponse = await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            currentExerciseIndex,
+            timer,
+            exerciseTimer,
+            isTimerRunning,
+            isResting,
+            restTimer,
+            lastSetData: session.exercises[currentExerciseIndex]?.sets.length > 0
+              ? {
+                  reps: session.exercises[currentExerciseIndex].sets[session.exercises[currentExerciseIndex].sets.length - 1].reps,
+                  weight: session.exercises[currentExerciseIndex].sets[session.exercises[currentExerciseIndex].sets.length - 1].weight,
+                  isBodyweight: session.exercises[currentExerciseIndex].sets[session.exercises[currentExerciseIndex].sets.length - 1].weight === undefined
+                }
+              : null
+          }),
+        })
+
+        if (!saveStateResponse.ok) {
+          const errorText = await saveStateResponse.text()
+          throw new Error(`Failed to save workout state: ${errorText || saveStateResponse.status}`)
+        }
+
+        const pauseResponse = await fetch(`/api/workout-tracker/workout-sessions/${session.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: "paused",
+            duration: timer,
+          }),
+        })
+
+        if (!pauseResponse.ok) {
+          const errorText = await pauseResponse.text()
+          throw new Error(`Failed to pause workout: ${errorText || pauseResponse.status}`)
+        }
+      }
+
       reset()
       setSession(null)
       backToSelection()
@@ -290,27 +327,26 @@ export function WorkoutTracker() {
   const stopWorkoutWithTimer = async () => {
     if (!session) return
     try {
-      // Update session status to cancelled/stopped
-      await fetch(`/api/workout-tracker/workout-sessions/${session.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: "cancelled",
-          endTime: new Date().toISOString(),
-          duration: timer,
-        }),
-      })
-
-      // Clear saved state since workout is stopped
+      // Clear any saved state before deleting the session entirely
       try {
         await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
           method: "DELETE",
         })
       } catch {
-        // No saved state to clear
+        // No saved state to clear or already removed
+      }
+
+      const deleteResponse = await fetch(`/api/workout-tracker/workout-sessions/${session.id}`, {
+        method: "DELETE",
+      })
+
+      if (!deleteResponse.ok) {
+        const errorText = await deleteResponse.text()
+        throw new Error(errorText || "Failed to discard workout session")
       }
     } catch (e) {
-      logger.error("Failed to stop session", e)
+      logger.error("Failed to discard session", e)
+      alert("We couldn't discard that workout completely. Please try again.")
     }
     reset()
     setSession(null)
@@ -328,6 +364,18 @@ export function WorkoutTracker() {
     if (sessionRef.current?.exercises.find((ex: any) => ex.id === exerciseId)?.targetType === "time") {
       // The exercise timer will be reset by the useEffect in the timer hook
     }
+  }
+
+  const updateSetWithoutRest = async (
+    exerciseId: string,
+    setId: string,
+    payload: { reps?: number; weight?: number; duration?: number }
+  ) => {
+    await updateSet(exerciseId, setId, payload)
+  }
+
+  const deleteSetWithoutRest = async (exerciseId: string, setId: string) => {
+    await deleteSet(exerciseId, setId)
   }
 
   // Add exercise mid-workout: open modal
@@ -443,6 +491,8 @@ export function WorkoutTracker() {
           backToSelection()
         }}
         onAddSet={addSetWithRest}
+        onUpdateSet={updateSetWithoutRest}
+        onDeleteSet={deleteSetWithoutRest}
         onAddExercise={addExerciseMidWorkout}
         onRemoveExercise={removeExercise}
         onNextExercise={nextExercise}

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { Target, Search, Plus, Trash2 } from "lucide-react"
+import { Target, Search, Plus, Trash2, Eye } from "lucide-react"
 import { logger } from "@/lib/logger"
 
 interface Exercise {
@@ -18,6 +18,7 @@ interface Exercise {
   muscles?: Array<{ muscle: { id: string; name: string }; isPrimary: boolean }>
   equipments?: Array<{ equipment: { id: string; name: string } }>
   isCustom?: boolean
+  gifUrl?: string
 }
 
 interface BodyPart {
@@ -48,7 +49,6 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
   const [bodyParts, setBodyParts] = useState<BodyPart[]>([])
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [muscles, setMuscles] = useState<Muscle[]>([])
-  const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -61,12 +61,12 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
   const [savingCustomExercise, setSavingCustomExercise] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [scrollContainerRef, setScrollContainerRef] = useState<HTMLDivElement | null>(null)
+  const [showGifModal, setShowGifModal] = useState(false)
+  const [selectedGifExercise, setSelectedGifExercise] = useState<Exercise | null>(null)
 
   // Function to fetch exercises with search parameters
   const fetchExercises = async (params: Record<string, string> = {}, page: number = 1, append: boolean = false) => {
-    if (page === 1 && !append) {
-      setLoading(true)
-    } else if (append) {
+    if (append) {
       setLoadingMore(true)
     }
 
@@ -88,6 +88,17 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
       // Combine user exercises and predefined exercises
       const newExercises = [...data.userExercises, ...data.predefinedExercises]
 
+      // Debug logging to check if exercises have GIF URLs
+      logger.info("Exercises loaded:", {
+        total: newExercises.length,
+        withGifs: newExercises.filter(ex => ex.gifUrl).length,
+        sampleExercises: newExercises.slice(0, 3).map(ex => ({
+          name: ex.name,
+          hasGif: !!ex.gifUrl,
+          gifUrl: ex.gifUrl
+        }))
+      })
+
       if (append) {
         setExercises(prev => [...prev, ...newExercises])
       } else {
@@ -103,7 +114,6 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
     } catch (error) {
       logger.error("Error fetching exercises:", error)
     } finally {
-      setLoading(false)
       setLoadingMore(false)
     }
   }
@@ -223,6 +233,11 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
     resetForm()
   }
 
+  const handleViewGif = (exercise: Exercise) => {
+    setSelectedGifExercise(exercise)
+    setShowGifModal(true)
+  }
+
   const handleCreateCustomExercise = async () => {
     if (!newExerciseName.trim()) return
 
@@ -292,6 +307,8 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
     setShowCreateForm(false)
     setNewExerciseName("")
     setNewExerciseDescription("")
+    setShowGifModal(false)
+    setSelectedGifExercise(null)
     onClose()
   }
 
@@ -299,12 +316,12 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
     resetForm()
   }
 
-  if (loading) {
-    return (
+  return (
+    <>
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="w-[95vw] mx-auto p-0 overflow-hidden rounded-lg h-[95vh] max-h-[95vh]">
-          <div className="flex flex-col h-full">
-            <DialogHeader className="px-4 py-3 md:px-6 md:py-4 border-b">
+          <div className="flex flex-col h-full min-h-[600px]">
+            <DialogHeader className="px-4 py-3 md:px-6 md:py-4 border-b flex-shrink-0">
               <DialogTitle className="flex items-center gap-2 text-lg md:text-xl">
                 <Target className="w-5 h-5 text-blue-600" />
                 Add Exercise
@@ -313,306 +330,358 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
                 Add a new exercise to your current workout session.
               </DialogDescription>
             </DialogHeader>
-            <div className="flex-1 flex items-center justify-center">
-              <div className="flex flex-col items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-4"></div>
-                <p className="text-muted-foreground">Loading exercises...</p>
+
+            {exercises.length === 0 && !loadingMore ? (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-4"></div>
+                  <p className="text-muted-foreground">Loading exercises...</p>
+                </div>
               </div>
+            ) : (
+              <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+                <div className="px-4 py-3 md:px-6 md:py-4 border-b bg-muted/30 flex-shrink-0">
+                  <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+                    <h3 className="text-sm md:text-base font-medium text-muted-foreground">Select an exercise from the database or create a custom one</h3>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm font-medium whitespace-nowrap">Exercise Type:</Label>
+                      <Select value={targetType} onValueChange={(value: "reps" | "time") => setTargetType(value)} disabled={isLoading}>
+                        <SelectTrigger className="h-10 w-full sm:w-[160px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="reps">Reps-based</SelectItem>
+                          <SelectItem value="time">Time-based</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto min-h-0" ref={setScrollContainerRef}>
+                  <div className="p-4 md:p-6 space-y-6">
+                    {/* Create Custom Exercise Button/Form */}
+                    <div className="bg-background">
+                      {showCreateForm ? (
+                        <Card className="p-4 md:p-6 border-blue-500 border-2 shadow-lg">
+                          <h3 className="text-lg font-semibold mb-4 text-blue-700 flex items-center gap-2">
+                            <Plus className="w-5 h-5" />
+                            Create Custom Exercise
+                          </h3>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="new-exercise-name" className="text-base font-medium">Exercise Name</Label>
+                              <Input
+                                id="new-exercise-name"
+                                value={newExerciseName}
+                                onChange={(e) => setNewExerciseName(e.target.value)}
+                                placeholder="Enter exercise name"
+                                autoFocus
+                                className="h-12 text-base"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="new-exercise-description" className="text-base font-medium">Description (optional)</Label>
+                              <Input
+                                id="new-exercise-description"
+                                value={newExerciseDescription}
+                                onChange={(e) => setNewExerciseDescription(e.target.value)}
+                                placeholder="Enter a brief description"
+                                className="h-12 text-base"
+                              />
+                            </div>
+                            <div className="flex flex-col sm:flex-row gap-3 justify-end pt-2">
+                              <Button
+                                variant="outline"
+                                onClick={() => {
+                                  setShowCreateForm(false)
+                                  setNewExerciseName("")
+                                  setNewExerciseDescription("")
+                                }}
+                                className="h-11 px-6"
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                onClick={handleCreateCustomExercise}
+                                disabled={!newExerciseName.trim() || savingCustomExercise}
+                                className="bg-blue-600 hover:bg-blue-700 text-white h-11 px-6"
+                              >
+                                {savingCustomExercise ? 'Saving...' : 'Save Exercise'}
+                              </Button>
+                            </div>
+                          </div>
+                        </Card>
+                      ) : (
+                        <Button
+                          onClick={() => setShowCreateForm(true)}
+                          className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 border-2 flex items-center justify-center h-14 text-base font-medium"
+                        >
+                          <Plus className="w-6 h-6 mr-3" />
+                          Create Custom Exercise
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Search and Filters */}
+                    <div className="space-y-4">
+                      <div className="relative">
+                        <Search className="absolute left-4 top-4 h-5 w-5 text-muted-foreground" />
+                        <Input
+                          placeholder="Search exercises..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-12 h-12 text-base"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-base font-medium">Body Part</Label>
+                          <Select value={selectedBodyPart} onValueChange={setSelectedBodyPart}>
+                            <SelectTrigger className="w-full h-12 text-base">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Body Parts</SelectItem>
+                              {bodyParts.map((bodyPart) => (
+                                <SelectItem key={bodyPart.id} value={bodyPart.id}>
+                                  {bodyPart.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-base font-medium">Equipment</Label>
+                          <Select value={selectedEquipment} onValueChange={setSelectedEquipment}>
+                            <SelectTrigger className="w-full h-12 text-base">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Equipment</SelectItem>
+                              {equipment.map((eq) => (
+                                <SelectItem key={eq.id} value={eq.id}>
+                                  {eq.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-base font-medium">Muscle</Label>
+                          <Select value={selectedMuscle} onValueChange={setSelectedMuscle}>
+                            <SelectTrigger className="w-full h-12 text-base">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Muscles</SelectItem>
+                              {muscles.map((muscle) => (
+                                <SelectItem key={muscle.id} value={muscle.id}>
+                                  {muscle.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Exercise List */}
+                    <div className="space-y-4">
+                      {exercises.map((exercise) => (
+                        <Card
+                          key={exercise.id}
+                          className={`p-4 md:p-6 hover:bg-muted/50 transition-all duration-200 border-2 hover:border-blue-200 hover:shadow-md ${isCustomExercise(exercise) ? 'border-purple-200 bg-purple-50/30' : 'border-muted'}`}
+                        >
+                          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
+                            <div className="flex-1 cursor-pointer" onClick={() => handleSelectExercise(exercise)}>
+                              <div className="flex items-center gap-3 mb-2">
+                                <h3 className="font-semibold text-lg">{exercise.name}</h3>
+                                {exercise.gifUrl && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="p-1 h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleViewGif(exercise);
+                                    }}
+                                    title="View exercise demonstration"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                )}
+                                {isCustomExercise(exercise) && (
+                                  <span className="text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-medium">
+                                    Custom
+                                  </span>
+                                )}
+                              </div>
+                              {exercise.description && (
+                                <p className="text-muted-foreground mb-3 text-base leading-relaxed">
+                                  {exercise.description}
+                                </p>
+                              )}
+                              <div className="flex flex-wrap gap-2">
+                                {exercise.bodyParts?.map((bp) => (
+                                  <span
+                                    key={bp.bodyPart.id}
+                                    className="text-sm bg-blue-100 text-blue-700 px-3 py-1.5 rounded-md font-medium"
+                                  >
+                                    {bp.bodyPart.name}
+                                  </span>
+                                ))}
+                                {exercise.muscles?.filter(m => m.isPrimary).map((m) => (
+                                  <span
+                                    key={m.muscle.id}
+                                    className="text-sm bg-green-100 text-green-700 px-3 py-1.5 rounded-md font-medium"
+                                  >
+                                    {m.muscle.name}
+                                  </span>
+                                ))}
+                                {exercise.equipments?.map((eq) => (
+                                  <span
+                                    key={eq.equipment.id}
+                                    className="text-sm bg-orange-100 text-orange-700 px-3 py-1.5 rounded-md font-medium"
+                                  >
+                                    {eq.equipment.name}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 lg:flex-shrink-0">
+                              {isCustomExercise(exercise) && (
+                                <Button
+                                  size="lg"
+                                  variant="destructive"
+                                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 h-11 px-4"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteExercise(exercise.id);
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  Delete
+                                </Button>
+                              )}
+                              <Button
+                                size="lg"
+                                onClick={() => handleSelectExercise(exercise)}
+                                className="bg-blue-600 hover:bg-blue-700 h-11 px-6 text-base font-medium"
+                              >
+                                Select
+                              </Button>
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+
+                      {/* Loading more indicator */}
+                      {loadingMore && (
+                        <div className="text-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                          <p className="text-muted-foreground">Loading more exercises...</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {exercises.length === 0 && (
+                      <div className="text-center py-16 flex flex-col items-center gap-6">
+                        <div className="text-muted-foreground text-lg">
+                          No exercises found matching your search criteria.
+                        </div>
+                        <Button
+                          onClick={() => {
+                            setShowCreateForm(true);
+                            // Pre-fill with search term if available
+                            if (searchTerm) {
+                              setNewExerciseName(searchTerm);
+                            }
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-6 text-base"
+                        >
+                          <Plus className="w-5 h-5 mr-2" />
+                          Create &quot;{searchTerm}&quot; as Custom Exercise
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="border-t px-4 py-3 md:px-6 md:py-4 flex-shrink-0">
+              <DialogFooter className="flex flex-col sm:flex-row gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleClose}
+                  disabled={isLoading}
+                  className="w-full sm:w-auto h-10"
+                >
+                  Cancel
+                </Button>
+              </DialogFooter>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-    )
-  }
 
-  return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="w-[95vw] mx-auto p-0 overflow-hidden rounded-lg h-[95vh] max-h-[95vh]">
-        <div className="flex flex-col h-full min-h-[600px]">
-          <DialogHeader className="px-4 py-3 md:px-6 md:py-4 border-b flex-shrink-0">
+      {/* GIF Modal */}
+      <Dialog open={showGifModal} onOpenChange={setShowGifModal}>
+        <DialogContent className="w-[95vw] mx-auto max-w-4xl">
+          <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg md:text-xl">
-              <Target className="w-5 h-5 text-blue-600" />
-              Add Exercise
+              <Target className="w-5 h-5 text-green-600" />
+              {selectedGifExercise?.name} - Exercise Demo
             </DialogTitle>
-            <DialogDescription className="text-sm md:text-base">
-              Add a new exercise to your current workout session.
+            <DialogDescription>
+              Watch the proper form for this exercise
             </DialogDescription>
           </DialogHeader>
-
-          <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-            <div className="px-4 py-3 md:px-6 md:py-4 border-b bg-muted/30 flex-shrink-0">
-              <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
-                <h3 className="text-sm md:text-base font-medium text-muted-foreground">Select an exercise from the database or create a custom one</h3>
-                <div className="flex items-center gap-2">
-                  <Label className="text-sm font-medium whitespace-nowrap">Exercise Type:</Label>
-                  <Select value={targetType} onValueChange={(value: "reps" | "time") => setTargetType(value)} disabled={isLoading}>
-                    <SelectTrigger className="h-10 w-full sm:w-[160px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="reps">Reps-based</SelectItem>
-                      <SelectItem value="time">Time-based</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+          
+          <div className="flex justify-center py-4">
+            {selectedGifExercise?.gifUrl ? (
+              <div className="relative w-full max-w-2xl">
+                <img
+                  src={selectedGifExercise.gifUrl}
+                  alt={`${selectedGifExercise.name} exercise demonstration`}
+                  className="w-full h-auto rounded-lg shadow-lg"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent) {
+                      const errorDiv = document.createElement('div');
+                      errorDiv.className = 'text-center py-12 text-muted-foreground';
+                      errorDiv.innerHTML = `
+                        <div class="text-lg mb-2">GIF not available</div>
+                        <div class="text-sm">The demonstration video for this exercise is not currently available.</div>
+                      `;
+                      parent.appendChild(errorDiv);
+                    }
+                  }}
+                />
               </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto min-h-0" ref={setScrollContainerRef}>
-              <div className="p-4 md:p-6 space-y-6">
-                {/* Create Custom Exercise Button/Form */}
-                <div className="bg-background">
-                  {showCreateForm ? (
-                    <Card className="p-4 md:p-6 border-blue-500 border-2 shadow-lg">
-                      <h3 className="text-lg font-semibold mb-4 text-blue-700 flex items-center gap-2">
-                        <Plus className="w-5 h-5" />
-                        Create Custom Exercise
-                      </h3>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="new-exercise-name" className="text-base font-medium">Exercise Name</Label>
-                          <Input
-                            id="new-exercise-name"
-                            value={newExerciseName}
-                            onChange={(e) => setNewExerciseName(e.target.value)}
-                            placeholder="Enter exercise name"
-                            autoFocus
-                            className="h-12 text-base"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="new-exercise-description" className="text-base font-medium">Description (optional)</Label>
-                          <Input
-                            id="new-exercise-description"
-                            value={newExerciseDescription}
-                            onChange={(e) => setNewExerciseDescription(e.target.value)}
-                            placeholder="Enter a brief description"
-                            className="h-12 text-base"
-                          />
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-3 justify-end pt-2">
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setShowCreateForm(false)
-                              setNewExerciseName("")
-                              setNewExerciseDescription("")
-                            }}
-                            className="h-11 px-6"
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            onClick={handleCreateCustomExercise}
-                            disabled={!newExerciseName.trim() || savingCustomExercise}
-                            className="bg-blue-600 hover:bg-blue-700 text-white h-11 px-6"
-                          >
-                            {savingCustomExercise ? 'Saving...' : 'Save Exercise'}
-                          </Button>
-                        </div>
-                      </div>
-                    </Card>
-                  ) : (
-                    <Button
-                      onClick={() => setShowCreateForm(true)}
-                      className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 border-2 flex items-center justify-center h-14 text-base font-medium"
-                    >
-                      <Plus className="w-6 h-6 mr-3" />
-                      Create Custom Exercise
-                    </Button>
-                  )}
-                </div>
-
-                {/* Search and Filters */}
-                <div className="space-y-4">
-                  <div className="relative">
-                    <Search className="absolute left-4 top-4 h-5 w-5 text-muted-foreground" />
-                    <Input
-                      placeholder="Search exercises..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-12 h-12 text-base"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-base font-medium">Body Part</Label>
-                      <Select value={selectedBodyPart} onValueChange={setSelectedBodyPart}>
-                        <SelectTrigger className="w-full h-12 text-base">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Body Parts</SelectItem>
-                          {bodyParts.map((bodyPart) => (
-                            <SelectItem key={bodyPart.id} value={bodyPart.id}>
-                              {bodyPart.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-base font-medium">Equipment</Label>
-                      <Select value={selectedEquipment} onValueChange={setSelectedEquipment}>
-                        <SelectTrigger className="w-full h-12 text-base">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Equipment</SelectItem>
-                          {equipment.map((eq) => (
-                            <SelectItem key={eq.id} value={eq.id}>
-                              {eq.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-base font-medium">Muscle</Label>
-                      <Select value={selectedMuscle} onValueChange={setSelectedMuscle}>
-                        <SelectTrigger className="w-full h-12 text-base">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Muscles</SelectItem>
-                          {muscles.map((muscle) => (
-                            <SelectItem key={muscle.id} value={muscle.id}>
-                              {muscle.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Exercise List */}
-                <div className="space-y-4">
-                  {exercises.map((exercise) => (
-                    <Card
-                      key={exercise.id}
-                      className={`p-4 md:p-6 hover:bg-muted/50 transition-all duration-200 border-2 hover:border-blue-200 hover:shadow-md ${isCustomExercise(exercise) ? 'border-purple-200 bg-purple-50/30' : 'border-muted'}`}
-                    >
-                      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
-                        <div className="flex-1 cursor-pointer" onClick={() => handleSelectExercise(exercise)}>
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="font-semibold text-lg">{exercise.name}</h3>
-                            {isCustomExercise(exercise) && (
-                              <span className="text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-medium">
-                                Custom
-                              </span>
-                            )}
-                          </div>
-                          {exercise.description && (
-                            <p className="text-muted-foreground mb-3 text-base leading-relaxed">
-                              {exercise.description}
-                            </p>
-                          )}
-                          <div className="flex flex-wrap gap-2">
-                            {exercise.bodyParts?.map((bp) => (
-                              <span
-                                key={bp.bodyPart.id}
-                                className="text-sm bg-blue-100 text-blue-700 px-3 py-1.5 rounded-md font-medium"
-                              >
-                                {bp.bodyPart.name}
-                              </span>
-                            ))}
-                            {exercise.muscles?.filter(m => m.isPrimary).map((m) => (
-                              <span
-                                key={m.muscle.id}
-                                className="text-sm bg-green-100 text-green-700 px-3 py-1.5 rounded-md font-medium"
-                              >
-                                {m.muscle.name}
-                              </span>
-                            ))}
-                            {exercise.equipments?.map((eq) => (
-                              <span
-                                key={eq.equipment.id}
-                                className="text-sm bg-orange-100 text-orange-700 px-3 py-1.5 rounded-md font-medium"
-                              >
-                                {eq.equipment.name}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 lg:flex-shrink-0">
-                          {isCustomExercise(exercise) && (
-                            <Button
-                              size="lg"
-                              variant="destructive"
-                              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 h-11 px-4"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteExercise(exercise.id);
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Delete
-                            </Button>
-                          )}
-                          <Button
-                            size="lg"
-                            onClick={() => handleSelectExercise(exercise)}
-                            className="bg-blue-600 hover:bg-blue-700 h-11 px-6 text-base font-medium"
-                          >
-                            Select
-                          </Button>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-
-                  {/* Loading more indicator */}
-                  {loadingMore && (
-                    <div className="text-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                      <p className="text-muted-foreground">Loading more exercises...</p>
-                    </div>
-                  )}
-                </div>
-
-                {exercises.length === 0 && (
-                  <div className="text-center py-16 flex flex-col items-center gap-6">
-                    <div className="text-muted-foreground text-lg">
-                      No exercises found matching your search criteria.
-                    </div>
-                    <Button
-                      onClick={() => {
-                        setShowCreateForm(true);
-                        // Pre-fill with search term if available
-                        if (searchTerm) {
-                          setNewExerciseName(searchTerm);
-                        }
-                      }}
-                      className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-6 text-base"
-                    >
-                      <Plus className="w-5 h-5 mr-2" />
-                      Create &quot;{searchTerm}&quot; as Custom Exercise
-                    </Button>
-                  </div>
-                )}
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                <Target className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                <div className="text-lg mb-2">GIF not available</div>
+                <div className="text-sm">The demonstration video for this exercise is not currently available.</div>
               </div>
-            </div>
+            )}
           </div>
 
-          <div className="border-t px-4 py-3 md:px-6 md:py-4 flex-shrink-0">
-            <DialogFooter className="flex flex-col sm:flex-row gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleClose}
-                disabled={isLoading}
-                className="w-full sm:w-auto h-10"
-              >
-                Cancel
-              </Button>
-            </DialogFooter>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter>
+            <Button onClick={() => setShowGifModal(false)} className="w-full sm:w-auto">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

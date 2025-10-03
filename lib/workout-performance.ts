@@ -68,9 +68,10 @@ function calculateExerciseScore(exercise: WorkoutSessionExercise): number {
   if (completedSets.length === 0) return 0
   
   const targetRange = parseTargetReps(targetReps, targetType)
+  const effectiveTargetSets = Math.max(targetSets, 1)
   
   // Base score for completing sets
-  const setCompletionRatio = completedSets.length / targetSets
+  const setCompletionRatio = completedSets.length / effectiveTargetSets
   const baseScore = Math.min(setCompletionRatio * 70, 70) // Max 70 points for completing target sets
   
   // Bonus points for exceeding expectations
@@ -140,30 +141,32 @@ export function calculateWorkoutPerformance(session: WorkoutSession): WorkoutPer
     }
   })
   
-  // Calculate completion rate (percentage of exercises that have at least one completed set)
-  const exercisesWithProgress = exercises.filter(ex => 
-    ex.sets.some(set => set.completed)
-  ).length
-  const completionRate = (exercisesWithProgress / exercises.length) * 100
-  
+  // Calculate completion rate based on total sets completed versus targets
+  const totalTargetSets = exercises.reduce((sum, ex) => sum + Math.max(ex.targetSets, 0), 0)
+  const totalCompletedSets = exercises.reduce((sum, ex) => {
+    const completed = ex.sets.filter(set => set.completed).length
+    return sum + completed
+  }, 0)
+
+  const rawCompletionRate = totalTargetSets > 0 ? (totalCompletedSets / totalTargetSets) * 100 : 0
+  const completionRate = Math.min(rawCompletionRate, 100)
+
   // Calculate overall perfection score (average of exercise scores)
-  const perfectionScore = exerciseScores.reduce((sum, ex) => sum + ex.score, 0) / exerciseScores.length
-  
-  // Determine performance status
+  const perfectionScore = exerciseScores.length > 0
+    ? exerciseScores.reduce((sum, ex) => sum + ex.score, 0) / exerciseScores.length
+    : 0
+
+  // Determine performance status based on completion percentage
   let performanceStatus: WorkoutPerformanceStatus
-  
-  // Base status determination on actual performance, not just workout status
-  if (perfectionScore >= 85 && completionRate >= 90) {
-    // Perfect: High performance score and near-complete workout
+
+  if (completionRate >= 95 && perfectionScore >= 85) {
     performanceStatus = "perfect"
-  } else if (completionRate >= 70) {
-    // Completed: Finished most of the workout
+  } else if (completionRate >= 50) {
     performanceStatus = "completed"
   } else {
-    // Unfinished: Didn't complete enough of the workout
     performanceStatus = "unfinished"
   }
-  
+
   return {
     performanceStatus,
     completionRate: Math.round(completionRate * 10) / 10, // Round to 1 decimal

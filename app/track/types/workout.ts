@@ -1,6 +1,10 @@
 export interface ExerciseSet {
-  reps: number
+  id: string
+  setNumber: number
+  reps: number | null
+  duration?: number | null
   weight?: number
+  notes?: string
   completed: boolean
 }
 
