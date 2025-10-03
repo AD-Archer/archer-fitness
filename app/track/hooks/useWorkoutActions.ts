@@ -207,7 +207,12 @@ export function useWorkoutActions(
     }
   }
 
-  const addExercise = async (name: string, targetType: "reps" | "time" = "reps", exerciseId?: string) => {
+  const addExercise = async (
+    name: string,
+    targetType: "reps" | "time" = "reps",
+    exerciseId?: string,
+    targetUnit: "seconds" | "minutes" = "seconds"
+  ) => {
     if (!session) return
     setIsAddingExercise(true)
 
@@ -241,13 +246,18 @@ export function useWorkoutActions(
       }
 
       // Attach to session
+      // Build a sensible default for targetReps based on targetType and targetUnit
+      const defaultTargetReps = targetType === "time"
+        ? (targetUnit === "minutes" ? "0.5m" : "30s")
+        : "8-12"
+
       const attachRes = await fetch(`/api/workout-tracker/workout-sessions/${session.id}/exercises`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           exerciseId: exerciseToUse.id,
           targetSets: 3,
-          targetReps: targetType === "time" ? "30s" : "8-12",
+          targetReps: defaultTargetReps,
           targetType
         }),
       })

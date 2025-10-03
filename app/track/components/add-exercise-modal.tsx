@@ -39,12 +39,18 @@ interface Muscle {
 interface AddExerciseModalProps {
   isOpen: boolean
   onClose: () => void
-  onAddExercise: (exercise: { name: string, id?: string, instructions?: string }, targetType?: "reps" | "time") => void
+  // `targetUnit` added so time-based exercises have a unit of measurement (seconds | minutes)
+  onAddExercise: (
+    exercise: { name: string, id?: string, instructions?: string },
+    targetType?: "reps" | "time",
+    targetUnit?: "seconds" | "minutes"
+  ) => void
   isLoading?: boolean
 }
 
 export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = false }: AddExerciseModalProps) {
   const [targetType, setTargetType] = useState<"reps" | "time">("reps")
+  const [targetUnit, setTargetUnit] = useState<"seconds" | "minutes">("seconds")
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [bodyParts, setBodyParts] = useState<BodyPart[]>([])
   const [equipment, setEquipment] = useState<Equipment[]>([])
@@ -225,11 +231,16 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
   }, [searchTerm, selectedBodyPart, selectedEquipment, selectedMuscle, isOpen])
 
   const handleSelectExercise = (exercise: Exercise) => {
-    onAddExercise({
-      id: exercise.id,
-      name: exercise.name,
-      instructions: exercise.instructions
-    }, targetType)
+    // Pass selected unit when targetType is time-based
+    onAddExercise(
+      {
+        id: exercise.id,
+        name: exercise.name,
+        instructions: exercise.instructions,
+      },
+      targetType,
+      targetType === "time" ? targetUnit : undefined
+    )
     resetForm()
   }
 
@@ -300,6 +311,7 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
 
   const resetForm = () => {
     setTargetType("reps")
+    setTargetUnit("seconds")
     setSearchTerm("")
     setSelectedBodyPart("all")
     setSelectedEquipment("all")
@@ -354,6 +366,22 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
                           <SelectItem value="time">Time-based</SelectItem>
                         </SelectContent>
                       </Select>
+
+                      {/* Time unit selector - visible only when time-based is selected */}
+                      {targetType === "time" && (
+                        <div className="flex items-center gap-2">
+                          <Label className="text-sm font-medium whitespace-nowrap">Unit:</Label>
+                          <Select value={targetUnit} onValueChange={(value: "seconds" | "minutes") => setTargetUnit(value)} disabled={isLoading}>
+                            <SelectTrigger className="h-10 w-full sm:w-[120px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="seconds">Seconds</SelectItem>
+                              <SelectItem value="minutes">Minutes</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

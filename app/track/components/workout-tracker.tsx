@@ -384,8 +384,12 @@ export function WorkoutTracker() {
   }
 
   // Handle adding exercise from modal
-  const handleAddExercise = async (exercise: { name: string; id?: string; instructions?: string }, targetType?: "reps" | "time") => {
-    await addExercise(exercise.name, targetType, exercise.id)
+  const handleAddExercise = async (
+    exercise: { name: string; id?: string; instructions?: string },
+    targetType?: "reps" | "time",
+    targetUnit?: "seconds" | "minutes"
+  ) => {
+    await addExercise(exercise.name, targetType, exercise.id, targetUnit)
     // Switch to the newly added exercise (it will be at the end)
     setTimeout(() => {
       const newLength = sessionRef.current?.exercises.length || 0
