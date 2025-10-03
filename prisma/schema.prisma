@@ -51,6 +51,10 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
+  // Privacy policy acceptance
+  privacyAccepted     Boolean   @default(false) @map("privacy_accepted")
+  privacyAcceptedAt   DateTime? @map("privacy_accepted_at")
+
   // Fitness-related fields
   height        Float?
   weight        Float?  // Monthly average weight used for meal tracking and calculations

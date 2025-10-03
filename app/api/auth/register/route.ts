@@ -35,6 +35,8 @@ export async function POST(request: NextRequest) {
         name,
         email,
         password: hashedPassword,
+        privacyAccepted: true,
+        privacyAcceptedAt: new Date(),
       },
       select: {
         id: true,

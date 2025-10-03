@@ -8,6 +8,7 @@ import Script from 'next/script'
 // @ts-ignore - allow importing global CSS without explicit type declarations
 import './globals.css'
 import { NotificationInitializer } from '@/components/notification-initializer'
+import { PrivacyCheck } from '@/components/privacy-check'
 
 const baseUrl = process.env.NEXTAUTH_URL || 'https://fitness.archer.software'
 
@@ -183,6 +184,7 @@ export default function RootLayout({
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <AuthProvider>
           <NotificationInitializer />
+          <PrivacyCheck />
           {children}
           <Toaster />
         </AuthProvider>
