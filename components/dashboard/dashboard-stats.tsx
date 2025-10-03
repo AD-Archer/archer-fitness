@@ -1,7 +1,7 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { TrendingUp, Calendar, Flame, Target } from "lucide-react"
+import { TrendingUp, Flame, Target, Calendar } from "lucide-react"
 import { useEffect, useState, useCallback } from "react"
 import { logger } from "@/lib/logger"
 
@@ -29,7 +29,7 @@ interface WorkoutSession {
       completed: boolean
     }>
   }>
-  // Additional fields that might be returned by the API
+  // Performance data from API
   performanceStatus?: string
   completionRate?: number
   perfectionScore?: number
@@ -77,31 +77,16 @@ export function DashboardStats() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Helper function to calculate completion percentage
-  const calculateCompletionRate = (exercises: Array<{ sets: Array<{ completed: boolean }> }>) => {
-    if (exercises.length === 0) return 0
-
-    const totalSets = exercises.reduce((total, exercise) => total + exercise.sets.length, 0)
-    if (totalSets === 0) return 0
-
-    const completedSets = exercises.reduce((total, exercise) =>
-      total + exercise.sets.filter(set => set.completed).length, 0)
-
-    return Math.round((completedSets / totalSets) * 100)
-  }
-
-  // Helper function to get status based on completion
-  const getStatusFromCompletion = useCallback((status: string, exercises: Array<{ sets: Array<{ completed: boolean }> }>): "completed" | "in_progress" | "skipped" => {
-    const completionRate = calculateCompletionRate(exercises)
-
-    if (completionRate >= 100) {
-      return "completed"
-    } else if (completionRate > 0) {
-      return "in_progress"
-    } else {
-      return "in_progress" // No sets completed yet
-    }
+  // Helper function to determine if a workout is completed based on API performance status
+  const isWorkoutCompleted = useCallback((session: WorkoutSession): boolean => {
+    // Use the same logic as recent-workouts: completed/perfect status OR any progress
+    const isCompleted = session.performanceStatus === 'completed' || session.performanceStatus === 'perfect'
+    const hasProgress = session.completionRate !== undefined && session.completionRate > 0
+    
+    return isCompleted || hasProgress
   }, [])
+
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -129,20 +114,33 @@ export function DashboardStats() {
           logger.info('API Response:', workoutData)
           logger.info('Number of workouts returned:', workoutData.length)
           
+          // Filter out workouts that are not completed or don't have meaningful progress
+          const filteredWorkouts = workoutData.filter((session: any) => {
+            // Only include workouts that are marked as completed by the API or have some progress
+            const isCompleted = session.performanceStatus === 'completed' || session.performanceStatus === 'perfect'
+            const hasProgress = session.completionRate && session.completionRate > 0
+            
+            logger.info(`Filtering workout ${session.name}: status=${session.status}, performanceStatus=${session.performanceStatus}, completionRate=${session.completionRate}%, isCompleted=${isCompleted}, hasProgress=${hasProgress}`)
+            
+            return isCompleted || hasProgress
+          })
+          
+          logger.info(`Filtered ${filteredWorkouts.length} out of ${workoutData.length} total workouts`)
+          
           // Transform workout data to calculate proper completion status
-          const transformedWorkouts = workoutData.map((session: WorkoutSession) => ({
+          const transformedWorkouts = filteredWorkouts.map((session: WorkoutSession) => ({
             ...session,
-            // Calculate actual status based on completion
-            calculatedStatus: getStatusFromCompletion(session.status, session.exercises || [])
+            // Add calculated completion status for backward compatibility
+            isCompleted: isWorkoutCompleted(session)
           }))
           
-          logger.info('Transformed workouts:', transformedWorkouts.map((w: WorkoutSession & { calculatedStatus: string }) => ({
+          logger.info('Transformed workouts:', transformedWorkouts.map((w: WorkoutSession & { isCompleted: boolean }) => ({
             id: w.id,
             name: w.name,
             status: w.status,
-            calculatedStatus: w.calculatedStatus,
-            exercises: w.exercises?.length || 0,
-            completionRate: calculateCompletionRate(w.exercises || [])
+            performanceStatus: w.performanceStatus,
+            completionRate: w.completionRate,
+            isCompleted: w.isCompleted
           })))
           
           setWorkoutSessions(transformedWorkouts)
@@ -161,7 +159,7 @@ export function DashboardStats() {
     }
 
     fetchData()
-  }, [getStatusFromCompletion])
+  }, [isWorkoutCompleted])
 
   // Calculate workout statistics
   const calculateWorkoutStats = () => {
@@ -180,12 +178,11 @@ export function DashboardStats() {
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
 
-    // Filter completed workouts using calculated status
+    // Filter completed workouts using the API's performance status
     const completedWorkouts = workoutSessions.filter(session => {
-      const calculatedStatus = getStatusFromCompletion(session.status, session.exercises || [])
-      const completionRate = calculateCompletionRate(session.exercises || [])
-      logger.info(`Workout ${session.name}: status=${session.status}, calculated=${calculatedStatus}, completion=${completionRate}%`)
-      return calculatedStatus === 'completed'
+      const isCompleted = (session as any).isCompleted
+      logger.info(`Workout ${session.name}: status=${session.status}, performanceStatus=${session.performanceStatus}, completionRate=${session.completionRate}%, isCompleted=${isCompleted}`)
+      return isCompleted
     })
 
     logger.info(`Total workouts: ${workoutSessions.length}, Completed workouts: ${completedWorkouts.length}`)
@@ -459,16 +456,6 @@ export function DashboardStats() {
                 <p className="text-lg mb-2">No workout data found</p>
                 <p className="text-sm">Complete your first workout to see your stats!</p>
                 <p className="text-xs mt-2">API Status: {error ? `Error: ${error}` : 'Connected'}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : stats.workoutsThisWeek === 0 && stats.currentStreak === 0 && stats.avgDuration === 0 ? (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center text-muted-foreground">
-                <p className="text-lg mb-2">You have {workoutSessions.length} workout{workoutSessions.length !== 1 ? 's' : ''} but none are completed</p>
-                <p className="text-sm">Complete your workouts to see your stats!</p>
-                <p className="text-xs mt-2">Make sure to mark your sets as completed during workouts</p>
               </div>
             </CardContent>
           </Card>

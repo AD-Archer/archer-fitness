@@ -67,8 +67,17 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
         const response = await fetch('/api/workout-tracker/workout-sessions?limit=10')
         if (response.ok) {
           const data = await response.json()
+          
+          // Filter out workouts that are not completed
+          const filteredData = data.filter((session: ApiWorkoutSession) => {
+            // Only include workouts that are marked as completed by the API
+            const isCompleted = session.performanceStatus === 'completed' || session.performanceStatus === 'perfect'
+            
+            return isCompleted
+          })
+          
           // Transform API data to match component expectations
-          const transformedData = data.map((session: ApiWorkoutSession) => ({
+          const transformedData = filteredData.map((session: ApiWorkoutSession) => ({
             id: session.id,
             name: session.name,
             date: session.startTime,

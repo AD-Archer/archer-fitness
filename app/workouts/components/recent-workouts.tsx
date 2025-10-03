@@ -24,6 +24,9 @@ interface WorkoutSession {
     }>
   }>
   status: "completed" | "in_progress" | "skipped"
+  performanceStatus?: string
+  completionRate?: number
+  perfectionScore?: number
   notes?: string
   templateId?: string
 }
@@ -58,6 +61,9 @@ interface ApiWorkoutSession {
     }>
   }>
   status: string
+  performanceStatus?: string
+  completionRate?: number
+  perfectionScore?: number
   notes?: string
   workoutTemplateId?: string
   workoutTemplate?: {
@@ -130,7 +136,16 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
         const sessionsResponse = await fetch('/api/workout-tracker/workout-sessions?limit=3')
         let sessionsData: ApiWorkoutSession[] = []
         if (sessionsResponse.ok) {
-          sessionsData = await sessionsResponse.json()
+          const allSessions = await sessionsResponse.json()
+          
+          // Filter out workouts that are not completed or don't have meaningful progress
+          sessionsData = allSessions.filter((session: ApiWorkoutSession) => {
+            // Only include workouts that are marked as completed by the API or have some progress
+            const isCompleted = session.performanceStatus === 'completed' || session.performanceStatus === 'perfect'
+            const hasProgress = session.completionRate && session.completionRate > 0
+            
+            return isCompleted || hasProgress
+          })
         }
 
         // Fetch workout templates
@@ -160,6 +175,9 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
             status,
             notes: session.notes,
             templateId: session.workoutTemplateId,
+            performanceStatus: session.performanceStatus,
+            completionRate: session.completionRate,
+            perfectionScore: session.perfectionScore,
           }
         })
 
@@ -322,7 +340,7 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
             // Assuming recentWorkouts is sorted desc by date (most recent first)
             const hasNewerStarted = recentWorkouts.some((w, i) => i < idx && new Date(w.date).getTime() > new Date(workout.date).getTime())
             const completionRate = calculateCompletionRate(workout.exercises)
-            const isCompleted = completionRate >= 100
+            const isCompleted = workout.performanceStatus === 'completed' || workout.performanceStatus === 'perfect' || completionRate > 0
             return (
               <div key={workout.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2 sm:p-3 rounded-lg border bg-card/50 gap-2 sm:gap-3">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
