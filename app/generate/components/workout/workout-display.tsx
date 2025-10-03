@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Target, Clock, Dumbbell, Play, RefreshCw, Zap, PlusCircle } from "lucide-react"
+import { Target, Clock, Dumbbell, Play, RefreshCw, Zap, PlusCircle, Save } from "lucide-react"
 import { ExerciseCard } from "./exercise-card"
 import { WarmupCooldownSection } from "./warmup-cooldown-section"
 import {
@@ -17,6 +17,16 @@ import {
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 interface WorkoutDisplayProps {
   workout: WorkoutPlan
@@ -38,14 +48,26 @@ export function WorkoutDisplay({
   const router = useRouter()
   const [isSaving, setIsSaving] = useState(false)
   const [isStarting, setIsStarting] = useState(false)
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [customName, setCustomName] = useState(workout.name)
 
-  const handleSaveWorkout = async () => {
+  const handleSaveWorkout = () => {
+    setCustomName(workout.name)
+    setShowSaveDialog(true)
+  }
+
+  const handleConfirmSave = async () => {
     try {
       setIsSaving(true)
+      setShowSaveDialog(false)
+      
       const templateData = transformWorkoutPlanToTemplate(workout)
+      // Override the name with the custom name
+      templateData.name = customName.trim() || workout.name
+      
       await saveWorkoutAsTemplate(templateData)
       
-      toast.success("Workout saved as template with AI-generated flag.")
+      toast.success("Workout saved as template!")
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save workout")
     } finally {
@@ -124,12 +146,6 @@ export function WorkoutDisplay({
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <h3 className="font-semibold text-blue-600">Main Workout</h3>
-            {onAddExercise && (
-              <Button size="sm" variant="outline" onClick={onAddExercise} className="flex items-center gap-2">
-                <PlusCircle className="h-4 w-4" />
-                Add exercise
-              </Button>
-            )}
           </div>
           <div className="space-y-4">
             {workout.exercises.map((exercise, index) => {
@@ -157,15 +173,14 @@ export function WorkoutDisplay({
         />
 
         <div className="flex flex-wrap gap-3 pt-4">
-          {onAddExercise && (
-            <Button variant="outline" className="bg-transparent" onClick={onAddExercise}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add exercise
-            </Button>
-          )}
+          <Button variant="outline" onClick={onAddExercise}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add exercise
+          </Button>
           <div className="ml-auto flex gap-3">
-            <Button variant="outline" className="bg-transparent" onClick={handleSaveWorkout} disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save Workout"}
+            <Button variant="outline" onClick={handleSaveWorkout} disabled={isSaving}>
+              <Save className="w-4 h-4 mr-2" />
+              {isSaving ? "Saving..." : "Save as Template"}
             </Button>
             <Button onClick={onRegeneratePlan} variant="outline">
               <RefreshCw className="w-4 h-4" />
@@ -173,6 +188,41 @@ export function WorkoutDisplay({
           </div>
         </div>
       </CardContent>
+
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save Workout Template</DialogTitle>
+            <DialogDescription>
+              Give your workout a custom name to save it as a template for future use.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="workout-name">Workout Name</Label>
+              <Input
+                id="workout-name"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                placeholder="Enter workout name..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleConfirmSave()
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmSave} disabled={isSaving || !customName.trim()}>
+              {isSaving ? "Saving..." : "Save Template"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }

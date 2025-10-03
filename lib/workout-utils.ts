@@ -10,6 +10,7 @@ export interface Exercise {
   equipment?: string[]
   source?: string
   isTimeBased?: boolean
+  gifUrl?: string
 }
 
 export interface WorkoutPlan {

@@ -152,6 +152,7 @@ const convertToWorkoutExercise = (dbExercise: DatabaseExercise, config: WorkoutC
     equipment: equipment.length > 0 ? equipment : ["Bodyweight"],
     source: dbExercise.source ?? "database",
     isTimeBased: determineIsTimeBased(config),
+    gifUrl: dbExercise.gifUrl,
   }
 }
 
@@ -643,6 +644,8 @@ const selectVariedExercises = (exercises: DatabaseExercise[], count: number): Da
   return selected.slice(0, count)
 }
 
+const formatListForName = (values: string[]): string[] => values.map(formatLabel)
+
 const createWorkoutPlan = (
   workoutType: string,
   duration: number,
@@ -676,8 +679,6 @@ const createWorkoutPlan = (
     ],
   }
 }
-
-const formatListForName = (values: string[]): string[] => values.map(formatLabel)
 
 const buildFallbackWorkout = (
   workoutType: string,
@@ -751,7 +752,7 @@ const loadExerciseDatabase = async (
       bodyPart: exercise.muscles?.[0]?.muscle?.name?.toLowerCase() || '',
       target: exercise.muscles?.find((m: ApiMuscle) => m.isPrimary)?.muscle?.name?.toLowerCase() || '',
       equipment: exercise.equipments?.[0]?.equipment?.name?.toLowerCase() || '',
-      gifUrl: '',
+      gifUrl: (exercise as any).gifUrl || '',
       source: 'database'
     }))
 

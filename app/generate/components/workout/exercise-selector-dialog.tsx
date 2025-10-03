@@ -5,7 +5,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -157,33 +156,37 @@ export function ExerciseSelectorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Wand2 className="h-5 w-5 text-blue-600" />
-            Add another exercise
-          </DialogTitle>
-          <DialogDescription>
-            Search the exercise library filtered by your preferences or create a custom move tailored to this workout.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="w-[95vw] mx-auto p-0 overflow-hidden rounded-lg h-[95vh] max-h-[95vh]">
+        <div className="flex flex-col h-full min-h-[600px]">
+          <DialogHeader className="px-4 py-3 md:px-6 md:py-4 border-b flex-shrink-0">
+            <DialogTitle className="flex items-center gap-2 text-lg md:text-xl">
+              <Wand2 className="h-5 w-5 text-blue-600" />
+              Add another exercise
+            </DialogTitle>
+            <DialogDescription className="text-sm md:text-base">
+              Search the exercise library filtered by your preferences or create a custom move tailored to this workout.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="exercise-search" className="flex items-center gap-2 text-sm font-medium">
-              <Search className="h-4 w-4" />
-              Search exercises
-            </Label>
-            <Input
-              id="exercise-search"
-              placeholder="Search by name, muscle, or equipment"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-            />
-          </div>
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+            <div className="px-4 py-3 md:px-6 md:py-4 border-b bg-muted/30 flex-shrink-0">
+              <div className="space-y-2">
+                <Label htmlFor="exercise-search" className="flex items-center gap-2 text-sm font-medium">
+                  <Search className="h-4 w-4" />
+                  Search exercises
+                </Label>
+                <Input
+                  id="exercise-search"
+                  placeholder="Search by name, muscle, or equipment"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  className="h-12 text-base"
+                />
+              </div>
+            </div>
 
-          <ScrollArea className="max-h-80 pr-2">
-            <div className="space-y-3">
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <div className="p-4 md:p-6 space-y-6">
               {filteredExercises.length === 0 ? (
                 <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
                   No exercises match your search. Try a different keyword or create a custom exercise below.
@@ -232,115 +235,119 @@ export function ExerciseSelectorDialog({
                   )
                 })
               )}
-            </div>
-          </ScrollArea>
 
-          <Separator />
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold">Create a custom exercise</h3>
-                <p className="text-sm text-muted-foreground">
-                  Perfect when you have a favourite movement or a coach&apos;s recommendation that&apos;s missing from the library.
-                </p>
               </div>
-              <Button variant="outline" onClick={() => setShowCustomForm(!showCustomForm)}>
-                {showCustomForm ? "Hide" : "Show"} form
-              </Button>
             </div>
+          </div>
 
-            {showCustomForm && (
-              <form className="space-y-4 rounded-lg border bg-muted/40 p-4" onSubmit={handleCreateCustomExercise}>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="custom-name">Exercise name</Label>
-                    <Input
-                      id="custom-name"
-                      placeholder="e.g. Bulgarian Split Squat"
-                      value={customName}
-                      onChange={(event) => setCustomName(event.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="custom-sets">Sets</Label>
-                    <Input
-                      id="custom-sets"
-                      type="number"
-                      min={1}
-                      value={customSets}
-                      onChange={(event) => setCustomSets(event.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="custom-reps">Reps / Work interval</Label>
-                    <Input
-                      id="custom-reps"
-                      placeholder={defaultReps}
-                      value={customReps}
-                      onChange={(event) => setCustomReps(event.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="custom-rest">Rest</Label>
-                    <Input
-                      id="custom-rest"
-                      placeholder={defaultRest}
-                      value={customRest}
-                      onChange={(event) => setCustomRest(event.target.value)}
-                    />
-                  </div>
+          <div className="border-t px-4 py-3 md:px-6 md:py-4 flex-shrink-0">
+            <div className="space-y-4">
+              <Separator />
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold">Create a custom exercise</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Perfect when you have a favourite movement or a coach&apos;s recommendation that&apos;s missing from the library.
+                  </p>
                 </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="custom-target-muscles">Target muscles (comma separated)</Label>
-                    <Input
-                      id="custom-target-muscles"
-                      placeholder="e.g. quads, glutes"
-                      value={customTargetMuscles}
-                      onChange={(event) => setCustomTargetMuscles(event.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="custom-equipment">Equipment (comma separated)</Label>
-                    <Input
-                      id="custom-equipment"
-                      placeholder={defaultEquipment.join(", ") || "bodyweight"}
-                      value={customEquipment}
-                      onChange={(event) => setCustomEquipment(event.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="custom-instructions">Instructions / coaching cues</Label>
-                  <Textarea
-                    id="custom-instructions"
-                    placeholder="Add setup, execution, and coaching notes so Future You remembers the details."
-                    value={customInstructions}
-                    onChange={(event) => setCustomInstructions(event.target.value)}
-                    rows={4}
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="custom-time-based"
-                    checked={customIsTimeBased}
-                    onCheckedChange={(checked) => setCustomIsTimeBased(Boolean(checked))}
-                  />
-                  <Label htmlFor="custom-time-based" className="text-sm text-muted-foreground">
-                    Time-based exercise
-                  </Label>
-                </div>
-
-                <Button type="submit" className="w-full md:w-auto">
-                  Add custom exercise
+                <Button variant="outline" onClick={() => setShowCustomForm(!showCustomForm)}>
+                  {showCustomForm ? "Hide" : "Show"} form
                 </Button>
-              </form>
-            )}
+              </div>
+
+              {showCustomForm && (
+                <form className="space-y-4 rounded-lg border bg-muted/40 p-4" onSubmit={handleCreateCustomExercise}>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="custom-name">Exercise name</Label>
+                      <Input
+                        id="custom-name"
+                        placeholder="e.g. Bulgarian Split Squat"
+                        value={customName}
+                        onChange={(event) => setCustomName(event.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="custom-sets">Sets</Label>
+                      <Input
+                        id="custom-sets"
+                        type="number"
+                        min={1}
+                        value={customSets}
+                        onChange={(event) => setCustomSets(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="custom-reps">Reps / Work interval</Label>
+                      <Input
+                        id="custom-reps"
+                        placeholder={defaultReps}
+                        value={customReps}
+                        onChange={(event) => setCustomReps(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="custom-rest">Rest</Label>
+                      <Input
+                        id="custom-rest"
+                        placeholder={defaultRest}
+                        value={customRest}
+                        onChange={(event) => setCustomRest(event.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="custom-target-muscles">Target muscles (comma separated)</Label>
+                      <Input
+                        id="custom-target-muscles"
+                        placeholder="e.g. quads, glutes"
+                        value={customTargetMuscles}
+                        onChange={(event) => setCustomTargetMuscles(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="custom-equipment">Equipment (comma separated)</Label>
+                      <Input
+                        id="custom-equipment"
+                        placeholder={defaultEquipment.join(", ") || "bodyweight"}
+                        value={customEquipment}
+                        onChange={(event) => setCustomEquipment(event.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="custom-instructions">Instructions / coaching cues</Label>
+                    <Textarea
+                      id="custom-instructions"
+                      placeholder="Add setup, execution, and coaching notes so Future You remembers the details."
+                      value={customInstructions}
+                      onChange={(event) => setCustomInstructions(event.target.value)}
+                      rows={4}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="custom-time-based"
+                      checked={customIsTimeBased}
+                      onCheckedChange={(checked) => setCustomIsTimeBased(Boolean(checked))}
+                    />
+                    <Label htmlFor="custom-time-based" className="text-sm text-muted-foreground">
+                      Time-based exercise
+                    </Label>
+                  </div>
+
+                  <Button type="submit" className="w-full md:w-auto">
+                    Add custom exercise
+                  </Button>
+                </form>
+              )}
+            </div>
           </div>
         </div>
       </DialogContent>
