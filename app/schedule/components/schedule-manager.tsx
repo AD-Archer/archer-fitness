@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -12,6 +12,7 @@ import { WeeklySchedule, ScheduleItem } from "../types/schedule"
 import { useScheduleApi } from "../hooks/use-schedule-api"
 import { useToast } from "@/hooks/use-toast"
 import { logger } from "@/lib/logger"
+import { useUserPreferences } from "@/hooks/use-user-preferences"
 
 export function ScheduleManager() {
   const [currentSchedule, setCurrentSchedule] = useState<WeeklySchedule | null>(null)
@@ -24,6 +25,53 @@ export function ScheduleManager() {
   const { toast } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { preferences } = useUserPreferences()
+
+  const preferredTimezone = useMemo(() => {
+    if (preferences?.app?.timezone) {
+      return preferences.app.timezone
+    }
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone
+    } catch (error) {
+      logger.warn('Unable to resolve timezone from Intl API, defaulting to UTC', error)
+      return 'UTC'
+    }
+  }, [preferences])
+
+  const [activeTimezone, setActiveTimezone] = useState<string>(preferredTimezone)
+
+  useEffect(() => {
+    if (preferredTimezone && preferredTimezone !== activeTimezone) {
+      setActiveTimezone(preferredTimezone)
+    }
+  }, [preferredTimezone, activeTimezone])
+
+  const buildWeeklySchedule = useCallback((weekStart: Date, items: ScheduleItem[] = [], timezone?: string | null): WeeklySchedule => {
+    const resolvedTimezone = timezone ?? activeTimezone ?? preferredTimezone ?? 'UTC'
+
+    const days = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(weekStart)
+      date.setDate(weekStart.getDate() + index)
+      date.setHours(0, 0, 0, 0)
+
+      const dayItems = items
+        .filter((item) => Number(item.day) === index)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime))
+
+      return {
+        date,
+        dayOfWeek: index,
+        items: dayItems
+      }
+    })
+
+    return {
+      weekStart,
+      timezone: resolvedTimezone,
+      days
+    }
+  }, [activeTimezone, preferredTimezone])
   
   // Get tab from URL or default to 'calendar'
   const activeTab = searchParams.get('tab') || 'calendar'
@@ -45,8 +93,9 @@ export function ScheduleManager() {
   const getWeekStart = (date: Date) => {
     const d = new Date(date)
     const day = d.getDay()
-    const diff = d.getDate() - day // Sunday = 0
-    return new Date(d.setDate(diff))
+    d.setHours(0, 0, 0, 0)
+    d.setDate(d.getDate() - day) // Sunday = 0
+    return d
   }
 
   const loadCompletedSessions = useCallback(async (weekStart: Date) => {
@@ -77,32 +126,16 @@ export function ScheduleManager() {
   const loadScheduleFromAPI = useCallback(async (weekStart: Date) => {
     try {
       const weekKey = weekStart.toISOString().split('T')[0]
-      const schedule = await loadSchedule(weekKey)
-      
-      if (schedule && schedule.items) {
-        setCurrentSchedule(prev => {
-          if (!prev) return null
-          
-          // Group items by day
-          const itemsByDay: { [key: number]: ScheduleItem[] } = {}
-          schedule.items.forEach(item => {
-            if (!itemsByDay[item.day]) {
-              itemsByDay[item.day] = []
-            }
-            itemsByDay[item.day].push(item)
-          })
+      const scheduleResponse = await loadSchedule(weekKey)
 
-          return {
-            ...prev,
-            days: prev.days.map(day => ({
-              ...day,
-              items: (itemsByDay[day.dayOfWeek] || []).sort((a, b) => a.startTime.localeCompare(b.startTime))
-            }))
-          }
-        })
+      const timezoneFromSchedule = (scheduleResponse as any)?.timezone ?? null
+      if (timezoneFromSchedule && timezoneFromSchedule !== activeTimezone) {
+        setActiveTimezone(timezoneFromSchedule)
       }
 
-      // Load completed sessions for the week
+      const scheduleItems = (scheduleResponse?.items as ScheduleItem[] | undefined) || []
+      setCurrentSchedule(buildWeeklySchedule(weekStart, scheduleItems, timezoneFromSchedule))
+
       await loadCompletedSessions(weekStart)
     } catch (error) {
       logger.error('Failed to load schedule:', error)
@@ -112,28 +145,15 @@ export function ScheduleManager() {
         variant: "destructive"
       })
     }
-  }, [loadSchedule, toast, loadCompletedSessions])
+  }, [loadSchedule, toast, loadCompletedSessions, buildWeeklySchedule, activeTimezone])
 
   const initializeCurrentWeek = useCallback(() => {
     const today = new Date()
     const weekStart = getWeekStart(today)
-    
-    const schedule: WeeklySchedule = {
-      weekStart,
-      days: Array.from({ length: 7 }, (_, index) => {
-        const date = new Date(weekStart)
-        date.setDate(weekStart.getDate() + index)
-        return {
-          date,
-          dayOfWeek: index,
-          items: []
-        }
-      })
-    }
-    
-    setCurrentSchedule(schedule)
+
+    setCurrentSchedule(buildWeeklySchedule(weekStart, [], activeTimezone))
     loadScheduleFromAPI(weekStart)
-  }, [loadScheduleFromAPI])
+  }, [buildWeeklySchedule, loadScheduleFromAPI, activeTimezone])
 
   useEffect(() => {
     initializeCurrentWeek()
@@ -143,7 +163,7 @@ export function ScheduleManager() {
     try {
       const weekKey = schedule.weekStart.toISOString().split('T')[0]
       const allItems = schedule.days.flatMap(day => day.items)
-      await saveSchedule(weekKey, allItems)
+      await saveSchedule(weekKey, allItems, { timezone: schedule.timezone ?? activeTimezone })
     } catch (error) {
       logger.error('Failed to save schedule:', error)
       toast({
@@ -181,21 +201,8 @@ export function ScheduleManager() {
 
     const newWeekStart = new Date(currentSchedule.weekStart)
     newWeekStart.setDate(newWeekStart.getDate() + (direction === 'next' ? 7 : -7))
-    
-    const newSchedule: WeeklySchedule = {
-      weekStart: newWeekStart,
-      days: Array.from({ length: 7 }, (_, index) => {
-        const date = new Date(newWeekStart)
-        date.setDate(newWeekStart.getDate() + index)
-        return {
-          date,
-          dayOfWeek: index,
-          items: []
-        }
-      })
-    }
-    
-    setCurrentSchedule(newSchedule)
+
+    setCurrentSchedule(buildWeeklySchedule(newWeekStart, [], currentSchedule.timezone ?? activeTimezone))
     loadScheduleFromAPI(newWeekStart)
   }
 

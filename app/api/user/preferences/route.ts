@@ -47,6 +47,7 @@ const appPrefsSchema = z.object({
   notifications: z.boolean().default(true),
   weeklyReports: z.boolean().default(true),
   dataSharing: z.boolean().default(false),
+  timezone: z.string().default("UTC"),
   adminNotifications: z.object({
     enabled: z.boolean().default(true),
     methods: z.array(z.enum(['smtp'])).default(['smtp']),
@@ -99,6 +100,7 @@ const appPrefsSchema = z.object({
   notifications: true,
   weeklyReports: true,
   dataSharing: false,
+  timezone: "UTC",
   adminNotifications: {
     enabled: true,
     methods: ['smtp'],
@@ -117,7 +119,8 @@ const appPrefsSchema = z.object({
     mealNotifications: true,
     mealFrequency: 3,
     sleepNotifications: true,
-    exerciseNotifications: true
+    exerciseNotifications: true,
+    workoutTime: "18:00"
   }
 })
 
@@ -150,6 +153,7 @@ const preferencesSchema = z.object({
       notifications: true,
       weeklyReports: true,
       dataSharing: false,
+      timezone: "UTC",
       adminNotifications: {
         enabled: true,
         methods: ['smtp'],

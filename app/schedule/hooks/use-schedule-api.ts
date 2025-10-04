@@ -2,11 +2,15 @@ import { useState, useCallback } from 'react'
 import type { Schedule, ScheduleItem, ScheduleTemplate } from '../types/schedule'
 import { logger } from "@/lib/logger"
 
+interface SaveScheduleOptions {
+  timezone?: string | null
+}
+
 interface UseScheduleApiReturn {
   loading: boolean
   error: string | null
   loadSchedule: (weekStart: string) => Promise<Schedule | null>
-  saveSchedule: (weekStart: string, items: ScheduleItem[]) => Promise<Schedule | null>
+  saveSchedule: (weekStart: string, items: ScheduleItem[], options?: SaveScheduleOptions) => Promise<Schedule | null>
   clearSchedule: (weekStart: string) => Promise<boolean>
   loadTemplates: () => Promise<ScheduleTemplate[]>
   saveTemplate: (template: Omit<ScheduleTemplate, 'id' | 'createdAt' | 'updatedAt' | 'usageCount'>) => Promise<ScheduleTemplate | null>
@@ -52,12 +56,12 @@ export function useScheduleApi(): UseScheduleApiReturn {
     )
   }, [handleApiCall])
 
-  const saveSchedule = useCallback(async (weekStart: string, items: ScheduleItem[]): Promise<Schedule | null> => {
+  const saveSchedule = useCallback(async (weekStart: string, items: ScheduleItem[], options?: SaveScheduleOptions): Promise<Schedule | null> => {
     return handleApiCall(
       () => fetch('/api/schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ weekStart, items })
+        body: JSON.stringify({ weekStart, items, timezone: options?.timezone })
       }),
       (data) => (data as { schedule: Schedule }).schedule
     )

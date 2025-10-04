@@ -481,6 +481,7 @@ model Schedule {
   userId    String   @map("user_id")
   weekStart DateTime // Start of the week (Sunday)
   name      String?  // Optional name for the schedule
+  timezone  String?  @default("UTC")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -505,6 +506,12 @@ model ScheduleItem {
   calories    Int?
   difficulty  String?
   duration    Int?     // in minutes
+  isRecurring Boolean  @default(false) @map("is_recurring")
+  repeatPattern String? @map("repeat_pattern") // "daily" | "weekly" | "yearly"
+  repeatInterval Int?   @map("repeat_interval")
+  repeatEndsOn DateTime? @map("repeat_ends_on")
+  recurrenceRule Json?  @map("recurrence_rule")
+  repeatDaysOfWeek Int[] @map("repeat_days_of_week")
   isFromGenerator Boolean @default(false)
   generatorData Json?  // Original data from AI generator
   createdAt   DateTime @default(now()) @map("created_at")

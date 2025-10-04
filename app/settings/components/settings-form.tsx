@@ -56,6 +56,13 @@ export function SettingsForm() {
     notifications: true,
     weeklyReports: true,
     dataSharing: false,
+    timezone: (() => {
+      try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
+      } catch {
+        return "UTC"
+      }
+    })(),
     adminNotifications: {
       enabled: true,
       methods: ['smtp'] as ('smtp')[],
@@ -106,6 +113,7 @@ export function SettingsForm() {
     notifications: true,
     weeklyReports: true,
     dataSharing: false,
+    timezone: "UTC",
     adminNotifications: {
       enabled: true,
       methods: ['smtp'],

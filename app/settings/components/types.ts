@@ -37,6 +37,7 @@ export interface AppPrefs {
   notifications: boolean
   weeklyReports: boolean
   dataSharing: boolean
+  timezone: string
   adminNotifications: {
     enabled: boolean
     methods: ('smtp')[]

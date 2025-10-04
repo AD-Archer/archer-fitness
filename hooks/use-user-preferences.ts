@@ -8,6 +8,7 @@ interface UserPreferences {
     units: WeightUnit
     notifications: boolean
     weeklyReports: boolean
+    timezone?: string
   }
 }
 
@@ -42,7 +43,8 @@ export function useUserPreferences(): UseUserPreferencesReturn {
           theme: 'system',
           units: 'imperial',
           notifications: true,
-          weeklyReports: true
+          weeklyReports: true,
+          timezone: 'UTC'
         }
       }
       
@@ -64,7 +66,8 @@ export function useUserPreferences(): UseUserPreferencesReturn {
           theme: 'system',
           units: 'imperial',
           notifications: true,
-          weeklyReports: true
+          weeklyReports: true,
+          timezone: 'UTC'
         }
       })
     } finally {

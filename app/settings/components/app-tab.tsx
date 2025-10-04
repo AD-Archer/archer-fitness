@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -9,6 +10,24 @@ import { Button } from "@/components/ui/button"
 import { AppPrefs } from "./types"
 import { useNotifications } from "@/hooks/use-notifications"
 
+const FALLBACK_TIMEZONES = [
+  "UTC",
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "America/Phoenix",
+  "Europe/London",
+  "Europe/Paris",
+  "Europe/Berlin",
+  "Europe/Madrid",
+  "Africa/Johannesburg",
+  "Asia/Tokyo",
+  "Asia/Singapore",
+  "Asia/Kolkata",
+  "Australia/Sydney"
+]
+
 interface AppTabProps {
   appPrefs: AppPrefs
   setAppPrefs: (prefs: AppPrefs) => void
@@ -16,6 +35,29 @@ interface AppTabProps {
 
 export function AppTab({ appPrefs, setAppPrefs }: AppTabProps) {
   const { isSupported, permission, isLoading, sendTestNotification } = useNotifications()
+
+  const timezoneOptions = useMemo(() => {
+    try {
+      const supported = (Intl as unknown as { supportedValuesOf?: (type: string) => string[] }).supportedValuesOf?.("timeZone")
+      if (supported && supported.length > 0) {
+        return supported
+      }
+    } catch {
+      // ignore and fall back
+    }
+    return FALLBACK_TIMEZONES
+  }, [])
+
+  const handleUseDeviceTimezone = () => {
+    try {
+      const deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone
+      if (deviceTz) {
+        setAppPrefs({ ...appPrefs, timezone: deviceTz })
+      }
+    } catch {
+      setAppPrefs({ ...appPrefs, timezone: "UTC" })
+    }
+  }
 
   // Ensure notificationPrefs exists with defaults - handle edge cases
   const notificationPrefs = appPrefs?.notificationPrefs || {
@@ -63,6 +105,33 @@ export function AppTab({ appPrefs, setAppPrefs }: AppTabProps) {
               <SelectContent>
                 <SelectItem value="metric">Metric</SelectItem>
                 <SelectItem value="imperial">Imperial</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="timezone">Timezone</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2"
+                onClick={handleUseDeviceTimezone}
+              >
+                Use device
+              </Button>
+            </div>
+            <Select value={appPrefs.timezone} onValueChange={(value) => setAppPrefs({ ...appPrefs, timezone: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select timezone" />
+              </SelectTrigger>
+              <SelectContent className="max-h-64 overflow-y-auto">
+                {timezoneOptions.map((tz) => (
+                  <SelectItem key={tz} value={tz}>
+                    {tz}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

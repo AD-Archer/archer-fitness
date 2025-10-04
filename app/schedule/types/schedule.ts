@@ -1,3 +1,13 @@
+export type RepeatPattern = "daily" | "weekly" | "yearly"
+
+export interface RecurrenceRule {
+  frequency: RepeatPattern
+  interval?: number | null
+  endsOn?: string | Date | null
+  daysOfWeek?: number[] | null
+  meta?: Record<string, unknown>
+}
+
 export interface ScheduleItem {
   id: string
   type: "workout" | "meal"
@@ -12,12 +22,21 @@ export interface ScheduleItem {
   duration?: number // in minutes
   isFromGenerator?: boolean
   generatorData?: WorkoutScheduleData | MealScheduleData // Original data from AI generator
+  isRecurring?: boolean
+  repeatPattern?: RepeatPattern | null
+  repeatInterval?: number | null
+  repeatEndsOn?: string | Date | null
+  repeatDaysOfWeek?: number[] | null
+  recurrenceRule?: RecurrenceRule | null
+  isVirtual?: boolean
+  originId?: string
 }
 
 export interface Schedule {
   id: string
   userId: string
   weekStart: Date
+  timezone?: string | null
   items: ScheduleItem[]
   createdAt: Date
   updatedAt: Date
@@ -32,6 +51,7 @@ export interface ScheduleDay {
 export interface WeeklySchedule {
   weekStart: Date
   days: ScheduleDay[]
+  timezone?: string | null
 }
 
 interface Exercise {
