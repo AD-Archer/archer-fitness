@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 
 export async function GET() {
   try {
@@ -30,7 +31,7 @@ export async function GET() {
       privacyAcceptedAt: (user as any).privacyAcceptedAt,
     })
   } catch (error) {
-    console.error("Error checking privacy acceptance:", error)
+    logger.error("Error checking privacy acceptance:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
       privacyAcceptedAt: (user as any).privacyAcceptedAt,
     })
   } catch (error) {
-    console.error("Error updating privacy acceptance:", error)
+    logger.error("Error updating privacy acceptance:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

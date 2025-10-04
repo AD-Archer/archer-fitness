@@ -2,24 +2,22 @@
 
 import { useSession } from "next-auth/react"
 import { useRouter, usePathname } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
+import { logger } from "@/lib/logger"
 
 export function PrivacyCheck() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
-  const [checked, setChecked] = useState(false)
 
   useEffect(() => {
     // Only check for authenticated users
     if (status === "loading" || !session?.user) {
-      setChecked(true)
       return
     }
 
     // Don't redirect if already on privacy page
     if (pathname === "/privacy") {
-      setChecked(true)
       return
     }
 
@@ -35,9 +33,8 @@ export function PrivacyCheck() {
           }
         }
       } catch (error) {
-        console.error("Failed to check privacy acceptance:", error)
+        logger.error("Failed to check privacy acceptance:", error)
       }
-      setChecked(true)
     }
 
     checkPrivacy()
