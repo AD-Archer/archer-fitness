@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   LogOut,
+  Bug,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
@@ -118,6 +119,15 @@ export function Sidebar() {
         >
           <Settings className="h-4 w-4 flex-shrink-0" />
           {!collapsed && <span>Settings</span>}
+        </Button>
+          </Link>
+          <Link href="/bug-report">
+        <Button
+          variant="ghost"
+          className={cn("w-full justify-start gap-3 h-10", collapsed && "justify-center px-2 lg:px-2")}
+        >
+          <Bug className="h-4 w-4 flex-shrink-0" />
+          {!collapsed && <span>Report Bug</span>}
         </Button>
           </Link>
           <Button

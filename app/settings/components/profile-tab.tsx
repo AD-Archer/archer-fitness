@@ -1,10 +1,15 @@
 "use client"
 
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calculator } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Calculator, CheckCircle2, AlertCircle, Mail, KeyRound } from "lucide-react"
+import { toast } from "sonner"
 import { UserProfile } from "./types"
 import { calculateBMR, calculateTDEE, calculateGoalCalories, calculateMacros, calculateWaterTarget } from "./utils"
 
@@ -15,6 +20,69 @@ interface ProfileTabProps {
 }
 
 export function ProfileTab({ profile, setProfile, units }: ProfileTabProps) {
+  const router = useRouter()
+  const [emailVerified, setEmailVerified] = useState<boolean>(false)
+  const [isCheckingVerification, setIsCheckingVerification] = useState(true)
+  const [isSendingVerification, setIsSendingVerification] = useState(false)
+  const [hasPendingVerification, setHasPendingVerification] = useState(false)
+
+  useEffect(() => {
+    checkEmailVerification()
+  }, [profile.email])
+
+  const checkEmailVerification = async () => {
+    try {
+      const response = await fetch("/api/user/security")
+      if (response.ok) {
+        const data = await response.json()
+        // Check if user has verified email (will be set when email is verified)
+        setEmailVerified(!!data.emailVerified)
+        
+        // Check if there's a pending verification
+        if (!data.emailVerified) {
+          const verifyResponse = await fetch("/api/auth/verify-email")
+          if (verifyResponse.ok) {
+            const verifyData = await verifyResponse.json()
+            setHasPendingVerification(!!verifyData.hasPendingVerification)
+          }
+        }
+      }
+    } catch {
+      // If check fails, assume not verified
+      setEmailVerified(false)
+      setHasPendingVerification(false)
+    } finally {
+      setIsCheckingVerification(false)
+    }
+  }
+
+  const handleSendVerification = async () => {
+    setIsSendingVerification(true)
+
+    try {
+      const response = await fetch("/api/auth/verify-email", {
+        method: "PUT",
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send verification email")
+      }
+
+      toast.success("Verification email sent! Check your inbox.")
+      setHasPendingVerification(true)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send verification email")
+    } finally {
+      setIsSendingVerification(false)
+    }
+  }
+
+  const handleEnterCode = () => {
+    router.push("/auth/verify-email")
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -33,14 +101,63 @@ export function ProfileTab({ profile, setProfile, units }: ProfileTabProps) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={profile.email}
-              disabled
-              className="bg-muted"
-            />
-            <p className="text-xs text-muted-foreground">Email cannot be changed here</p>
+            <div className="flex gap-2 items-start">
+              <div className="flex-1">
+                <Input
+                  id="email"
+                  type="email"
+                  value={profile.email}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+              {!isCheckingVerification && (
+                emailVerified ? (
+                  <Badge variant="outline" className="flex items-center gap-1 text-green-600 border-green-600">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Verified
+                  </Badge>
+                ) : (
+                  <div className="flex gap-2">
+                    {hasPendingVerification && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={handleEnterCode}
+                        className="flex items-center gap-1"
+                      >
+                        <KeyRound className="h-3 w-3" />
+                        Enter Code
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSendVerification}
+                      disabled={isSendingVerification}
+                      className="flex items-center gap-1"
+                    >
+                      <Mail className="h-3 w-3" />
+                      {isSendingVerification ? "Sending..." : hasPendingVerification ? "Resend" : "Send Code"}
+                    </Button>
+                  </div>
+                )
+              )}
+            </div>
+            {!isCheckingVerification && !emailVerified && (
+              <div className="flex items-start gap-2 text-xs text-amber-600 mt-1">
+                <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                <span>
+                  Email not verified. 
+                  {hasPendingVerification 
+                    ? ' Click "Enter Code" to verify with the code from your email, or click the link in the email.' 
+                    : ' Click "Send Code" to receive a verification email.'}
+                </span>
+              </div>
+            )}
+            {emailVerified && (
+              <p className="text-xs text-muted-foreground">To change your email, go to Security settings</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="birthdate">Birthdate</Label>

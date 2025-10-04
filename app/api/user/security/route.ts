@@ -30,7 +30,7 @@ export async function GET() {
     const [user, accounts] = await Promise.all([
       prisma.user.findUnique({
         where: { id: session.user.id },
-        select: { id: true, email: true, password: true },
+        select: { id: true, email: true, password: true, emailVerified: true },
       }),
       prisma.account.findMany({
         where: { userId: session.user.id },
@@ -46,6 +46,7 @@ export async function GET() {
     return NextResponse.json({
       hasPassword: Boolean(user?.password),
       email: user?.email ?? null,
+      emailVerified: user?.emailVerified ?? null,
       linkedAccounts: accounts.map((account) => ({
         id: account.id,
         provider: account.provider,

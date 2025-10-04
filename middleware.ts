@@ -6,6 +6,17 @@ export default withAuth(
     const { pathname } = req.nextUrl
     const token = req.nextauth.token
 
+    // Allow email verification and password reset pages even for authenticated users
+    const allowedAuthPaths = [
+      "/auth/verify-email",
+      "/auth/reset",
+      "/auth/forgot-password"
+    ]
+    
+    if (allowedAuthPaths.some(path => pathname.startsWith(path))) {
+      return NextResponse.next()
+    }
+
     // If user is authenticated and trying to access auth pages, redirect to dashboard
     if (token && pathname.startsWith("/auth")) {
       return NextResponse.redirect(new URL("/", req.url))
@@ -16,11 +27,24 @@ export default withAuth(
       const callbackUrl = encodeURIComponent(req.url)
       return NextResponse.redirect(new URL(`/auth/signin?callbackUrl=${callbackUrl}`, req.url))
     }
+
+    return NextResponse.next()
   },
   {
     callbacks: {
       authorized: ({ token, req }) => {
         const { pathname } = req.nextUrl
+        
+        // Always allow email verification and password reset pages
+        const allowedAuthPaths = [
+          "/auth/verify-email",
+          "/auth/reset",
+          "/auth/forgot-password"
+        ]
+        
+        if (allowedAuthPaths.some(path => pathname.startsWith(path))) {
+          return true
+        }
         
         // Always allow auth pages
         if (pathname.startsWith("/auth")) {

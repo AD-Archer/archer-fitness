@@ -1,5 +1,5 @@
 import crypto from "crypto"
-import { prisma } from "@/lib/prisma"
+import prisma from "@/lib/prisma"
 
 const TOKEN_BYTES = 32
 const TOKEN_EXPIRATION_MINUTES = 60
@@ -126,25 +126,42 @@ export async function resendVerificationEmail(userId: string) {
     orderBy: { createdAt: 'desc' },
   })
 
-  if (!existingToken) {
-    return { success: false, error: "No pending verification found" }
-  }
+  let targetEmail: string
 
-  // Check if we can reuse the existing token (not too old)
-  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
-  if (existingToken.createdAt > fiveMinutesAgo) {
-    return { 
-      success: false, 
-      error: "Please wait a few minutes before requesting another verification email" 
+  if (existingToken) {
+    // Check if we can reuse the existing token (not too old)
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
+    if (existingToken.createdAt > fiveMinutesAgo) {
+      return { 
+        success: false, 
+        error: "Please wait a few minutes before requesting another verification email" 
+      }
     }
+    targetEmail = existingToken.email
+  } else {
+    // No pending verification, check if user's email is unverified
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, emailVerified: true },
+    })
+
+    if (!user) {
+      return { success: false, error: "User not found" }
+    }
+
+    if (user.emailVerified) {
+      return { success: false, error: "Email is already verified" }
+    }
+
+    targetEmail = user.email
   }
 
   // Create a new verification token
-  const { token, code, expiresAt } = await createEmailVerificationToken(userId, existingToken.email)
+  const { token, code, expiresAt } = await createEmailVerificationToken(userId, targetEmail)
 
   return { 
     success: true, 
-    email: existingToken.email,
+    email: targetEmail,
     token,
     code,
     expiresAt
