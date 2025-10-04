@@ -10,7 +10,7 @@ export interface RecurrenceRule {
 
 export interface ScheduleItem {
   id: string
-  type: "workout" | "meal"
+  type: "workout"
   title: string
   description?: string
   startTime: string // HH:MM format
@@ -21,7 +21,7 @@ export interface ScheduleItem {
   difficulty?: string
   duration?: number // in minutes
   isFromGenerator?: boolean
-  generatorData?: WorkoutScheduleData | MealScheduleData // Original data from AI generator
+  generatorData?: WorkoutScheduleData
   isRecurring?: boolean
   repeatPattern?: RepeatPattern | null
   repeatInterval?: number | null
@@ -70,18 +70,6 @@ export interface WorkoutScheduleData {
   exercises: Exercise[]
   warmup: string[]
   cooldown: string[]
-}
-
-export interface MealScheduleData {
-  name: string
-  type: string
-  calories: number
-  protein: number
-  carbs: number
-  fat: number
-  ingredients: string[]
-  instructions: string[]
-  prepTime: number
 }
 
 export interface ScheduleTemplate {

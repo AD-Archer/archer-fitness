@@ -11,7 +11,7 @@ export default function SchedulePage() {
           <div className="pt-12 lg:pt-0">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-balance">Schedule Manager</h1>
             <p className="text-muted-foreground text-pretty mt-2">
-              Create and manage your weekly fitness schedule with workouts and meals
+              Create and manage your weekly training schedule with AI-powered workouts and templates
             </p>
           </div>
 

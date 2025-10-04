@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
+import { Prisma } from "@prisma/client"
 import { authOptions } from "@/lib/auth"
 import prisma from "@/lib/prisma"
 import { logger } from "@/lib/logger"
@@ -298,7 +299,7 @@ export async function POST(request: NextRequest) {
             repeatPattern?: string | null;
             repeatInterval?: number | null;
             repeatEndsOn?: string | null;
-            recurrenceRule?: unknown;
+            recurrenceRule?: Prisma.InputJsonValue | null;
             repeatDaysOfWeek?: number[] | null;
           }) => ({
             scheduleId: schedule.id,
@@ -318,8 +319,8 @@ export async function POST(request: NextRequest) {
             repeatPattern: item.repeatPattern ?? null,
             repeatInterval: item.repeatInterval ?? null,
             repeatEndsOn: item.repeatEndsOn ? new Date(item.repeatEndsOn) : null,
-            recurrenceRule: item.recurrenceRule ?? null,
-            repeatDaysOfWeek: item.repeatDaysOfWeek ?? null
+            recurrenceRule: item.recurrenceRule ?? Prisma.JsonNull,
+            repeatDaysOfWeek: item.repeatDaysOfWeek ?? undefined
           }))
         })
       }

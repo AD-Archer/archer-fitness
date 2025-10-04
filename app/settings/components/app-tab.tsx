@@ -134,6 +134,9 @@ export function AppTab({ appPrefs, setAppPrefs }: AppTabProps) {
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">
+              Used for scheduling, progress tracking, and notifications
+            </p>
           </div>
         </div>
 

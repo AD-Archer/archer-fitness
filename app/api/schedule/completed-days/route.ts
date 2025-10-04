@@ -42,14 +42,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Date is required' }, { status: 400 })
     }
 
-    // Check if this day is already marked as completed
-    // Normalize the date to start of day to ensure proper matching
-    // Prefer local-midnight epoch from client to avoid UTC drift; fallback to provided date string
+    // Use the local midnight timestamp sent from client to avoid timezone issues
+    // The client calculates midnight in their timezone and sends us the epoch ms
+    // We store this exact timestamp, which represents the correct date for that user
     const searchDate = dateMsLocal
       ? new Date(Number(dateMsLocal))
-      : new Date(date)
-    // Ensure we use local midnight
-    searchDate.setHours(0, 0, 0, 0)
+      : (() => {
+          // Fallback: if only date string provided, parse it as UTC date at midnight
+          const d = new Date(date)
+          return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0))
+        })()
 
     const existingCompletedDay = await (prisma as any).completedDay.findFirst({
       where: {
@@ -107,12 +109,14 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Date is required' }, { status: 400 })
     }
 
-    // Find and delete the completed day record
-    // Normalize the date to start of day to ensure proper matching
+    // Use the local midnight timestamp sent from client to avoid timezone issues
     const searchDate = dateMsLocal
       ? new Date(Number(dateMsLocal))
-      : new Date(date)
-    searchDate.setHours(0, 0, 0, 0)
+      : (() => {
+          // Fallback: if only date string provided, parse it as UTC date at midnight
+          const d = new Date(date)
+          return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0))
+        })()
 
     const existingCompletedDay = await (prisma as any).completedDay.findFirst({
       where: {

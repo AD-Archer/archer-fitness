@@ -8,6 +8,7 @@ import { Check, X } from "lucide-react"
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { logger } from "@/lib/logger"
+import { useUserPreferences } from "@/hooks/use-user-preferences"
 
 interface WorkoutSession {
   id: string
@@ -61,6 +62,42 @@ export function WeeklyProgress() {
   const [showDayDialog, setShowDayDialog] = useState(false)
   const [markingComplete, setMarkingComplete] = useState(false)
   const router = useRouter()
+  const { timezone } = useUserPreferences()
+
+  // Timezone-aware date utilities
+  const getDateInTimezone = useCallback((date: Date, tz: string): Date => {
+    try {
+      // Get the date string in the user's timezone
+      const dateString = date.toLocaleString('en-US', { timeZone: tz })
+      return new Date(dateString)
+    } catch (error) {
+      logger.warn('Failed to convert to timezone, using local time:', error)
+      return date
+    }
+  }, [])
+
+  const isSameDay = useCallback((date1: Date, date2: Date, tz: string): boolean => {
+    try {
+      const d1 = getDateInTimezone(date1, tz)
+      const d2 = getDateInTimezone(date2, tz)
+      return d1.getFullYear() === d2.getFullYear() &&
+             d1.getMonth() === d2.getMonth() &&
+             d1.getDate() === d2.getDate()
+    } catch (error) {
+      logger.warn('Failed to compare dates with timezone, falling back to local:', error)
+      return date1.toDateString() === date2.toDateString()
+    }
+  }, [getDateInTimezone])
+
+  const getStartOfWeek = useCallback((date: Date, tz: string): Date => {
+    const tzDate = getDateInTimezone(date, tz)
+    const day = tzDate.getDay()
+    const diff = tzDate.getDate() - day
+    const weekStart = new Date(tzDate)
+    weekStart.setDate(diff)
+    weekStart.setHours(0, 0, 0, 0)
+    return weekStart
+  }, [getDateInTimezone])
 
   // Helper function to calculate completion percentage
   const calculateCompletionRate = (exercises: Array<{ sets: Array<{ completed: boolean }> }>) => {
@@ -86,7 +123,7 @@ export function WeeklyProgress() {
     }
   }, [])
 
-  // Handle day click to show workouts for that day
+    // Handle day click to show workouts for that day
   const handleDayClick = (dayIndex: number) => {
     const currentDay = new Date(startOfWeek.getTime() + dayIndex * 24 * 60 * 60 * 1000)
 
@@ -98,10 +135,10 @@ export function WeeklyProgress() {
 
     const dayWorkouts = workoutSessions.filter((workout) => {
       const workoutDate = new Date(workout.startTime)
-      return workoutDate >= dayStart && workoutDate <= dayEnd
+      return isSameDay(workoutDate, currentDay, timezone)
     })
 
-    logger.info(`Day ${dayNames[dayIndex]} clicked - found ${dayWorkouts.length} workouts - Date: ${currentDay.toISOString().split('T')[0]} - Valid: ${!isNaN(currentDay.getTime())}`)
+    logger.info(`Day ${dayNames[dayIndex]} clicked - found ${dayWorkouts.length} workouts - Date: ${currentDay.toISOString().split('T')[0]} - Timezone: ${timezone}`)
 
     // Always show dialog, even if no workouts (for rest days or to mark complete)
     setSelectedDay({
@@ -116,12 +153,7 @@ export function WeeklyProgress() {
   const isDayCompleted = (date: Date) => {
     return completedDays.some((completedDay) => {
       const completedDate = new Date(completedDay.date)
-      // Normalize both dates to start of day for comparison
-      const normalizedCompletedDate = new Date(completedDate)
-      normalizedCompletedDate.setHours(0, 0, 0, 0)
-      const normalizedDate = new Date(date)
-      normalizedDate.setHours(0, 0, 0, 0)
-      return normalizedCompletedDate.getTime() === normalizedDate.getTime() && completedDay.status === "completed"
+      return isSameDay(completedDate, date, timezone) && completedDay.status === "completed"
     })
   }
 
@@ -260,8 +292,7 @@ export function WeeklyProgress() {
 
   // Get current week's data
   const today = new Date()
-  const startOfWeek = new Date(today)
-  startOfWeek.setDate(today.getDate() - today.getDay()) // Start of current week (Sunday)
+  const startOfWeek = getStartOfWeek(today, timezone)
 
   const weeklyData = []
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -269,10 +300,10 @@ export function WeeklyProgress() {
   for (let i = 0; i < 7; i++) {
     const currentDay = new Date(startOfWeek.getTime() + i * 24 * 60 * 60 * 1000)
 
-    // Find ALL workout sessions for this day
+    // Find ALL workout sessions for this day using timezone-aware comparison
     const dayWorkouts = workoutSessions.filter((workout) => {
       const workoutDate = new Date(workout.startTime)
-      return workoutDate.toDateString() === currentDay.toDateString()
+      return isSameDay(workoutDate, currentDay, timezone)
     })
 
     // Determine if it's a planned rest day (Wednesday and Sunday in this example)
@@ -288,12 +319,7 @@ export function WeeklyProgress() {
     // Check if this day is marked as completed in the database
     const dayCompletedInDb = completedDays.some((completedDay) => {
       const completedDate = new Date(completedDay.date)
-      // Normalize both dates to start of day for comparison
-      const normalizedCompletedDate = new Date(completedDate)
-      normalizedCompletedDate.setHours(0, 0, 0, 0)
-      const normalizedCurrentDay = new Date(currentDay)
-      normalizedCurrentDay.setHours(0, 0, 0, 0)
-      return normalizedCompletedDate.getTime() === normalizedCurrentDay.getTime() && completedDay.status === "completed"
+      return isSameDay(completedDate, currentDay, timezone) && completedDay.status === "completed"
     })
 
     // Check if all workouts for this day are completed
@@ -373,13 +399,7 @@ export function WeeklyProgress() {
             <div className="grid grid-cols-7 gap-1 sm:gap-2 min-w-[280px] sm:min-w-0">
               {weeklyData.map((day, index) => {
                 const currentDay = new Date(startOfWeek.getTime() + index * 24 * 60 * 60 * 1000)
-                const isToday = (() => {
-                  const today = new Date()
-                  today.setHours(0, 0, 0, 0)
-                  const normalizedCurrent = new Date(currentDay)
-                  normalizedCurrent.setHours(0, 0, 0, 0)
-                  return today.getTime() === normalizedCurrent.getTime()
-                })()
+                const isToday = isSameDay(new Date(), currentDay, timezone)
                 
                 return (
                   <div key={day.day} className="text-center min-w-0 flex-shrink-0">
@@ -393,13 +413,7 @@ export function WeeklyProgress() {
                       className={`w-7 h-7 sm:w-8 sm:h-8 mx-auto rounded-full flex items-center justify-center text-xs sm:text-sm font-medium border-2 transition-colors cursor-pointer hover:scale-105 ${
                         isToday
                           ? "border-primary bg-primary/10 text-primary"
-                          : markingComplete && selectedDay?.date && currentDay && (() => {
-                              const normalizedSelected = new Date(selectedDay.date)
-                              normalizedSelected.setHours(0, 0, 0, 0)
-                              const normalizedCurrent = new Date(currentDay)
-                              normalizedCurrent.setHours(0, 0, 0, 0)
-                              return normalizedSelected.getTime() === normalizedCurrent.getTime()
-                            })()
+                          : markingComplete && selectedDay?.date && isSameDay(selectedDay.date, currentDay, timezone)
                             ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 animate-pulse"
                             : day.completed
                               ? "border-green-500 bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"

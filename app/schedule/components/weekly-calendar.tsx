@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ChevronLeft, ChevronRight, Trash2, Clock, Utensils, Dumbbell } from "lucide-react"
+import { ChevronLeft, ChevronRight, Trash2, Clock, Dumbbell, CalendarDays } from "lucide-react"
 import { WeeklySchedule } from "../types/schedule"
 import { cn } from "@/lib/utils"
 
@@ -13,6 +13,7 @@ interface WeeklyCalendarProps {
   onNavigateWeek: (direction: 'prev' | 'next') => void
   onItemDelete: (itemId: string) => void
   onClearWeek: () => void
+  onGoToCurrentWeek?: () => void
   isLoading: boolean
   completedSessions?: Array<{
     id: string
@@ -29,10 +30,25 @@ export function WeeklyCalendar({
   onNavigateWeek,
   onItemDelete,
   onClearWeek,
+  onGoToCurrentWeek,
   isLoading,
   completedSessions = []
 }: WeeklyCalendarProps) {
   const [selectedItem, setSelectedItem] = useState<string | null>(null)
+
+  const isCurrentWeek = () => {
+    const today = new Date()
+    const todayWeekStart = getWeekStart(today)
+    return todayWeekStart.toDateString() === schedule.weekStart.toDateString()
+  }
+
+  const getWeekStart = (date: Date) => {
+    const d = new Date(date)
+    const day = d.getDay()
+    d.setHours(0, 0, 0, 0)
+    d.setDate(d.getDate() - day) // Sunday = 0
+    return d
+  }
 
   const isWorkoutCompleted = (item: { title: string; startTime: string }) => {
     // Check if there's a completed session that matches this scheduled workout
@@ -72,8 +88,6 @@ export function WeeklyCalendar({
     switch (type) {
       case 'workout':
         return <Dumbbell className="h-3 w-3" />
-      case 'meal':
-        return <Utensils className="h-3 w-3" />
       default:
         return <Clock className="h-3 w-3" />
     }
@@ -83,8 +97,6 @@ export function WeeklyCalendar({
     switch (type) {
       case 'workout':
         return 'bg-blue-100 text-blue-800 border-blue-200'
-      case 'meal':
-        return 'bg-green-100 text-green-800 border-green-200'
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200'
     }
@@ -128,6 +140,17 @@ export function WeeklyCalendar({
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
+            {!isCurrentWeek() && onGoToCurrentWeek && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onGoToCurrentWeek}
+                className="hidden sm:flex"
+              >
+                <CalendarDays className="h-4 w-4 mr-1" />
+                This Week
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -202,6 +225,12 @@ export function WeeklyCalendar({
                         {item.duration && (
                           <div className="text-xs text-muted-foreground">
                             {item.duration} min
+                            {item.isRecurring && item.repeatPattern === 'weekly' && item.repeatInterval === 1 && (
+                              <span className="ml-1">• Repeats weekly</span>
+                            )}
+                            {item.isRecurring && item.repeatPattern === 'weekly' && item.repeatInterval && item.repeatInterval > 1 && (
+                              <span className="ml-1">• Every {item.repeatInterval} weeks</span>
+                            )}
                           </div>
                         )}
                         

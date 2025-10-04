@@ -15,6 +15,7 @@ interface UserPreferences {
 interface UseUserPreferencesReturn {
   preferences: UserPreferences | null
   units: WeightUnit
+  timezone: string
   loading: boolean
   error: string | null
   refetch: () => Promise<void>
@@ -37,6 +38,14 @@ export function useUserPreferences(): UseUserPreferencesReturn {
       
       const data = await response.json()
       
+      // Get browser timezone as fallback
+      let browserTimezone = 'UTC'
+      try {
+        browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+      } catch (err) {
+        logger.warn('Unable to resolve browser timezone, using UTC', err)
+      }
+      
       // Set default preferences if none exist
       const defaultPreferences: UserPreferences = {
         app: {
@@ -44,7 +53,7 @@ export function useUserPreferences(): UseUserPreferencesReturn {
           units: 'imperial',
           notifications: true,
           weeklyReports: true,
-          timezone: 'UTC'
+          timezone: browserTimezone
         }
       }
       
@@ -60,6 +69,14 @@ export function useUserPreferences(): UseUserPreferencesReturn {
       logger.error('Error loading user preferences:', err)
       setError(err instanceof Error ? err.message : 'Unknown error')
       
+      // Get browser timezone for fallback
+      let browserTimezone = 'UTC'
+      try {
+        browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+      } catch (tzErr) {
+        logger.warn('Unable to resolve browser timezone for fallback, using UTC', tzErr)
+      }
+      
       // Set fallback preferences
       setPreferences({
         app: {
@@ -67,7 +84,7 @@ export function useUserPreferences(): UseUserPreferencesReturn {
           units: 'imperial',
           notifications: true,
           weeklyReports: true,
-          timezone: 'UTC'
+          timezone: browserTimezone
         }
       })
     } finally {
@@ -82,6 +99,7 @@ export function useUserPreferences(): UseUserPreferencesReturn {
   return {
     preferences,
     units: preferences?.app.units || 'imperial',
+    timezone: preferences?.app.timezone || 'UTC',
     loading,
     error,
     refetch: fetchPreferences

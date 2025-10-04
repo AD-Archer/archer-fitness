@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, Zap, Clock, Users } from "lucide-react"
+import { Calendar, Clock, Users, CheckCircle2, Sparkles } from "lucide-react"
 import { WeeklyCalendar } from "./weekly-calendar"
 import { GeneratedScheduleImporter } from "./generated-schedule-importer"
 import { ScheduleTemplates } from "./schedule-templates"
@@ -163,7 +163,16 @@ export function ScheduleManager() {
     try {
       const weekKey = schedule.weekStart.toISOString().split('T')[0]
       const allItems = schedule.days.flatMap(day => day.items)
-      await saveSchedule(weekKey, allItems, { timezone: schedule.timezone ?? activeTimezone })
+      
+      logger.info('Saving schedule:', { weekKey, itemCount: allItems.length, items: allItems })
+      
+      const result = await saveSchedule(weekKey, allItems, { timezone: schedule.timezone ?? activeTimezone })
+      
+      if (result) {
+        logger.info('Schedule saved successfully:', result)
+      } else {
+        logger.error('Failed to save schedule - no result returned')
+      }
     } catch (error) {
       logger.error('Failed to save schedule:', error)
       toast({
@@ -204,6 +213,10 @@ export function ScheduleManager() {
 
     setCurrentSchedule(buildWeeklySchedule(newWeekStart, [], currentSchedule.timezone ?? activeTimezone))
     loadScheduleFromAPI(newWeekStart)
+  }
+
+  const goToCurrentWeek = () => {
+    initializeCurrentWeek()
   }
 
   const clearWeekSchedule = async () => {
@@ -274,6 +287,15 @@ export function ScheduleManager() {
     )
   }
 
+  const totalActivities = currentSchedule.days.reduce((total, day) => total + day.items.length, 0)
+  const totalWorkouts = currentSchedule.days.reduce((total, day) =>
+    total + day.items.filter(item => item.type === 'workout').length,
+  0)
+  const totalMinutes = currentSchedule.days.reduce((total, day) =>
+    total + day.items.reduce((acc, item) => acc + (item.duration || 0), 0),
+  0)
+  const completedCount = completedSessions.length
+
   return (
     <div className="space-y-6">
       {/* Quick Stats */}
@@ -284,9 +306,8 @@ export function ScheduleManager() {
               <Calendar className="h-5 w-5 text-blue-600" />
               <div>
                 <p className="text-sm text-muted-foreground">This Week</p>
-                <p className="font-semibold">
-                  {currentSchedule.days.reduce((total, day) => total + day.items.length, 0)} Activities
-                </p>
+                <p className="font-semibold">{totalActivities} Activities</p>
+                <p className="text-xs text-muted-foreground">{totalMinutes} min scheduled</p>
               </div>
             </div>
           </CardContent>
@@ -297,12 +318,8 @@ export function ScheduleManager() {
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5 text-green-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Workouts</p>
-                <p className="font-semibold">
-                  {currentSchedule.days.reduce((total, day) => 
-                    total + day.items.filter(item => item.type === 'workout').length, 0
-                  )}
-                </p>
+                <p className="text-sm text-muted-foreground">Workouts Scheduled</p>
+                <p className="font-semibold">{totalWorkouts}</p>
               </div>
             </div>
           </CardContent>
@@ -311,14 +328,10 @@ export function ScheduleManager() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-orange-600" />
+              <CheckCircle2 className="h-5 w-5 text-purple-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Meals</p>
-                <p className="font-semibold">
-                  {currentSchedule.days.reduce((total, day) => 
-                    total + day.items.filter(item => item.type === 'meal').length, 0
-                  )}
-                </p>
+                <p className="text-sm text-muted-foreground">Completed Workouts</p>
+                <p className="font-semibold">{completedCount}</p>
               </div>
             </div>
           </CardContent>
@@ -327,14 +340,14 @@ export function ScheduleManager() {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-  <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="calendar" className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
             <span className="hidden sm:inline">Calendar View</span>
             <span className="sm:hidden">Calendar</span>
           </TabsTrigger>
           <TabsTrigger value="generated" className="flex items-center gap-2">
-            <Zap className="h-4 w-4" />
+            <Sparkles className="h-4 w-4" />
             <span className="hidden sm:inline">Use Generated</span>
             <span className="sm:hidden">Generated</span>
           </TabsTrigger>
@@ -349,6 +362,7 @@ export function ScheduleManager() {
           <WeeklyCalendar
             schedule={currentSchedule}
             onNavigateWeek={navigateWeek}
+            onGoToCurrentWeek={goToCurrentWeek}
             onItemDelete={deleteScheduleItem}
             onClearWeek={clearWeekSchedule}
             isLoading={loading}
