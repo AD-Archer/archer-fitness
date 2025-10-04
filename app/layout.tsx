@@ -10,7 +10,7 @@ import './globals.css'
 import { NotificationInitializer } from '@/components/notification-initializer'
 import { PrivacyCheck } from '@/components/privacy-check'
 
-const baseUrl = process.env.NEXTAUTH_URL || 'https://fitness.archer.software'
+const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
 
 export const metadata: Metadata = {
   title: 'Archer Fitness | AI Workout Dashboard',

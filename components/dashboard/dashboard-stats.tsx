@@ -411,7 +411,7 @@ export function DashboardStats() {
             </Card>
           ))}
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -465,18 +465,18 @@ export function DashboardStats() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-4">
             {workoutStats.map((stat) => {
               const Icon = stat.icon
               return (
                 <Card key={stat.title}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
-                    <Icon className={`h-4 w-4 ${stat.color}`} />
+                    <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
+                    <Icon className={`h-3 w-3 sm:h-4 sm:w-4 ${stat.color}`} />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{stat.value}</div>
-                    <p className="text-xs text-muted-foreground mt-1">{stat.change}</p>
+                    <div className="text-xl sm:text-2xl font-bold">{stat.value}</div>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">{stat.change}</p>
                   </CardContent>
                 </Card>
               )

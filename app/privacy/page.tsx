@@ -151,22 +151,23 @@ export default function PrivacyPage() {
                 <p className="text-muted-foreground text-pretty">
                   {session && !privacyAccepted
                     ? "Please review and accept our privacy policy to continue using the app"
-                    : "Review your data privacy and account management options"
+                    : session
+                    ? "Review your data privacy and account management options"
+                    : "Learn about how we handle your data and privacy"
                   }
                 </p>
               </div>
             </div>
 
-            {/* Show privacy content for non-authenticated users or authenticated users who have accepted */}
-            {(!session || privacyAccepted) && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-3xl font-bold text-center">Privacy Policy</CardTitle>
-                  <CardDescription className="text-center">
-                    Your privacy is important to us. Review what data we collect and manage your account.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
+            {/* Show privacy content - always visible, but only show account management for authenticated users */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-3xl font-bold text-center">Privacy Policy</CardTitle>
+                <CardDescription className="text-center">
+                  Your privacy is important to us. Review what data we collect and manage your account.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
                   <div className="prose max-w-none">
                     <h2 className="text-2xl font-semibold mb-4">What Data We Collect</h2>
                     <p className="mb-4">
@@ -483,7 +484,6 @@ export default function PrivacyPage() {
                   )}
                 </CardContent>
               </Card>
-            )}
           </div>
         </main>
       </div>

@@ -4,13 +4,14 @@ import { useState, Suspense } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
-import { Chrome } from "lucide-react"
+import { Chrome, } from "lucide-react"
 
 function SignInContent() {
   const [formData, setFormData] = useState({
@@ -60,14 +61,30 @@ function SignInContent() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Welcome back</CardTitle>
-          <CardDescription className="text-center">
-            Sign in to your account to continue
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="w-full max-w-md space-y-6">
+        {/* Logo and Navigation */}
+        <div className="flex flex-col items-center space-y-4">
+          <Link href="/" className="transition-transform hover:scale-105">
+            <Image
+              src="/android-chrome-512x512.png"
+              alt="Archer Fitness Logo"
+              width={120}
+              height={120}
+              className="rounded-2xl shadow-lg"
+              priority
+            />
+          </Link>
+
+        </div>
+
+        <Card className="w-full">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold text-center">Welcome back</CardTitle>
+            <CardDescription className="text-center">
+              Sign in to your account to continue
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
@@ -138,6 +155,7 @@ function SignInContent() {
           </p>
         </CardFooter>
       </Card>
+      </div>
     </div>
   )
 }

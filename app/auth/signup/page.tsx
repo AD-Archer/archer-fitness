@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,7 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Chrome, Check, X } from "lucide-react"
+import { Chrome, X, } from "lucide-react"
 
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
@@ -27,24 +28,16 @@ export default function SignUpPage() {
   const [showPrivacyModal, setShowPrivacyModal] = useState(false)
   const router = useRouter()
 
-  useEffect(() => {
-    // Always show privacy modal for new account creation
-    setShowPrivacyModal(true)
-  }, [])
-
-  const handleAcceptPrivacy = () => {
-    setPrivacyAccepted(true)
-    setShowPrivacyModal(false)
-  }
-
-  const handleRejectPrivacy = () => {
-    alert("You must accept the privacy policy to create an account.")
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setIsLoading(true)
+
+    if (!privacyAccepted) {
+      setError("You must accept the privacy policy to create an account")
+      setIsLoading(false)
+      return
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords don't match")
@@ -104,14 +97,28 @@ export default function SignUpPage() {
   return (
     <>
       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <Card className="w-full max-w-md">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">Create an account</CardTitle>
-            <CardDescription className="text-center">
-              Enter your information to create your account
-            </CardDescription>
-          </CardHeader>
-          {privacyAccepted ? (
+        <div className="w-full max-w-md space-y-6">
+          {/* Logo and Navigation */}
+          <div className="flex flex-col items-center space-y-4">
+            <Link href="/" className="transition-transform hover:scale-105">
+              <Image
+                src="/android-chrome-512x512.png"
+                alt="Archer Fitness Logo"
+                width={120}
+                height={120}
+                className="rounded-2xl shadow-lg"
+                priority
+              />
+            </Link>
+          </div>
+
+          <Card className="w-full">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-2xl font-bold text-center">Create an account</CardTitle>
+              <CardDescription className="text-center">
+                Enter your information to create your account
+              </CardDescription>
+            </CardHeader>
             <CardContent className="space-y-4">
               {error && (
                 <Alert variant="destructive">
@@ -197,30 +204,33 @@ export default function SignUpPage() {
                   />
                 </div>
 
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <div className="flex items-start space-x-2">
+                  <input
+                    type="checkbox"
+                    id="privacyAccept"
+                    checked={privacyAccepted}
+                    onChange={(e) => setPrivacyAccepted(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-gray-300"
+                    disabled={isLoading}
+                  />
+                  <Label htmlFor="privacyAccept" className="text-sm font-normal leading-tight cursor-pointer">
+                    I have read and accept the{" "}
+                    <button
+                      type="button"
+                      onClick={() => setShowPrivacyModal(true)}
+                      className="font-medium text-blue-600 hover:text-blue-500 underline"
+                    >
+                      Privacy Policy
+                    </button>
+                  </Label>
+                </div>
+
+                <Button type="submit" className="w-full" disabled={isLoading || !privacyAccepted}>
                   {isLoading ? "Creating account..." : "Create account"}
                 </Button>
               </form>
             </CardContent>
-          ) : (
-            <CardContent className="space-y-4">
-              <div className="text-center py-8">
-                <p className="text-muted-foreground mb-4">
-                  Before creating your account, please review and accept our privacy policy.
-                </p>
-                <Button onClick={() => setShowPrivacyModal(true)} className="w-full">
-                  Review Privacy Policy
-                </Button>
-              </div>
-            </CardContent>
-          )}
           <CardFooter className="flex flex-col space-y-2">
-            <p className="text-center text-sm text-gray-600">
-              By creating an account, you agree to our{" "}
-              <Link href="/privacy" className="font-medium text-blue-600 hover:text-blue-500">
-                Privacy Policy
-              </Link>
-            </p>
             <p className="text-center text-sm text-gray-600 w-full">
               Already have an account?{" "}
               <Link href="/auth/signin" className="font-medium text-blue-600 hover:text-blue-500">
@@ -229,10 +239,11 @@ export default function SignUpPage() {
             </p>
           </CardFooter>
         </Card>
+        </div>
       </div>
 
-      <Dialog open={showPrivacyModal} onOpenChange={() => {}}>
-        <DialogContent className="max-w-4xl max-h-[80vh]" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+      <Dialog open={showPrivacyModal} onOpenChange={setShowPrivacyModal}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">Privacy Policy</DialogTitle>
             <DialogDescription>
@@ -346,13 +357,13 @@ export default function SignUpPage() {
             </div>
           </ScrollArea>
           <div className="flex gap-4 justify-end mt-4">
-            <Button variant="outline" onClick={handleRejectPrivacy} className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowPrivacyModal(false)} 
+              className="flex items-center gap-2"
+            >
               <X className="h-4 w-4" />
-              Reject
-            </Button>
-            <Button onClick={handleAcceptPrivacy} className="flex items-center gap-2">
-              <Check className="h-4 w-4" />
-              Accept & Continue
+              Close
             </Button>
           </div>
         </DialogContent>
