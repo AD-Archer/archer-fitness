@@ -17,7 +17,7 @@ interface WorkoutSession {
   exercises: WorkoutSessionExercise[]
 }
 
-export type WorkoutPerformanceStatus = "completed" | "unfinished" | "perfect"
+export type WorkoutPerformanceStatus = "completed" | "perfect"
 
 export interface WorkoutPerformanceAnalysis {
   performanceStatus: WorkoutPerformanceStatus
@@ -121,7 +121,7 @@ export function calculateWorkoutPerformance(session: WorkoutSession): WorkoutPer
   
   if (exercises.length === 0) {
     return {
-      performanceStatus: "unfinished",
+      performanceStatus: "completed",
       completionRate: 0,
       perfectionScore: 0,
       exerciseScores: []
@@ -156,15 +156,13 @@ export function calculateWorkoutPerformance(session: WorkoutSession): WorkoutPer
     ? exerciseScores.reduce((sum, ex) => sum + ex.score, 0) / exerciseScores.length
     : 0
 
-  // Determine performance status based on completion percentage
+  // Determine performance status based on completion percentage and perfection score
   let performanceStatus: WorkoutPerformanceStatus
 
   if (completionRate >= 95 && perfectionScore >= 85) {
     performanceStatus = "perfect"
-  } else if (completionRate >= 50) {
-    performanceStatus = "completed"
   } else {
-    performanceStatus = "unfinished"
+    performanceStatus = "completed"
   }
 
   return {
@@ -191,12 +189,6 @@ export function getPerformanceBadgeProps(status: WorkoutPerformanceStatus) {
         text: "Completed",
         className: "bg-gradient-to-r from-green-400 to-green-500 text-green-900 border-green-300",
         icon: "✅"
-      }
-    case "unfinished":
-      return {
-        text: "Unfinished",
-        className: "bg-gradient-to-r from-orange-400 to-orange-500 text-orange-900 border-orange-300",
-        icon: "⏸️"
       }
   }
 }

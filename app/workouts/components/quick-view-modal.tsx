@@ -8,6 +8,13 @@ import { Dumbbell, Clock, Calendar, Target, CheckCircle2, Circle, FileText } fro
 import { ReactNode } from "react"
 import { formatWeight } from "@/lib/weight-utils"
 import { useUserPreferences } from "@/hooks/use-user-preferences"
+import {
+  calculateCompletionRate as computeCompletionRate,
+  deriveDisplayStatus,
+  normalizePerformanceStatus,
+  type WorkoutDisplayStatus,
+} from "@/lib/workout-session-status"
+import type { WorkoutPerformanceStatus } from "@/lib/workout-performance"
 
 interface WorkoutSession {
   id: string
@@ -25,11 +32,20 @@ interface WorkoutSession {
     }>
   }>
   status: "active" | "completed" | "paused" | "cancelled" | "skipped" | "in_progress"
+  performanceStatus?: WorkoutPerformanceStatus
+  completionRate?: number
+  perfectionScore?: number
+  displayStatus?: WorkoutDisplayStatus
+  isDiscarded?: boolean
   notes?: string
 }
 
 interface QuickViewModalProps {
   workout: WorkoutSession
+  completionRate?: number
+  performanceStatus?: WorkoutPerformanceStatus
+  perfectionScore?: number
+  isDiscarded?: boolean
   trigger: ReactNode
   // If a newer workout has started after this one, suppress "In Progress" and show "Incomplete"
   hasNewerStarted?: boolean
@@ -37,6 +53,31 @@ interface QuickViewModalProps {
 
 export function QuickViewModal({ workout, trigger, hasNewerStarted = false }: QuickViewModalProps) {
   const { units } = useUserPreferences()
+
+  const completionRate = workout.completionRate ?? computeCompletionRate(workout.exercises)
+  const normalizedPerformance = normalizePerformanceStatus(
+    workout.performanceStatus,
+    completionRate,
+    workout.perfectionScore
+  )
+  const displayStatus = workout.displayStatus ?? deriveDisplayStatus({
+    completionRate,
+    performanceStatus: normalizedPerformance,
+    perfectionScore: workout.perfectionScore,
+  })
+  const statusLabel = (() => {
+    switch (displayStatus) {
+      case "perfect":
+        return "Perfect"
+      case "completed":
+        return "Completed"
+      case "in_progress":
+        return hasNewerStarted ? "Incomplete" : "In Progress"
+      case "not_started":
+      default:
+        return hasNewerStarted ? "Incomplete" : "Not Started"
+    }
+  })()
   
   const formatDate = (date: string | Date) => {
     const dateObj = typeof date === 'string' ? new Date(date) : date
@@ -52,28 +93,6 @@ export function QuickViewModal({ workout, trigger, hasNewerStarted = false }: Qu
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`
-  }
-
-  const getStatusDisplay = (status: string, exercises: Array<{ targetSets?: number; sets: Array<{ completed: boolean }> }>) => {
-    const totalTargetSets = exercises.reduce((total, exercise) => total + (exercise.targetSets ?? exercise.sets.length), 0)
-
-    if (totalTargetSets === 0) {
-      return hasNewerStarted ? "Incomplete" : status === "completed" ? "Completed" : "In Progress"
-    }
-
-    const completedSets = exercises.reduce((total, exercise) =>
-      total + exercise.sets.filter(set => set.completed).length, 0)
-    const completionRate = Math.round((completedSets / totalTargetSets) * 100)
-
-    if (completionRate >= 50) {
-      return "Completed"
-    }
-
-    if (completionRate > 0) {
-      return hasNewerStarted ? "Incomplete" : "In Progress"
-    }
-
-    return hasNewerStarted ? "Incomplete" : "Not Started"
   }
 
   const calculateSetStats = (sets: Array<{ reps: number; weight?: number; completed: boolean }>) => {
@@ -114,8 +133,13 @@ export function QuickViewModal({ workout, trigger, hasNewerStarted = false }: Qu
                 {formatDuration(workout.duration)}
               </span>
               <Badge variant="secondary" className="text-xs">
-                {getStatusDisplay(workout.status, workout.exercises)}
+                {statusLabel}
               </Badge>
+              {workout.isDiscarded && (
+                <Badge variant="outline" className="text-xs border-dashed text-muted-foreground">
+                  Archived
+                </Badge>
+              )}
             </div>
           </DialogHeader>
         </div>

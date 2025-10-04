@@ -5,14 +5,16 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Save, FilePlus, RefreshCw } from "lucide-react"
+import { Save, FilePlus, RefreshCw, Archive, Trash2 } from "lucide-react"
 
 interface SaveWorkoutDialogProps {
   isOpen: boolean
   onClose: () => void
-  onSaveSessionOnly: () => void
+  onSaveSession: () => void
   onSaveAsNew: (name: string, description?: string) => void
   onUpdateExisting: () => void
+  onArchive: () => void
+  onDiscard: () => void
   session: {
     id: string
     name: string
@@ -27,18 +29,22 @@ interface SaveWorkoutDialogProps {
     }>
   } | null
   isSaving: boolean
+  completionPercentage: number
 }
 
 export function SaveWorkoutDialog({
   isOpen,
   onClose,
-  onSaveSessionOnly,
+  onSaveSession,
   onSaveAsNew,
   onUpdateExisting,
+  onArchive,
+  onDiscard,
   session,
   isSaving,
+  completionPercentage,
 }: SaveWorkoutDialogProps) {
-  const [saveMode, setSaveMode] = useState<"session" | "new" | "update">("session")
+  const [saveMode, setSaveMode] = useState<"session" | "new" | "update" | "archive" | "discard">("session")
   const [newWorkoutName, setNewWorkoutName] = useState("")
   const [newWorkoutDescription, setNewWorkoutDescription] = useState("")
 
@@ -56,7 +62,7 @@ export function SaveWorkoutDialog({
 
   const handleSave = () => {
     if (saveMode === "session") {
-      onSaveSessionOnly()
+      onSaveSession()
     } else if (saveMode === "new") {
       if (!newWorkoutName.trim()) {
         alert("Please enter a name for the new workout")
@@ -65,6 +71,10 @@ export function SaveWorkoutDialog({
       onSaveAsNew(newWorkoutName.trim(), newWorkoutDescription.trim() || undefined)
     } else if (saveMode === "update") {
       onUpdateExisting()
+    } else if (saveMode === "archive") {
+      onArchive()
+    } else if (saveMode === "discard") {
+      onDiscard()
     }
   }
 
@@ -76,35 +86,35 @@ export function SaveWorkoutDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Save className="w-5 h-5" />
-            Save Workout
+            Finish Workout
           </DialogTitle>
           <DialogDescription>
-            Choose how you&apos;d like to save your workout modifications.
+            You completed {completionPercentage}% of your workout. Choose what to do next.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-3">
-            <Label className="text-base font-medium">Save Options</Label>
+            <Label className="text-base font-medium">What would you like to do?</Label>
 
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
                 <input
                   type="radio"
-                  id="session-only"
+                  id="session-save"
                   name="save-mode"
                   value="session"
                   checked={saveMode === "session"}
                   onChange={(e) => setSaveMode(e.target.value as "session")}
                   className="w-4 h-4"
                 />
-                <Label htmlFor="session-only" className="flex items-center gap-2 cursor-pointer">
+                <Label htmlFor="session-save" className="flex items-center gap-2 cursor-pointer">
                   <Save className="w-4 h-4" />
-                  Save session progress only
+                  Save workout
                 </Label>
               </div>
               <p className="text-sm text-muted-foreground ml-6">
-                Save your current workout progress to continue later
+                Save your workout to history with current progress
               </p>
             </div>
 
@@ -151,6 +161,48 @@ export function SaveWorkoutDialog({
                 </p>
               </div>
             )}
+
+            <div className="border-t pt-3 mt-3 space-y-2">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="radio"
+                  id="archive"
+                  name="save-mode"
+                  value="archive"
+                  checked={saveMode === "archive"}
+                  onChange={(e) => setSaveMode(e.target.value as "archive")}
+                  className="w-4 h-4"
+                />
+                <Label htmlFor="archive" className="flex items-center gap-2 cursor-pointer">
+                  <Archive className="w-4 h-4" />
+                  Archive workout
+                </Label>
+              </div>
+              <p className="text-sm text-muted-foreground ml-6">
+                Archive this workout. You can view it in history but it won&apos;t count in your stats
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="radio"
+                  id="discard"
+                  name="save-mode"
+                  value="discard"
+                  checked={saveMode === "discard"}
+                  onChange={(e) => setSaveMode(e.target.value as "discard")}
+                  className="w-4 h-4"
+                />
+                <Label htmlFor="discard" className="flex items-center gap-2 cursor-pointer text-red-600">
+                  <Trash2 className="w-4 h-4" />
+                  Discard workout
+                </Label>
+              </div>
+              <p className="text-sm text-muted-foreground ml-6">
+                Delete this workout session completely (cannot be undone)
+              </p>
+            </div>
           </div>
 
           {saveMode === "new" && (
@@ -199,9 +251,10 @@ export function SaveWorkoutDialog({
           <Button
             onClick={handleSave}
             disabled={isSaving || (saveMode === "new" && !newWorkoutName.trim())}
+            variant={saveMode === "discard" ? "destructive" : "default"}
             className="min-w-[100px]"
           >
-            {isSaving ? "Saving..." : "Save"}
+            {isSaving ? "Saving..." : saveMode === "session" ? "Save Workout" : saveMode === "new" ? "Create Template" : saveMode === "update" ? "Update Template" : saveMode === "archive" ? "Archive" : "Discard"}
           </Button>
         </DialogFooter>
       </DialogContent>

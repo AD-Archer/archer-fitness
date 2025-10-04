@@ -222,10 +222,12 @@ model WorkoutSession {
   endTime          DateTime?
   duration         Int?     // actual duration in seconds
   status           String   @default("active") // "active", "completed", "paused"
-  performanceStatus String? // "completed", "unfinished", "perfect"
+  performanceStatus String? // "completed", "perfect"
   completionRate   Float?   // percentage of workout completed (0-100)
   perfectionScore  Float?   // score for how well user performed (0-100)
   notes            String?
+  isArchived       Boolean  @default(false) @map("is_archived")
+  archivedAt       DateTime? @map("archived_at")
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 

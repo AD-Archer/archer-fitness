@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
 
       resolvedExercises.push({
         exerciseId: exerciseId!,
-        targetSets: ex.targetSets ?? 3,
+        targetSets: typeof ex.targetSets === 'string' ? parseInt(ex.targetSets, 10) : (ex.targetSets ?? 3),
         targetReps: ex.targetReps ?? "8-12",
         targetType: ex.targetType ?? "reps",
         targetWeight: ex.targetWeight ?? null,

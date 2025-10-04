@@ -103,7 +103,7 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { status, endTime, duration, notes } = body
+    const { status, endTime, duration, notes, isArchived } = body
 
     // If completing the workout, calculate performance metrics
     let performanceData = {}
@@ -162,19 +162,31 @@ export async function PUT(
       }
     }
 
+    const updateData: any = {
+      status,
+      endTime: endTime ? new Date(endTime) : undefined,
+      duration,
+      notes,
+      ...performanceData,
+      updatedAt: new Date(),
+    }
+
+    // Handle archive status
+    if (isArchived !== undefined) {
+      updateData.isArchived = isArchived
+      if (isArchived) {
+        updateData.archivedAt = new Date()
+      } else {
+        updateData.archivedAt = null
+      }
+    }
+
     const workoutSession = await prisma.workoutSession.update({
       where: {
         id: params.id,
         userId: session.user.id,
       },
-      data: {
-        status,
-        endTime: endTime ? new Date(endTime) : undefined,
-        duration,
-        notes,
-        ...performanceData,
-        updatedAt: new Date(),
-      },
+      data: updateData,
       include: {
         workoutTemplate: true,
         exercises: {
@@ -226,6 +238,19 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    // Check if workout exists
+    const workoutSession = await prisma.workoutSession.findFirst({
+      where: {
+        id: params.id,
+        userId: session.user.id,
+      },
+    })
+
+    if (!workoutSession) {
+      return NextResponse.json({ error: "Workout session not found" }, { status: 404 })
+    }
+
+    // Delete the workout session
     await prisma.workoutSession.delete({
       where: {
         id: params.id,

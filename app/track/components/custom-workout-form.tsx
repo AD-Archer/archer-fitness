@@ -10,33 +10,15 @@ import { Textarea } from "@/components/ui/textarea"
 import { Plus, Trash2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ExerciseSelector } from "./exercise-selector"
+import type { WorkoutTemplate } from "../types/workout"
 
 interface TrackedExercise {
   id: string
   exerciseId: string
   name: string
-  targetSets: number
+  targetSets: number | string
   targetReps: string
   targetType: "reps" | "time"
-  instructions?: string
-}
-
-interface WorkoutTemplate {
-  id: string
-  name: string
-  description: string
-  estimatedDuration: number
-  exercises: Omit<TrackedExercise, "sets" | "completed">[]
-  isCustom: boolean
-}
-
-interface InitialExercise {
-  id: string
-  exerciseId: string
-  name: string
-  targetSets: number
-  targetReps: string
-  targetType?: "reps" | "time"
   instructions?: string
 }
 
@@ -53,9 +35,14 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
     initialWorkout?.estimatedDuration ? String(initialWorkout.estimatedDuration) : ""
   )
   const [exercises, setExercises] = useState<Omit<TrackedExercise, "sets" | "completed">[]>(
-    initialWorkout?.exercises?.map((ex: InitialExercise) => ({
-      ...ex,
-      targetType: ex.targetType || "reps"
+    initialWorkout?.exercises?.map((ex) => ({
+      id: ex.id,
+      exerciseId: 'exerciseId' in ex ? (ex as any).exerciseId : ex.id,
+      name: ex.name,
+      targetSets: ex.targetSets,
+      targetReps: ex.targetReps,
+      targetType: ex.targetType || "reps",
+      instructions: ex.instructions,
     })) ?? []
   )
   const [showExerciseSelector, setShowExerciseSelector] = useState(false)
@@ -93,7 +80,10 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
   }
 
   const updateExercise = (index: number, field: string, value: string | number) => {
-    setExercises((prev) => prev.map((ex, i) => (i === index ? { ...ex, [field]: value } : ex)))
+    setExercises((prev) => prev.map((ex, i) => {
+      if (i !== index) return ex
+      return { ...ex, [field]: value }
+    }))
   }
 
   const removeExercise = (index: number) => {
@@ -109,10 +99,9 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
       description: workoutDescription.trim(),
       estimatedDuration: Number.parseInt(estimatedDuration) || 30,
       exercises: exercises.map((ex) => ({
-        ...ex,
-        exerciseId: ex.exerciseId,
+        id: ex.id,
         name: ex.name,
-        targetSets: ex.targetSets || 3,
+        targetSets: typeof ex.targetSets === 'string' ? parseInt(ex.targetSets, 10) || 3 : (ex.targetSets || 3),
         targetReps: ex.targetReps || "8-12",
         targetType: ex.targetType || "reps",
         instructions: ex.instructions || "",
@@ -214,40 +203,41 @@ export function CustomWorkoutForm({ onSave, onCancel, initialWorkout }: CustomWo
 
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium">Target Sets</Label>
-                        <Input
-                          type="number"
-                          placeholder="3"
-                          value={exercise.targetSets}
-                          onChange={(e) => updateExercise(index, "targetSets", Number.parseInt(e.target.value) || 3)}
-                          className="w-full h-9 md:h-10 text-sm"
-                        />
+                      <Label className="text-sm font-medium">Target Sets</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        placeholder="3"
+                        value={exercise.targetSets || ''}
+                        onChange={(e) => updateExercise(index, "targetSets", e.target.value)}
+                        className="w-full h-9 md:h-10 text-sm"
+                      />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium">Exercise Type</Label>
-                        <Select
-                          value={exercise.targetType}
-                          onValueChange={(value: "reps" | "time") => updateExercise(index, "targetType", value)}
-                        >
-                          <SelectTrigger className="w-full h-9 md:h-10 text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="reps">Reps</SelectItem>
-                            <SelectItem value="time">Time</SelectItem>
-                          </SelectContent>
-                        </Select>
+                      <Label className="text-sm font-medium">Exercise Type</Label>
+                      <Select
+                        value={exercise.targetType}
+                        onValueChange={(value: "reps" | "time") => updateExercise(index, "targetType", value)}
+                      >
+                        <SelectTrigger className="w-full h-9 md:h-10 text-sm">
+                        <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                        <SelectItem value="reps">Reps</SelectItem>
+                        <SelectItem value="time">Time</SelectItem>
+                        </SelectContent>
+                      </Select>
                       </div>
                       <div className="space-y-2 md:col-span-2 xl:col-span-1">
-                        <Label className="text-sm font-medium">
-                          Target {exercise.targetType === "reps" ? "Reps" : "Time"}
-                        </Label>
-                        <Input
-                          placeholder={exercise.targetType === "reps" ? "8-12" : "30s"}
-                          value={exercise.targetReps}
-                          onChange={(e) => updateExercise(index, "targetReps", e.target.value)}
-                          className="w-full h-9 md:h-10 text-sm"
-                        />
+                      <Label className="text-sm font-medium">
+                        Target {exercise.targetType === "reps" ? "Reps" : "Time"}
+                      </Label>
+                      <Input
+                        placeholder={exercise.targetType === "reps" ? "8-12" : "30s"}
+                        value={exercise.targetReps}
+                        onChange={(e) => updateExercise(index, "targetReps", e.target.value)}
+                        className="w-full h-9 md:h-10 text-sm"
+                      />
                       </div>
                     </div>
 

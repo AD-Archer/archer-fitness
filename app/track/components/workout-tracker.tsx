@@ -71,77 +71,118 @@ export function WorkoutTracker() {
     setShowSaveDialog(true)
   }
 
-  // Save only the session progress
-  const saveSessionOnly = async () => {
+  // Save the session to history
+  const saveSession = async () => {
     if (!session) return
 
     const completionPercent = Math.round(getWorkoutProgress(session))
-    const shouldMarkCompleted = completionPercent >= 50
 
     setIsSavingWorkout(true)
     try {
-      if (shouldMarkCompleted) {
-        const completeResponse = await fetch(`/api/workout-tracker/workout-sessions/${session.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status: "completed",
-            endTime: new Date().toISOString(),
-            duration: timer,
-          }),
+      // Mark as completed and save to history
+      const completeResponse = await fetch(`/api/workout-tracker/workout-sessions/${session.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "completed",
+          endTime: new Date().toISOString(),
+          duration: timer,
+        }),
+      })
+
+      if (!completeResponse.ok) {
+        const errorText = await completeResponse.text()
+        throw new Error(`Failed to save workout: ${errorText || completeResponse.status}`)
+      }
+
+      // Clear any saved state since workout is saved
+      try {
+        await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
+          method: "DELETE",
         })
+      } catch (stateError) {
+        logger.info("No saved state to clear after saving workout", stateError)
+      }
 
-        if (!completeResponse.ok) {
-          const errorText = await completeResponse.text()
-          throw new Error(`Failed to mark workout completed: ${errorText || completeResponse.status}`)
-        }
+      reset()
+      setSession(null)
+      backToSelection()
+      setShowSaveDialog(false)
+      alert(`Workout saved successfully! (${completionPercent}% complete)`)
+    } catch (e) {
+      logger.error("Failed to save workout", e)
+      alert("Failed to save workout. Please try again.")
+    } finally {
+      setIsSavingWorkout(false)
+    }
+  }
 
-        try {
-          await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
-            method: "DELETE",
-          })
-        } catch (stateError) {
-          logger.info("No saved state to clear after marking workout complete", stateError)
-        }
-      } else {
-        const saveStateResponse = await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            currentExerciseIndex,
-            timer,
-            exerciseTimer,
-            isTimerRunning,
-            isResting,
-            restTimer,
-            lastSetData: session.exercises[currentExerciseIndex]?.sets.length > 0
-              ? {
-                  reps: session.exercises[currentExerciseIndex].sets[session.exercises[currentExerciseIndex].sets.length - 1].reps,
-                  weight: session.exercises[currentExerciseIndex].sets[session.exercises[currentExerciseIndex].sets.length - 1].weight,
-                  isBodyweight: session.exercises[currentExerciseIndex].sets[session.exercises[currentExerciseIndex].sets.length - 1].weight === undefined
-                }
-              : null
-          }),
+  // Archive the workout
+  const archiveWorkout = async () => {
+    if (!session) return
+
+    setIsSavingWorkout(true)
+    try {
+      const archiveResponse = await fetch(`/api/workout-tracker/workout-sessions/${session.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "completed",
+          endTime: new Date().toISOString(),
+          duration: timer,
+          isArchived: true,
+        }),
+      })
+
+      if (!archiveResponse.ok) {
+        const errorText = await archiveResponse.text()
+        throw new Error(`Failed to archive workout: ${errorText || archiveResponse.status}`)
+      }
+
+      // Clear saved state
+      try {
+        await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
+          method: "DELETE",
         })
+      } catch {
+        // No saved state to clear
+      }
 
-        if (!saveStateResponse.ok) {
-          const errorText = await saveStateResponse.text()
-          throw new Error(`Failed to save workout state: ${errorText || saveStateResponse.status}`)
-        }
+      reset()
+      setSession(null)
+      backToSelection()
+      setShowSaveDialog(false)
+      alert("Workout archived successfully!")
+    } catch (e) {
+      logger.error("Failed to archive workout", e)
+      alert("Failed to archive workout. Please try again.")
+    } finally {
+      setIsSavingWorkout(false)
+    }
+  }
 
-        const pauseResponse = await fetch(`/api/workout-tracker/workout-sessions/${session.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status: "paused",
-            duration: timer,
-          }),
+  // Discard the workout completely
+  const discardWorkout = async () => {
+    if (!session) return
+
+    setIsSavingWorkout(true)
+    try {
+      // Clear saved state before deleting
+      try {
+        await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
+          method: "DELETE",
         })
+      } catch {
+        // No saved state to clear
+      }
 
-        if (!pauseResponse.ok) {
-          const errorText = await pauseResponse.text()
-          throw new Error(`Failed to pause workout: ${errorText || pauseResponse.status}`)
-        }
+      const deleteResponse = await fetch(`/api/workout-tracker/workout-sessions/${session.id}`, {
+        method: "DELETE",
+      })
+
+      if (!deleteResponse.ok) {
+        const errorText = await deleteResponse.text()
+        throw new Error(errorText || "Failed to discard workout session")
       }
 
       reset()
@@ -149,8 +190,8 @@ export function WorkoutTracker() {
       backToSelection()
       setShowSaveDialog(false)
     } catch (e) {
-      logger.error("Failed to save workout state", e)
-      alert("Failed to save workout. Please try again.")
+      logger.error("Failed to discard workout", e)
+      alert("Failed to discard workout. Please try again.")
     } finally {
       setIsSavingWorkout(false)
     }
@@ -180,7 +221,7 @@ export function WorkoutTracker() {
       const exercisesForTemplate = session.exercises.map((ex, index) => ({
         name: ex.name,
         exerciseId: ex.id,
-        targetSets: ex.targetSets,
+        targetSets: typeof ex.targetSets === 'string' ? parseInt(ex.targetSets, 10) : ex.targetSets,
         targetReps: ex.targetReps,
         targetType: ex.targetType || "reps",
         order: index,
@@ -249,7 +290,7 @@ export function WorkoutTracker() {
       const exercisesForTemplate = session.exercises.map((ex, index) => ({
         name: ex.name,
         exerciseId: ex.id,
-        targetSets: ex.targetSets,
+        targetSets: typeof ex.targetSets === 'string' ? parseInt(ex.targetSets, 10) : ex.targetSets,
         targetReps: ex.targetReps,
         targetType: ex.targetType || "reps",
         order: index,
@@ -515,11 +556,14 @@ export function WorkoutTracker() {
       <SaveWorkoutDialog
         isOpen={showSaveDialog}
         onClose={() => setShowSaveDialog(false)}
-        onSaveSessionOnly={saveSessionOnly}
+        onSaveSession={saveSession}
         onSaveAsNew={saveAsNewWorkout}
         onUpdateExisting={updateExistingWorkout}
+        onArchive={archiveWorkout}
+        onDiscard={discardWorkout}
         session={session}
         isSaving={isSavingWorkout}
+        completionPercentage={Math.round(getWorkoutProgress(session))}
       />
     </>
   )

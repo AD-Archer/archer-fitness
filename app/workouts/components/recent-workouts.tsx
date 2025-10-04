@@ -1,13 +1,20 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Clock, CheckCircle, Trash2, Eye, RotateCcw, XCircle } from "lucide-react"
-import { useEffect, useState, useCallback } from "react"
+import { Clock, CheckCircle, Eye, RotateCcw, XCircle } from "lucide-react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { WorkoutDetailsModal } from "./workout-details-modal"
 import { QuickViewModal } from "./quick-view-modal"
 import { logger } from "@/lib/logger"
+import type { WorkoutPerformanceStatus } from "@/lib/workout-performance"
+import {
+  calculateCompletionRate as computeCompletionRate,
+  deriveDisplayStatus,
+  isSessionDiscarded,
+  normalizePerformanceStatus,
+  type WorkoutDisplayStatus,
+} from "@/lib/workout-session-status"
 
 interface WorkoutSession {
   id: string
@@ -27,11 +34,13 @@ interface WorkoutSession {
     }>
   }>
   status: "completed" | "in_progress" | "active" | "paused" | "cancelled" | "skipped"
-  performanceStatus?: string
-  completionRate?: number
+  performanceStatus: WorkoutPerformanceStatus
+  completionRate: number
   perfectionScore?: number
   notes?: string
   templateId?: string
+  displayStatus: WorkoutDisplayStatus
+  isDiscarded: boolean
 }
 
 interface WorkoutTemplate {
@@ -81,6 +90,9 @@ interface ApiWorkoutSession {
       name: string
     }>
   }
+  displayStatus?: string
+  isDiscarded?: boolean
+  isArchived?: boolean
 }
 
 interface ApiWorkoutTemplate {
@@ -109,53 +121,15 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
   const [loading, setLoading] = useState(true)
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutSession | null>(null)
 
-  // Helper function to calculate completion percentage
-  const calculateCompletionRate = (exercises: Array<{ targetSets?: number; sets: Array<{ completed: boolean }> }>) => {
-    if (exercises.length === 0) return 0
-
-    const totalTargetSets = exercises.reduce((total, exercise) => total + (exercise.targetSets ?? exercise.sets.length), 0)
-    if (totalTargetSets === 0) return 0
-
-    const completedSets = exercises.reduce((total, exercise) =>
-      total + exercise.sets.filter(set => set.completed).length, 0)
-
-    return Math.round(Math.min((completedSets / totalTargetSets) * 100, 100))
-  }
-
-  // Helper function to get status based on completion
-  const getStatusFromCompletion = useCallback((status: string, exercises: Array<{ targetSets?: number; sets: Array<{ completed: boolean }> }>): WorkoutSession["status"] => {
-    const completionRate = calculateCompletionRate(exercises)
-
-    if (completionRate >= 50) {
-      return "completed"
-    } else if (completionRate > 0) {
-      return "in_progress"
-    } else {
-      return "in_progress" // No sets completed yet
-    }
-  }, [])
-
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch recent workout sessions
-        const sessionsResponse = await fetch('/api/workout-tracker/workout-sessions?limit=3')
+        // Fetch recent workout sessions - get only the most recent 5 to ensure we have enough after filtering
+        const sessionsResponse = await fetch('/api/workout-tracker/workout-sessions?limit=10&visibility=all')
         let sessionsData: ApiWorkoutSession[] = []
         if (sessionsResponse.ok) {
           const allSessions = await sessionsResponse.json()
-          
-          // Filter out workouts that don't meet completion threshold
-          sessionsData = allSessions.filter((session: ApiWorkoutSession) => {
-            const exerciseSnapshots = session.exercises?.map(ex => ({
-              targetSets: ex.targetSets ?? 0,
-              sets: ex.sets || [],
-            })) || []
-
-            const completionRate = session.completionRate ?? calculateCompletionRate(exerciseSnapshots)
-            const meetsThreshold = completionRate >= 50 || session.performanceStatus === 'perfect'
-
-            return meetsThreshold
-          })
+          sessionsData = Array.isArray(allSessions) ? allSessions : []
         }
 
         // Fetch workout templates
@@ -165,9 +139,15 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
           templatesData = await templatesResponse.json()
         }
 
-        // Transform sessions data
-        const transformedSessions = sessionsData.map((session) => {
-          // Map status values properly based on completion
+        // Transform sessions data and filter properly
+        const transformedSessions = sessionsData.reduce<WorkoutSession[]>((acc, session) => {
+          logger.info('Processing session:', {
+            name: session.name,
+            status: session.status,
+            isArchived: session.isArchived,
+            startTime: session.startTime
+          })
+
           const exercises = session.exercises?.map(ex => ({
             exerciseId: ex.exerciseId,
             exerciseName: ex.exercise?.name || 'Unknown Exercise',
@@ -181,10 +161,53 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
             }))
           })) || []
 
-          const status = getStatusFromCompletion(session.status, exercises)
-          const completionRate = session.completionRate ?? calculateCompletionRate(exercises)
+          const completionRateRaw = typeof session.completionRate === "number"
+            ? session.completionRate
+            : computeCompletionRate(exercises)
 
-          return {
+          const normalizedPerformance = normalizePerformanceStatus(
+            session.performanceStatus,
+            completionRateRaw,
+            session.perfectionScore
+          )
+
+          const displayStatus = deriveDisplayStatus({
+            rawStatus: session.status,
+            completionRate: completionRateRaw,
+            performanceStatus: normalizedPerformance,
+            perfectionScore: session.perfectionScore,
+          })
+
+          const isDiscarded = typeof session.isDiscarded === "boolean"
+            ? session.isDiscarded
+            : isSessionDiscarded()
+
+          // Filter out:
+          // 1. Cancelled workouts
+          // 2. Discarded workouts
+          // 3. Archived workouts
+          if (session.status === 'cancelled' || isDiscarded || session.isArchived === true) {
+            logger.info(`Filtering out ${session.name}: cancelled=${session.status === 'cancelled'}, discarded=${isDiscarded}, archived=${session.isArchived}`)
+            return acc
+          }
+
+          // Only show workouts with some completion (not purely in-progress with 0% completion)
+          // This allows completed, perfect, or any workout with completion rate > 0
+          if (completionRateRaw <= 0 && session.status !== 'completed') {
+            logger.info(`Filtering out ${session.name}: completionRate=${completionRateRaw}, status=${session.status}`)
+            return acc
+          }
+
+          logger.info(`Including workout: ${session.name}`)
+
+          const status: WorkoutSession["status"] =
+            displayStatus === "perfect" || displayStatus === "completed"
+              ? "completed"
+              : "in_progress"
+
+          const completionRate = Math.round(completionRateRaw)
+
+          acc.push({
             id: session.id,
             name: session.name,
             date: new Date(session.startTime),
@@ -193,13 +216,22 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
             status,
             notes: session.notes,
             templateId: session.workoutTemplateId,
-            performanceStatus: session.performanceStatus,
+            performanceStatus: normalizedPerformance,
             completionRate,
             perfectionScore: session.perfectionScore,
-          }
-        })
+            displayStatus,
+            isDiscarded: false,
+          })
 
-        setRecentWorkouts(transformedSessions)
+          return acc
+        }, [])
+
+        // Sort by date descending (most recent first) and take only top 3
+        const sortedSessions = transformedSessions
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+          .slice(0, 3)
+
+        setRecentWorkouts(sortedSessions)
 
         // Transform templates data
         const allTemplates = [...templatesData.userTemplates, ...templatesData.predefinedTemplates]
@@ -225,7 +257,7 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
     }
 
     fetchData()
-  }, [getStatusFromCompletion])
+  }, [])
 
   // Helper function to format date
   const formatDate = (date: Date | string) => {
@@ -261,24 +293,6 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
     }
   }
 
-  const handleDeleteWorkout = async (workoutId: string) => {
-    try {
-      const response = await fetch(`/api/workout-tracker/workout-sessions/${workoutId}`, {
-        method: 'DELETE',
-      })
-
-      if (response.ok) {
-        setRecentWorkouts(prev => prev.filter(workout => workout.id !== workoutId))
-        toast.success('Workout deleted successfully')
-      } else {
-        throw new Error('Failed to delete workout')
-      }
-    } catch (error) {
-      logger.error('Failed to delete workout:', error)
-      toast.error('Failed to delete workout')
-    }
-  }
-
   const handleRepeatWorkout = async (workoutId: string) => {
     try {
       const response = await fetch(`/api/workout-tracker/workout-sessions/${workoutId}/repeat`, {
@@ -296,27 +310,58 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
         
         // Call the onRepeatWorkout callback if provided (for legacy support)
         if (onRepeatWorkout) {
+          const exercises = newSession.exercises?.map((ex: {
+            exerciseId: string
+            exercise?: { name?: string }
+            targetSets?: number
+            targetReps?: string
+            targetType?: string
+            sets: Array<{
+              reps: number
+              weight?: number
+              completed: boolean
+            }>
+          }) => ({
+            exerciseId: ex.exerciseId,
+            exerciseName: ex.exercise?.name || 'Unknown Exercise',
+            targetSets: ex.targetSets ?? 0,
+            targetReps: ex.targetReps,
+            targetType: (ex.targetType as "reps" | "time") || "reps",
+            sets: (ex.sets || []).map(set => ({
+              reps: set.reps,
+              weight: set.weight,
+              completed: set.completed,
+            })),
+          })) || []
+
+          const completionRateRaw = computeCompletionRate(exercises)
+          const normalizedPerformance = normalizePerformanceStatus(
+            newSession.performanceStatus,
+            completionRateRaw,
+            newSession.perfectionScore
+          )
+          const displayStatus = deriveDisplayStatus({
+            rawStatus: newSession.status,
+            completionRate: completionRateRaw,
+            performanceStatus: normalizedPerformance,
+            perfectionScore: newSession.perfectionScore,
+          })
+          const isDiscarded = isSessionDiscarded()
+
           onRepeatWorkout({
             id: newSession.id,
             name: newSession.name,
             date: new Date(newSession.startTime),
             duration: newSession.duration || 0,
-            exercises: newSession.exercises?.map((ex: {
-              exerciseId: string
-              exercise?: { name?: string }
-              sets: Array<{
-                reps: number
-                weight?: number
-                completed: boolean
-              }>
-            }) => ({
-              exerciseId: ex.exerciseId,
-              exerciseName: ex.exercise?.name || 'Unknown Exercise',
-              sets: ex.sets || []
-            })) || [],
-            status: newSession.status,
+            exercises,
+            status: displayStatus === "perfect" || displayStatus === "completed" ? "completed" : "in_progress",
             notes: newSession.notes,
             templateId: newSession.workoutTemplateId,
+            performanceStatus: normalizedPerformance,
+            completionRate: Math.round(completionRateRaw),
+            perfectionScore: newSession.perfectionScore,
+            displayStatus,
+            isDiscarded,
           })
         }
       } else {
@@ -357,7 +402,7 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
             // Determine if a newer workout exists after this one in the list
             // Assuming recentWorkouts is sorted desc by date (most recent first)
             const hasNewerStarted = recentWorkouts.some((w, i) => i < idx && new Date(w.date).getTime() > new Date(workout.date).getTime())
-            const completionRate = calculateCompletionRate(workout.exercises)
+            const completionRate = Math.round(computeCompletionRate(workout.exercises))
             const isCompleted = workout.performanceStatus === 'completed' || workout.performanceStatus === 'perfect' || completionRate > 0
             return (
               <div key={workout.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2 sm:p-3 rounded-lg border bg-card/50 gap-2 sm:gap-3">
@@ -409,7 +454,16 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
                   />
                   <WorkoutDetailsModal
                     workout={selectedWorkout}
-                    onRepeat={onRepeatWorkout}
+                    onRepeat={
+                      onRepeatWorkout
+                        ? (session) => {
+                            const matched = recentWorkouts.find((candidate) => candidate.id === session.id)
+                            if (matched) {
+                              onRepeatWorkout(matched)
+                            }
+                          }
+                        : undefined
+                    }
                     trigger={
                       <Button variant="ghost" size="sm" className="text-xs px-1 py-1 h-6 sm:h-8" onClick={() => setSelectedWorkout(workout)}>
                         <span className="hidden sm:inline">View Details</span>
@@ -417,33 +471,6 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
                       </Button>
                     }
                   />
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs px-1 py-1 h-6 sm:h-8">
-                        <Trash2 className="w-3 h-3 mr-1" />
-                        <span className="hidden sm:inline">Delete</span>
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Workout</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to delete this workout? This action cannot be undone.
-                          <br />
-                          <strong>{workout.name}</strong> from {formatDate(workout.date)}
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleDeleteWorkout(workout.id)}
-                          className="bg-red-600 hover:bg-red-700"
-                        >
-                          Delete Workout
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
                 </div>
               </div>
             )
