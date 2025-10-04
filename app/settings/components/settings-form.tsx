@@ -90,7 +90,7 @@ export function SettingsForm() {
   const [profile, setProfile] = useState<UserProfile>({
     name: "",
     email: "",
-    age: "",
+    birthdate: "",
     weight: "",
     heightFeet: "",
     heightInches: "",
@@ -173,7 +173,7 @@ export function SettingsForm() {
             setProfile({
               name: userData.user.name || "",
               email: userData.user.email || "",
-              age: userData.user.age?.toString() || "",
+              birthdate: userData.user.birthdate ? new Date(userData.user.birthdate).toISOString().split('T')[0] : "",
               weight: userData.user.weight?.toString() || "",
               heightFeet: heightFeet.toString(),
               heightInches: heightInches.toString(),
@@ -259,7 +259,7 @@ export function SettingsForm() {
     setProfile({
       name: "",
       email: "",
-      age: "",
+      birthdate: "",
       weight: "",
       heightFeet: "",
       heightInches: "",
@@ -278,7 +278,7 @@ export function SettingsForm() {
       // Validate and prepare profile data
       const profileData = {
         name: profile.name || null,
-        age: profile.age && !isNaN(parseInt(profile.age)) ? parseInt(profile.age) : null,
+        birthdate: profile.birthdate ? new Date(profile.birthdate).toISOString() : null,
         weight: profile.weight && !isNaN(parseFloat(profile.weight)) ? parseFloat(profile.weight) : null,
         height: (() => {
           if (appPrefs.units === "imperial") {

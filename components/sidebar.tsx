@@ -7,7 +7,7 @@ import {
   Dumbbell,
   TrendingUp,
   Calendar,
-  // Moon,
+  Pill,
   Settings,
   Zap,
   Play,
@@ -27,7 +27,7 @@ const navigation = [
   { name: "History", href: "/workouts", icon: Play },
   { name: "Statistics", href: "/progress", icon: TrendingUp },
   { name: "Schedule", href: "/schedule", icon: Calendar },
-  // { name: "Recovery", href: "/recovery", icon: Moon },
+  { name: "Recovery", href: "/recovery", icon: Pill },
 ]
 
 export function Sidebar() {

@@ -10,7 +10,7 @@ const profileUpdateSchema = z.object({
   name: z.string().min(2).optional().nullable(),
   height: z.number().positive().optional().nullable(),
   weight: z.number().positive().optional().nullable(),
-  age: z.number().int().positive().optional().nullable(),
+  birthdate: z.string().optional().nullable(),
   gender: z.enum(["male", "female"]).optional().nullable(),
   fitnessGoals: z.string().optional().nullable(),
   activityLevel: z.string().optional().nullable(),

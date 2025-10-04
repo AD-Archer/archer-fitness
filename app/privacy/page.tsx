@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSession, signOut } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -13,6 +14,7 @@ import { logger } from "@/lib/logger"
 
 export default function PrivacyPage() {
   const { data: session } = useSession()
+  const router = useRouter()
   const [isDeleting, setIsDeleting] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [exportDialogOpen, setExportDialogOpen] = useState(false)
@@ -34,6 +36,7 @@ export default function PrivacyPage() {
       checkPrivacyAcceptance()
     } else {
       setPrivacyAccepted(null)
+      setShowAcceptanceDialog(true)
     }
   }, [session])
 
@@ -140,64 +143,65 @@ export default function PrivacyPage() {
 
   return (
     <>
-      <div className="flex min-h-screen bg-background">
-        {session && privacyAccepted && <Sidebar />}
+      {session && (
+        <div className="flex min-h-screen bg-background">
+          {session && privacyAccepted && <Sidebar />}
 
-        <main className={`flex-1 p-3 md:p-6 lg:p-8 ${session && privacyAccepted ? 'lg:ml-0' : ''} overflow-x-hidden`}>
-          <div className="max-w-4xl mx-auto space-y-4 md:space-y-6 lg:space-y-8">
-            <div className={`flex flex-col gap-4 md:flex-row md:items-center md:justify-between ${session && privacyAccepted ? 'pt-12 lg:pt-0' : 'pt-4'}`}>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-balance">Privacy Policy</h1>
-                <p className="text-muted-foreground text-pretty">
-                  {session && !privacyAccepted
-                    ? "Please review and accept our privacy policy to continue using the app"
-                    : session
-                    ? "Review your data privacy and account management options"
-                    : "Learn about how we handle your data and privacy"
-                  }
-                </p>
+          <main className={`flex-1 p-3 md:p-6 lg:p-8 ${session && privacyAccepted ? 'lg:ml-0' : ''} overflow-x-hidden`}>
+            <div className="max-w-4xl mx-auto space-y-4 md:space-y-6 lg:space-y-8">
+              <div className={`flex flex-col gap-4 md:flex-row md:items-center md:justify-between ${session && privacyAccepted ? 'pt-12 lg:pt-0' : 'pt-4'}`}>
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-balance">Privacy Policy</h1>
+                  <p className="text-muted-foreground text-pretty">
+                    {session && !privacyAccepted
+                      ? "Please review and accept our privacy policy to continue using the app"
+                      : session
+                      ? "Review your data privacy and account management options"
+                      : "Learn about how we handle your data and privacy"
+                    }
+                  </p>
+                </div>
               </div>
-            </div>
 
-            {/* Show privacy content - always visible, but only show account management for authenticated users */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-3xl font-bold text-center">Privacy Policy</CardTitle>
-                <CardDescription className="text-center">
-                  Your privacy is important to us. Review what data we collect and manage your account.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                  <div className="prose max-w-none">
-                    <h2 className="text-2xl font-semibold mb-4">What Data We Collect</h2>
-                    <p className="mb-4">
-                      Archer Fitness collects the following types of data to provide you with personalized fitness tracking:
-                    </p>
+              {/* Show privacy content - always visible, but only show account management for authenticated users */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-3xl font-bold text-center">Privacy Policy</CardTitle>
+                  <CardDescription className="text-center">
+                    Your privacy is important to us. Review what data we collect and manage your account.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="prose max-w-none">
+                      <h2 className="text-2xl font-semibold mb-4">What Data We Collect</h2>
+                      <p className="mb-4">
+                        Archer Fitness collects the following types of data to provide you with personalized fitness tracking:
+                      </p>
 
-                    <h3 className="text-xl font-medium mb-2">Account Information</h3>
-                    <ul className="list-disc list-inside mb-4 space-y-1">
-                      <li>Name, email address, and password</li>
-                      <li>Profile picture (if provided)</li>
-                      <li>Account creation and last update timestamps</li>
-                      <li>Authentication provider data (Google, etc.)</li>
-                      <li>Session tokens and verification tokens</li>
-                    </ul>
+                      <h3 className="text-xl font-medium mb-2">Account Information</h3>
+                      <ul className="list-disc list-inside mb-4 space-y-1">
+                        <li>Name, email address, and password</li>
+                        <li>Profile picture (if provided)</li>
+                        <li>Account creation and last update timestamps</li>
+                        <li>Authentication provider data (Google, etc.)</li>
+                        <li>Session tokens and verification tokens</li>
+                      </ul>
 
-                    <h3 className="text-xl font-medium mb-2">Personal Fitness Profile</h3>
-                    <ul className="list-disc list-inside mb-4 space-y-1">
-                      <li>Height, weight, age, gender</li>
-                      <li>Fitness goals and objectives</li>
-                      <li>Activity level and experience level</li>
-                      <li>Weight tracking history with dates and notes</li>
-                    </ul>
+                      <h3 className="text-xl font-medium mb-2">Personal Fitness Profile</h3>
+                      <ul className="list-disc list-inside mb-4 space-y-1">
+                        <li>Height, weight, age, gender</li>
+                        <li>Fitness goals and objectives</li>
+                        <li>Activity level and experience level</li>
+                        <li>Weight tracking history with dates and notes</li>
+                      </ul>
 
-                    <h3 className="text-xl font-medium mb-2">Workout Data</h3>
-                    <ul className="list-disc list-inside mb-4 space-y-1">
-                      <li>Workout templates (custom and AI-generated)</li>
-                      <li>Workout sessions with start/end times and duration</li>
-                      <li>Exercise performance data (sets, reps, weights, rest times)</li>
-                      <li>Exercise completion status and perfection scores</li>
-                      <li>Workout notes and progress tracking</li>
+                      <h3 className="text-xl font-medium mb-2">Workout Data</h3>
+                      <ul className="list-disc list-inside mb-4 space-y-1">
+                        <li>Workout templates (custom and AI-generated)</li>
+                        <li>Workout sessions with start/end times and duration</li>
+                        <li>Exercise performance data (sets, reps, weights, rest times)</li>
+                        <li>Exercise completion status and perfection scores</li>
+                        <li>Workout notes and progress tracking</li>
                       <li>Saved workout states for resuming paused sessions</li>
                       <li>Completed workout days calendar</li>
                     </ul>
@@ -487,6 +491,7 @@ export default function PrivacyPage() {
           </div>
         </main>
       </div>
+      )}
 
       {/* Privacy Acceptance Dialog for authenticated users who haven't accepted */}
       <Dialog open={showAcceptanceDialog} onOpenChange={() => {}}>
@@ -604,14 +609,28 @@ export default function PrivacyPage() {
             </div>
           </div>
           <div className="flex gap-4 justify-end mt-4">
-            <Button variant="outline" onClick={handleRejectPrivacy} className="flex items-center gap-2">
-              <X className="h-4 w-4" />
-              Sign Out
-            </Button>
-            <Button onClick={handleAcceptPrivacy} disabled={isAccepting} className="flex items-center gap-2">
-              <Check className="h-4 w-4" />
-              {isAccepting ? "Accepting..." : "Accept & Continue"}
-            </Button>
+            {session ? (
+              <>
+                <Button variant="outline" onClick={handleRejectPrivacy} className="flex items-center gap-2">
+                  <X className="h-4 w-4" />
+                  Sign Out
+                </Button>
+                <Button onClick={handleAcceptPrivacy} disabled={isAccepting} className="flex items-center gap-2">
+                  <Check className="h-4 w-4" />
+                  {isAccepting ? "Accepting..." : "Accept & Continue"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => router.back()} className="flex items-center gap-2">
+                  <X className="h-4 w-4" />
+                  Close
+                </Button>
+                <Button onClick={() => router.push('/auth/signin')} className="flex items-center gap-2">
+                  Sign In
+                </Button>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>

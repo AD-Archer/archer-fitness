@@ -1,5 +1,18 @@
 import { UserProfile } from "./types"
 
+// Helper function to calculate age from birthdate
+export const calculateAge = (birthdate: string): number => {
+  if (!birthdate) return 0
+  const birth = new Date(birthdate)
+  const today = new Date()
+  let age = today.getFullYear() - birth.getFullYear()
+  const monthDiff = today.getMonth() - birth.getMonth()
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--
+  }
+  return age
+}
+
 // Unit conversion utilities
 export const convertWeightToKg = (weight: number, units: string) => {
   return units === "imperial" ? weight * 0.453592 : weight
@@ -24,7 +37,7 @@ export const convertHeightToInches = (heightCm: number) => {
 // Calculation utilities for metabolic data
 export const calculateBMR = (profile: UserProfile, units: string = "metric") => {
   const weight = Number.parseFloat(profile.weight)
-  const age = Number.parseFloat(profile.age)
+  const age = calculateAge(profile.birthdate)
 
   if (!weight || !age) return 0
 

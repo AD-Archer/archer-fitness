@@ -58,7 +58,7 @@ model User {
   // Fitness-related fields
   height        Float?
   weight        Float?  // Monthly average weight used for meal tracking and calculations
-  age           Int?
+  birthdate     DateTime? // User's date of birth for age calculation
   gender        String?   // "male" or "female"
   fitnessGoals  String?
   activityLevel String?
@@ -80,6 +80,7 @@ model User {
   scheduleTemplates ScheduleTemplate[]
   pushSubscriptions PushSubscription[]
   completedDays CompletedDay[]
+  recoveryFeedbacks RecoveryFeedback[]
 
   @@map("users")
 }
@@ -276,6 +277,29 @@ model ExerciseSet {
 
   @@unique([workoutSessionExerciseId, setNumber])
   @@map("exercise_sets")
+}
+
+enum RecoveryFeeling {
+  GOOD
+  TIGHT
+  SORE
+  INJURED
+}
+
+model RecoveryFeedback {
+  id         String          @id @default(cuid())
+  userId     String          @map("user_id")
+  bodyPart   String          @map("body_part")
+  feeling    RecoveryFeeling @default(GOOD)
+  intensity  Int?
+  note       String?
+  createdAt  DateTime        @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([bodyPart])
+  @@map("recovery_feedback")
 }
 
 // Model to save workout progress when user exits mid-workout

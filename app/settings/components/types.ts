@@ -2,7 +2,7 @@
 export interface UserProfile {
   name: string
   email: string
-  age: string
+  birthdate: string
   weight: string
   heightFeet: string
   heightInches: string

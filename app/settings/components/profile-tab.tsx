@@ -43,12 +43,12 @@ export function ProfileTab({ profile, setProfile, units }: ProfileTabProps) {
             <p className="text-xs text-muted-foreground">Email cannot be changed</p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="age">Age</Label>
+            <Label htmlFor="birthdate">Birthdate</Label>
             <Input
-              id="age"
-              type="number"
-              value={profile.age}
-              onChange={(e) => setProfile({ ...profile, age: e.target.value })}
+              id="birthdate"
+              type="date"
+              value={profile.birthdate}
+              onChange={(e) => setProfile({ ...profile, birthdate: e.target.value })}
             />
           </div>
           <div className="space-y-2">
@@ -150,7 +150,7 @@ export function ProfileTab({ profile, setProfile, units }: ProfileTabProps) {
           </Select>
         </div>
 
-        {profile.weight && profile.age && (
+        {profile.weight && profile.birthdate && (
           (units === "imperial" && profile.heightFeet && profile.heightInches) ||
           (units === "metric" && profile.heightCm)
         ) && (

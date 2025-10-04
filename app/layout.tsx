@@ -9,6 +9,7 @@ import Script from 'next/script'
 import './globals.css'
 import { NotificationInitializer } from '@/components/notification-initializer'
 import { PrivacyCheck } from '@/components/privacy-check'
+import { Footer } from '@/components/footer'
 
 const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
 
@@ -186,6 +187,9 @@ export default function RootLayout({
           <NotificationInitializer />
           <PrivacyCheck />
           {children}
+          <footer className="py-6 mt-auto">
+            <Footer />
+          </footer>
           <Toaster />
         </AuthProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
@@ -217,3 +221,4 @@ export default function RootLayout({
     </html>
   )
 }
+
