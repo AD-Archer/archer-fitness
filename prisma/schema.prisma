@@ -81,6 +81,8 @@ model User {
   pushSubscriptions PushSubscription[]
   completedDays CompletedDay[]
   recoveryFeedbacks RecoveryFeedback[]
+  passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
 
   @@map("users")
 }
@@ -92,6 +94,37 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verificationtokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  email     String   // Email to verify
+  token     String   @unique // URL token
+  code      String   // 6-digit verification code
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  verifiedAt DateTime? @map("verified_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([email])
+  @@index([code])
+  @@map("email_verification_tokens")
 }
 
 // Fitness-related models

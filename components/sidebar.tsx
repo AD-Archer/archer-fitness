@@ -73,60 +73,60 @@ export function Sidebar() {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           {!collapsed && (
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <Dumbbell className="w-4 h-4 text-white" />
-              </div>
-              <span className="font-semibold">Archer Fitness</span>
-            </div>
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
+            <img src="/android-chrome-512x512.png" alt="Logo" className="w-full h-full object-cover" />
+          </div>
+          <span className="font-semibold">Archer Fitness</span>
+        </div>
           )}
           <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setCollapsed(!collapsed)}
-            className="h-8 w-8 p-0 hidden lg:flex"
+        variant="ghost"
+        size="sm"
+        onClick={() => setCollapsed(!collapsed)}
+        className="h-8 w-8 p-0 hidden lg:flex"
           >
-            <LayoutDashboard className="h-4 w-4" />
+        <LayoutDashboard className="h-4 w-4" />
           </Button>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-2">
           {navigation.map((item) => {
-            const Icon = item.icon
-            const isActive = pathname === item.href
-            return (
-              <Link key={item.name} href={item.href}>
-                <Button
-                  variant={isActive ? "secondary" : "ghost"}
-                  className={cn("w-full justify-start gap-3 h-10", collapsed && "justify-center px-2 lg:px-2")}
-                >
-                  <Icon className="h-4 w-4 flex-shrink-0" />
-                  {!collapsed && <span>{item.name}</span>}
-                </Button>
-              </Link>
-            )
+        const Icon = item.icon
+        const isActive = pathname === item.href
+        return (
+          <Link key={item.name} href={item.href}>
+            <Button
+          variant={isActive ? "secondary" : "ghost"}
+          className={cn("w-full justify-start gap-3 h-10", collapsed && "justify-center px-2 lg:px-2")}
+            >
+          <Icon className="h-4 w-4 flex-shrink-0" />
+          {!collapsed && <span>{item.name}</span>}
+            </Button>
+          </Link>
+        )
           })}
         </nav>
 
         {/* Footer */}
         <div className="p-4 border-t border-border space-y-2">
           <Link href="/settings">
-            <Button
-              variant="ghost"
-              className={cn("w-full justify-start gap-3 h-10", collapsed && "justify-center px-2 lg:px-2")}
-            >
-              <Settings className="h-4 w-4 flex-shrink-0" />
-              {!collapsed && <span>Settings</span>}
-            </Button>
+        <Button
+          variant="ghost"
+          className={cn("w-full justify-start gap-3 h-10", collapsed && "justify-center px-2 lg:px-2")}
+        >
+          <Settings className="h-4 w-4 flex-shrink-0" />
+          {!collapsed && <span>Settings</span>}
+        </Button>
           </Link>
           <Button
-            variant="ghost"
-            className={cn("w-full justify-start gap-3 h-10 text-red-600 hover:text-red-600 hover:bg-red-50", collapsed && "justify-center px-2 lg:px-2")}
-            onClick={() => signOut({ callbackUrl: "/auth/signin" })}
+        variant="ghost"
+        className={cn("w-full justify-start gap-3 h-10 text-red-600 hover:text-red-600 hover:bg-red-50", collapsed && "justify-center px-2 lg:px-2")}
+        onClick={() => signOut({ callbackUrl: "/auth/signin" })}
           >
-            <LogOut className="h-4 w-4 flex-shrink-0" />
-            {!collapsed && <span>Sign Out</span>}
+        <LogOut className="h-4 w-4 flex-shrink-0" />
+        {!collapsed && <span>Sign Out</span>}
           </Button>
         </div>
       </div>

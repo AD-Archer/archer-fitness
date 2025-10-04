@@ -139,6 +139,14 @@ function SignInContent() {
                 onChange={handleInputChange}
                 disabled={isLoading}
               />
+              <div className="flex justify-end">
+                <Link
+                  href="/auth/forgot-password"
+                  className="text-xs font-medium text-blue-600 hover:text-blue-500"
+                >
+                  Forgot password?
+                </Link>
+              </div>
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>

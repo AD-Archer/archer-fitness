@@ -40,7 +40,7 @@ export function ProfileTab({ profile, setProfile, units }: ProfileTabProps) {
               disabled
               className="bg-muted"
             />
-            <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+            <p className="text-xs text-muted-foreground">Email cannot be changed here</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="birthdate">Birthdate</Label>

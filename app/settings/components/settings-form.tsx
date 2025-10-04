@@ -7,13 +7,14 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
-import { User, Dumbbell, Bell, Shield, Loader2 } from "lucide-react"
+import { User, Dumbbell, Bell, Shield, Loader2, Lock } from "lucide-react"
 import { UserProfile, WorkoutPrefs, AppPrefs } from "./types"
 import { convertHeightToCm } from "./utils"
 import { ProfileTab } from "./profile-tab"
 import { WorkoutTab } from "./workout-tab"
 import { AppTab } from "./app-tab"
 import { PrivacyTab } from "./privacy-tab"
+import { SecurityTab } from "./security-tab"
 import { logger } from "@/lib/logger"
 
 export function SettingsForm() {
@@ -29,7 +30,7 @@ export function SettingsForm() {
   // Sync tab with URL on mount
   useEffect(() => {
     const tabFromUrl = searchParams.get("tab")
-    if (tabFromUrl && ["profile", "workout", "notifications", "privacy"].includes(tabFromUrl)) {
+    if (tabFromUrl && ["profile", "workout", "notifications", "privacy", "security"].includes(tabFromUrl)) {
       setActiveTab(tabFromUrl)
     }
   }, [searchParams])
@@ -377,12 +378,18 @@ export function SettingsForm() {
                   Privacy
                 </div>
               </SelectItem>
+              <SelectItem value="security">
+                <div className="flex items-center gap-2">
+                  <Lock className="h-4 w-4" />
+                  Security
+                </div>
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         {/* Desktop Tabs */}
-        <TabsList className="hidden md:grid w-full grid-cols-4">
+        <TabsList className="hidden md:grid w-full grid-cols-5">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             <span className="hidden lg:inline">Profile</span>
@@ -398,6 +405,10 @@ export function SettingsForm() {
           <TabsTrigger value="privacy" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
             <span className="hidden lg:inline">Privacy</span>
+          </TabsTrigger>
+          <TabsTrigger value="security" className="flex items-center gap-2">
+            <Lock className="h-4 w-4" />
+            <span className="hidden lg:inline">Security</span>
           </TabsTrigger>
         </TabsList>
 
@@ -415,6 +426,10 @@ export function SettingsForm() {
 
         <TabsContent value="privacy" className="space-y-4">
           <PrivacyTab appPrefs={appPrefs} setAppPrefs={setAppPrefs} />
+        </TabsContent>
+
+        <TabsContent value="security" className="space-y-4">
+          <SecurityTab />
         </TabsContent>
       </Tabs>
 
