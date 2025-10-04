@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import * as OTPAuth from "otpauth"
 import QRCode from "qrcode"
 import crypto from "crypto"
+import { logger } from "@/lib/logger"
 
 export async function POST() {
   try {
@@ -73,7 +74,7 @@ export async function POST() {
       backupCodes,
     })
   } catch (error) {
-    console.error("2FA setup error:", error)
+    logger.error("2FA setup error:", error)
     return NextResponse.json({ error: "Failed to setup two-factor authentication" }, { status: 500 })
   }
 }

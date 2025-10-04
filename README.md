@@ -2,6 +2,10 @@
 
 An AI-powered fitness tracking application built by Antonio Archer, a software developer from Philadelphia. Track workouts, monitor nutrition, and analyze your fitness progress with intelligent insights and personalized recommendations.
 
+🌐 **Live App**: [fitness.archer.app](https://fitness.archer.app)
+
+[![Archer Fitness Banner](https://fitness.archer.app/sitebanner.webp)](https://fitness.archer.app)
+
 ![Archer Fitness](https://img.shields.io/badge/Archer-Fitness-blue?style=for-the-badge&logo=fitness&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-14.2.16-black?style=flat-square&logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript)
@@ -16,27 +20,33 @@ An AI-powered fitness tracking application built by Antonio Archer, a software d
 - **Real-time Tracking**: Log sets, reps, weights, and rest times during workouts
 - **Progress Analytics**: Visualize your strength gains and workout patterns
 - **Session Management**: Start, pause, and resume workout sessions
-
-### 🥗 Nutrition Monitoring
-- **Food Database**: Search and log meals from a vast food database
-- **Custom Meals**: Create and save your own meal recipes
-- **Macro Tracking**: Monitor calories, protein, carbs, and fats
-- **Meal Planning**: Plan and track daily nutrition goals
-- **Nutrition Analytics**: View trends in your dietary habits
+- **Recovery Feedback**: Track muscle soreness and recovery status
 
 ### 📊 Progress Dashboard
-- **Visual Analytics**: Interactive charts showing workout and nutrition trends
+- **Visual Analytics**: Interactive charts showing workout trends and performance
 - **Goal Setting**: Set and track fitness objectives
-- **Performance Metrics**: Monitor strength gains, endurance improvements
+- **Performance Metrics**: Monitor strength gains, endurance improvements, and workout consistency
 - **Weekly Reports**: Automated progress summaries and insights
+- **Weight Tracking**: Log and monitor body weight changes over time
+
+### 📅 Schedule Management
+- **Weekly Planning**: Create and manage workout schedules
+- **Template Generator**: AI-powered schedule generation based on your goals
+- **Recurring Workouts**: Set up repeating workout routines
+- **Completed Days Tracking**: Mark and track completed workout days
 
 ### 🤖 AI-Powered Features
-- **Smart Recommendations**: AI-driven workout and nutrition suggestions
+- **Smart Workout Generation**: AI-driven workout routine creation
 - **Progress Predictions**: Estimate future performance based on current trends
 - **Personalized Insights**: Intelligent analysis of your fitness data
+- **Exercise Recommendations**: Suggested exercises based on your history and goals
 
 ### 🔐 Authentication & Security
-- **NextAuth Integration**: Secure authentication with multiple providers
+- **Two-Factor Authentication (2FA)**: TOTP-based 2FA with authenticator app support
+- **Backup Codes**: Secure account recovery with single-use backup codes
+- **NextAuth Integration**: Secure authentication with multiple providers (Google OAuth, Email/Password)
+- **Password Reset**: Email-based password recovery
+- **Email Verification**: Verify email addresses with secure tokens
 - **User Profiles**: Personalized user accounts with fitness preferences
 - **Data Privacy**: Secure storage and handling of personal fitness data
 
@@ -324,16 +334,19 @@ For production deployment to your home server via SSH:
 archer-fitness/
 ├── app/                          # Next.js App Router
 │   ├── api/                      # API routes
-│   │   ├── auth/                 # Authentication endpoints
+│   │   ├── auth/                 # Authentication endpoints (including 2FA)
 │   │   ├── exercises/            # Exercise management
-│   │   ├── foods/                # Food database
 │   │   ├── health/               # Health monitoring
-│   │   └── workouts/             # Workout tracking
-│   ├── auth/                     # Authentication pages
-│   ├── dashboard/                # Main dashboard
-│   ├── nutrition/                # Nutrition tracking
+│   │   ├── recovery/             # Recovery feedback
+│   │   ├── schedule/             # Schedule management
+│   │   ├── user/                 # User profile and preferences
+│   │   └── workout-tracker/      # Workout tracking
+│   ├── auth/                     # Authentication pages (signin, signup, 2FA)
+│   ├── generate/                 # AI workout generation
 │   ├── progress/                 # Progress analytics
-│   ├── settings/                 # User settings
+│   ├── recovery/                 # Recovery tracking
+│   ├── schedule/                 # Schedule management
+│   ├── settings/                 # User settings (including security/2FA)
 │   ├── track/                    # Workout tracking
 │   └── workouts/                 # Workout management
 ├── components/                   # Reusable UI components
@@ -358,14 +371,19 @@ archer-fitness/
 
 The application uses PostgreSQL with the following main entities:
 
-- **Users**: User accounts and profiles
-- **Exercises**: Exercise library with categories and instructions
+- **Users**: User accounts, profiles, and 2FA settings
+- **Exercises**: Exercise library with categories, muscles, equipment, and instructions
 - **WorkoutTemplates**: Reusable workout routines
-- **WorkoutSessions**: Individual workout sessions
-- **Foods**: Nutritional food database
-- **Meals**: Meal planning and tracking
-- **NutritionLogs**: Daily nutrition tracking
-- **UserPreferences**: Personalized settings
+- **WorkoutSessions**: Individual workout sessions with performance tracking
+- **ExerciseSets**: Detailed set tracking (reps, weight, duration)
+- **Schedules**: Weekly workout schedules
+- **ScheduleItems**: Individual scheduled workouts and activities
+- **WeightEntries**: Body weight tracking over time
+- **RecoveryFeedback**: Muscle soreness and recovery status
+- **UserPreferences**: Personalized settings and notification preferences
+- **PushSubscriptions**: Web push notification subscriptions
+- **PasswordResetTokens**: Secure password reset tokens
+- **EmailVerificationTokens**: Email verification codes and tokens
 
 ## 🔧 Available Scripts
 
@@ -433,11 +451,34 @@ pnpm run update:docker # Update Docker containers
 
 ## 🔒 Security
 
+- **Two-Factor Authentication**: TOTP-based 2FA with authenticator app support (Google Authenticator, Authy, etc.)
+- **Backup Codes**: Single-use recovery codes for account access
 - **NextAuth.js**: Secure authentication with JWT tokens
 - **Password Hashing**: bcryptjs for secure password storage
+- **Email Verification**: Secure email verification with tokens and codes
+- **Password Reset**: Time-limited password reset tokens
 - **Input Validation**: Zod schemas for data validation
 - **SQL Injection Protection**: Prisma ORM prevents SQL injection
-- **HTTPS Only**: Enforced secure connections
+- **HTTPS Only**: Enforced secure connections in production
+
+### Two-Factor Authentication (2FA)
+
+Archer Fitness supports industry-standard TOTP (Time-based One-Time Password) authentication:
+
+- **Easy Setup**: Scan QR code with any authenticator app
+- **Backup Codes**: 10 single-use backup codes for account recovery
+- **Flexible Sign-in**: Support for both TOTP codes and backup codes
+- **Secure Storage**: Encrypted 2FA secrets in database
+- **User Control**: Enable/disable 2FA from security settings
+
+Compatible with popular authenticator apps:
+- Google Authenticator
+- Microsoft Authenticator
+- Authy
+- 1Password
+- Bitwarden
+
+For detailed 2FA implementation documentation, see [docs/2FA_IMPLEMENTATION.md](docs/2FA_IMPLEMENTATION.md)
 
 ## 📱 Progressive Web App
 
@@ -452,18 +493,22 @@ The application is PWA-ready with:
 ### Upcoming Features
 - [ ] Mobile app (React Native)
 - [ ] Social features (workout sharing, challenges)
-- [ ] Integration with fitness wearables
-- [ ] Advanced AI recommendations
-- [ ] Meal planning with grocery lists
+- [ ] Integration with fitness wearables (Apple Watch, Fitbit)
+- [ ] Advanced AI recommendations and insights
 - [ ] Workout video demonstrations
-- [ ] Community forums
+- [ ] Exercise form analysis with AI
+- [ ] Community forums and workout challenges
+- [ ] Personal trainer mode
+- [ ] SMS-based 2FA as alternative to TOTP
 
 ### Technical Improvements
 - [ ] GraphQL API
-- [ ] Real-time notifications
+- [ ] Real-time notifications and updates
 - [ ] Advanced caching strategies
 - [ ] Multi-language support
 - [ ] Dark mode enhancements
+- [ ] Offline-first architecture
+- [ ] Performance optimizations
 
 ## 📄 License
 

@@ -1,10 +1,25 @@
 # Archer Fitness (Docker)
 
-A Docker-friendly, production-ready build of Archer Fitness — an AI-powered fitness tracking app (Next.js + PostgreSQL + Prisma).
+A Docker-friendly, production-ready build of Archer Fitness — an AI-powered fitness tracking app with two-factor authentication support (Next.js + PostgreSQL + Prisma).
+
+🌐 **Live App**: [fitness.archer.app](https://fitness.archer.app)
+
+[![Archer Fitness Banner](https://fitness.archer.app/sitebanner.webp)](https://fitness.archer.app)
 
 This README is written for Docker Hub / container users who want to pull and run the prebuilt image or build and run locally with Docker/Compose.
 
-Speical thanks to the https://www.exercisedb.dev/ for their amazing api
+Special thanks to https://www.exercisedb.dev/ for their amazing API
+
+## Features
+
+- 🏋️ Comprehensive workout tracking with exercise library
+- 📊 Progress analytics and performance metrics
+- 📅 AI-powered workout schedule generation
+- 💪 Recovery feedback and tracking
+- 🔐 Two-factor authentication (TOTP) with backup codes
+- 🔒 Secure authentication with Google OAuth and email/password
+- 📱 Progressive Web App with push notifications
+- 🎯 Personal fitness goals and tracking
 ## Image
 
 Official image (example):
@@ -167,7 +182,27 @@ If you want to enable Google sign-in for your users:
    - For production: `https://yourdomain.com/api/auth/callback/google`
 9. Copy the Client ID and Client Secret to your `.env` file
 
-**Note:** If Google OAuth is not configured, users will see a warning message on the sign-in and sign-up pages, but can still use email/password authentication.
+**Note:** If Google OAuth is not configured, users will see a warning message on the sign-in and sign-up pages, but can still use email/password authentication with optional 2FA.
+
+## Two-Factor Authentication (2FA)
+
+Archer Fitness includes built-in two-factor authentication support:
+
+- **TOTP-based**: Compatible with Google Authenticator, Authy, Microsoft Authenticator, 1Password, Bitwarden, and other authenticator apps
+- **Backup Codes**: 10 single-use recovery codes generated during setup
+- **User Control**: Users can enable/disable 2FA from their security settings
+- **Secure Storage**: 2FA secrets are stored securely in the database
+
+### Setting up 2FA (for end users):
+
+1. Sign in to your Archer Fitness account
+2. Go to Settings → Security
+3. Click "Enable 2FA"
+4. Scan the QR code with your authenticator app
+5. Save the backup codes in a secure location
+6. Enter the verification code to activate 2FA
+
+Once enabled, users will need to enter a 6-digit code from their authenticator app (or a backup code) after entering their password during sign-in.
 
 ## Generate VAPID Keys
 ```
@@ -201,15 +236,37 @@ This image does not require persistent storage for the app itself (stateless). P
 - Do not store secrets in images. Use `--env-file` or your orchestration secrets manager.
 - Run the app behind a reverse proxy (nginx, Traefik) with TLS in production.
 - Use a managed database or ensure your PostgreSQL is secured and backed up.
+- Enable 2FA for admin accounts for enhanced security.
+- Regularly backup your database to preserve user data and 2FA settings.
+- Use strong `NEXTAUTH_SECRET` values (at least 32 characters).
+- Keep VAPID keys secure and never commit them to version control.
 
 ## Troubleshooting
 
-- 502 / cannot connect: check `DATABASE_URL` and network configuration between the container and the database.
-- 500 errors on auth: verify `NEXTAUTH_SECRET` and `NEXTAUTH_URL` are correct.
-- Logs:
+- **502 / cannot connect**: Check `DATABASE_URL` and network configuration between the container and the database.
+- **500 errors on auth**: Verify `NEXTAUTH_SECRET` and `NEXTAUTH_URL` are correct.
+- **Push notifications not working**: Ensure `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` are set correctly.
+- **2FA QR code not displaying**: Check browser console for errors and ensure the app can generate QR codes.
+- **Google OAuth fails**: Verify redirect URIs in Google Cloud Console match your `NEXTAUTH_URL`.
+
+View logs:
 
 ```bash
 docker logs -f archer-fitness
+```
+
+## Database Migrations
+
+The application automatically runs Prisma migrations on startup. If you need to manually run migrations:
+
+```bash
+docker exec -it archer-fitness npx prisma migrate deploy
+```
+
+To view the database schema:
+
+```bash
+docker exec -it archer-fitness npx prisma studio
 ```
 
 ## Support
