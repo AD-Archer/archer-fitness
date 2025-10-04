@@ -4,55 +4,70 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Target, Clock, Dumbbell, Play, RefreshCw, Zap } from "lucide-react"
+import { Target, Clock, Dumbbell, Play, RefreshCw, Zap, PlusCircle, Save } from "lucide-react"
 import { ExerciseCard } from "./exercise-card"
 import { WarmupCooldownSection } from "./warmup-cooldown-section"
-import { 
-  transformWorkoutPlanToTemplate, 
+import {
+  transformWorkoutPlanToTemplate,
   transformWorkoutPlanToSession,
   saveWorkoutAsTemplate,
-  startWorkoutSession
+  startWorkoutSession,
+  WorkoutPlan,
 } from "@/lib/workout-utils"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
-
-interface Exercise {
-  name: string
-  sets: number
-  reps: string
-  rest: string
-  instructions: string
-  targetMuscles: string[]
-}
-
-interface WorkoutPlan {
-  name: string
-  duration: number
-  difficulty: string
-  exercises: Exercise[]
-  warmup: string[]
-  cooldown: string[]
-}
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 interface WorkoutDisplayProps {
   workout: WorkoutPlan
   userNotes?: string
-  onRegenerate: () => void
+  onRegeneratePlan?: () => void
+  onRemoveExercise?: (exerciseId: string) => void
+  onRegenerateExercise?: (exerciseId: string) => void
+  onAddExercise?: () => void
 }
 
-export function WorkoutDisplay({ workout, userNotes, onRegenerate }: WorkoutDisplayProps) {
+export function WorkoutDisplay({
+  workout,
+  userNotes,
+  onRegeneratePlan,
+  onRemoveExercise,
+  onRegenerateExercise,
+  onAddExercise,
+}: WorkoutDisplayProps) {
   const router = useRouter()
   const [isSaving, setIsSaving] = useState(false)
   const [isStarting, setIsStarting] = useState(false)
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [customName, setCustomName] = useState(workout.name)
 
-  const handleSaveWorkout = async () => {
+  const handleSaveWorkout = () => {
+    setCustomName(workout.name)
+    setShowSaveDialog(true)
+  }
+
+  const handleConfirmSave = async () => {
     try {
       setIsSaving(true)
+      setShowSaveDialog(false)
+      
       const templateData = transformWorkoutPlanToTemplate(workout)
+      // Override the name with the custom name
+      templateData.name = customName.trim() || workout.name
+      
       await saveWorkoutAsTemplate(templateData)
       
-      toast.success("Workout saved as template with AI-generated flag.")
+      toast.success("Workout saved as template!")
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save workout")
     } finally {
@@ -128,12 +143,24 @@ export function WorkoutDisplay({ workout, userNotes, onRegenerate }: WorkoutDisp
 
         <Separator />
 
-        <div>
-          <h3 className="font-semibold mb-4 text-blue-600">Main Workout</h3>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-semibold text-blue-600">Main Workout</h3>
+          </div>
           <div className="space-y-4">
-            {workout.exercises.map((exercise, index) => (
-              <ExerciseCard key={index} exercise={exercise} />
-            ))}
+            {workout.exercises.map((exercise, index) => {
+              const exerciseId = exercise.id ?? `${exercise.name.toLowerCase().replace(/\s+/g, "-")}-${index}`
+
+              return (
+                <ExerciseCard
+                  key={exerciseId}
+                  exercise={exercise}
+                  isPinned={false}
+                  onRegenerate={onRegenerateExercise ? () => onRegenerateExercise(exerciseId) : undefined}
+                  onRemove={onRemoveExercise ? () => onRemoveExercise(exerciseId) : undefined}
+                />
+              )
+            })}
           </div>
         </div>
 
@@ -145,18 +172,57 @@ export function WorkoutDisplay({ workout, userNotes, onRegenerate }: WorkoutDisp
           colorClass="text-purple-600"
         />
 
-                <div className="flex gap-3 pt-4">
-          <Button variant="outline" className="flex-1 bg-transparent" onClick={handleSaveWorkout} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save Workout"}
+        <div className="flex flex-wrap gap-3 pt-4">
+          <Button variant="outline" onClick={onAddExercise}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add exercise
           </Button>
-          <Button variant="outline" className="flex-1 bg-transparent">
-            Share
-          </Button>
-          <Button onClick={onRegenerate} variant="outline">
-            <RefreshCw className="w-4 h-4" />
-          </Button>
+          <div className="ml-auto flex gap-3">
+            <Button variant="outline" onClick={handleSaveWorkout} disabled={isSaving}>
+              <Save className="w-4 h-4 mr-2" />
+              {isSaving ? "Saving..." : "Save as Template"}
+            </Button>
+            <Button onClick={onRegeneratePlan} variant="outline">
+              <RefreshCw className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </CardContent>
+
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save Workout Template</DialogTitle>
+            <DialogDescription>
+              Give your workout a custom name to save it as a template for future use.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="workout-name">Workout Name</Label>
+              <Input
+                id="workout-name"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                placeholder="Enter workout name..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleConfirmSave()
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmSave} disabled={isSaving || !customName.trim()}>
+              {isSaving ? "Saving..." : "Save Template"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }

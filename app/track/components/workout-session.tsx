@@ -1,12 +1,12 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Check, Pause, Play, Square, Target, Timer, Save, X, Trash2 } from "lucide-react"
+import { Check, Pause, Play, Square, Target, Timer, Save, X, Trash2, Pencil } from "lucide-react"
 import Image from "next/image"
 import { AddSetForm } from "./add-set-form"
 import { RestTimer } from "./rest-timer"
@@ -15,53 +15,10 @@ import { formatTime, getExerciseProgress, isExerciseCompleted, getCompletedExerc
 import { formatWeight } from "@/lib/weight-utils"
 import { useUserPreferences } from "@/hooks/use-user-preferences"
 import { logger } from "@/lib/logger"
-
-interface ExerciseSet {
-  reps: number
-  weight?: number
-  completed: boolean
-}
-
-interface TrackedExercise {
-  id: string
-  name: string
-  targetSets: number
-  targetReps: string
-  targetType?: "reps" | "time"
-  instructions?: string
-  sets: ExerciseSet[]
-  completed: boolean
-  exercise?: {
-    id: string
-    name: string
-    description?: string
-    instructions?: string
-    gifUrl?: string
-    muscles: Array<{
-      muscle: {
-        id: string
-        name: string
-      }
-      isPrimary: boolean
-    }>
-    equipments: Array<{
-      equipment: {
-        id: string
-        name: string
-      }
-    }>
-  }
-}
+import type { WorkoutSession as WorkoutSessionType, ExerciseSet as TrackedExerciseSet } from "../types/workout"
 
 interface WorkoutSessionProps {
-  session: {
-    id: string
-    name: string
-    startTime: Date
-    duration: number
-    exercises: TrackedExercise[]
-    isActive: boolean
-  }
+  session: WorkoutSessionType
   currentExerciseIndex: number
   timer: number
   isTimerRunning: boolean
@@ -73,6 +30,12 @@ interface WorkoutSessionProps {
   onStopWorkout: () => void
   onBackToSelection: () => void
   onAddSet: (exerciseId: string, reps: number, weight?: number) => void
+  onUpdateSet: (
+    exerciseId: string,
+    setId: string,
+    payload: { reps?: number; weight?: number; duration?: number }
+  ) => void
+  onDeleteSet: (exerciseId: string, setId: string) => void
   onAddExercise: () => void
   onRemoveExercise: (exerciseId: string) => void
   onNextExercise: () => void
@@ -96,6 +59,8 @@ export function WorkoutSession({
   onStopWorkout,
   onBackToSelection,
   onAddSet,
+  onUpdateSet,
+  onDeleteSet,
   onAddExercise,
   onRemoveExercise,
   onNextExercise,
@@ -108,6 +73,19 @@ export function WorkoutSession({
   const currentExercise = session.exercises[currentExerciseIndex]
   const workoutHeaderRef = useRef<HTMLDivElement>(null)
   const { units } = useUserPreferences()
+  const [editingSetContext, setEditingSetContext] = useState<{
+    exerciseId: string
+    setId: string
+    setNumber: number
+    reps?: number
+    duration?: number
+    weight?: number
+    isBodyweight?: boolean
+  } | null>(null)
+
+  useEffect(() => {
+    setEditingSetContext(null)
+  }, [currentExerciseIndex, session.exercises])
 
   // Handle add exercise with scroll to top
   const handleAddExercise = () => {
@@ -122,10 +100,40 @@ export function WorkoutSession({
     if (currentExercise.sets.length === 0) return undefined
     const lastSet = currentExercise.sets[currentExercise.sets.length - 1]
     return {
-      reps: lastSet.reps,
+      reps: typeof lastSet.reps === "number" ? lastSet.reps : undefined,
       weight: lastSet.weight,
       isBodyweight: lastSet.weight === undefined
     }
+  }
+
+  const editingSetForForm =
+    editingSetContext && editingSetContext.exerciseId === currentExercise.id
+      ? {
+          id: editingSetContext.setId,
+          setNumber: editingSetContext.setNumber,
+          reps: editingSetContext.reps,
+          duration: editingSetContext.duration,
+          weight: editingSetContext.weight,
+          isBodyweight: editingSetContext.isBodyweight,
+        }
+      : null
+
+  const handleEditSet = (set: TrackedExerciseSet) => {
+    setEditingSetContext({
+      exerciseId: currentExercise.id,
+      setId: set.id,
+      setNumber: set.setNumber,
+      reps: typeof set.reps === "number" ? set.reps : undefined,
+      duration: typeof set.duration === "number" ? set.duration : undefined,
+      weight: set.weight,
+      isBodyweight: set.weight === undefined,
+    })
+  }
+
+  const handleDeleteSet = (setId: string) => {
+    if (!confirm("Delete this set?")) return
+    onDeleteSet(currentExercise.id, setId)
+    setEditingSetContext((prev) => (prev?.setId === setId ? null : prev))
   }
 
   // Guard clause: if no exercises or invalid index, show message
@@ -435,23 +443,58 @@ export function WorkoutSession({
             <h3 className="font-medium">Sets</h3>
 
             {/* Completed Sets */}
-      {currentExercise.sets.map((set, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-3 rounded-lg border bg-green-50 dark:bg-green-950"
-              >
-                <div className="flex items-center gap-3">
-                  <Badge variant="secondary">Set {index + 1}</Badge>
-                  <span className="text-sm">
-                    {currentExercise.targetType === "time"
-                      ? `${Math.floor(set.reps / 60)}:${(set.reps % 60).toString().padStart(2, "0")}`
-                      : `${set.reps} reps × ${set.weight !== null && set.weight !== undefined ? formatWeight(set.weight, units) : "bodyweight"}`
-                    }
-                  </span>
+            {currentExercise.sets.map((set) => {
+              const isTimeBased = currentExercise.targetType === "time"
+              const setDuration = set.duration ?? set.reps ?? 0
+              const isEditingThisSet = editingSetContext?.setId === set.id
+
+              return (
+                <div
+                  key={set.id}
+                  className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-lg border transition ${
+                    isEditingThisSet
+                      ? "border-blue-400 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/40"
+                      : "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800"
+                  }`}
+                >
+                  <div className="flex-1 flex items-start sm:items-center gap-3">
+                    <Badge variant={isEditingThisSet ? "default" : "secondary"}>
+                      Set {set.setNumber}
+                    </Badge>
+                    <span className="text-sm leading-5 sm:leading-normal">
+                      {isTimeBased
+                        ? formatTime(setDuration)
+                        : `${set.reps ?? 0} reps × ${
+                            set.weight !== null && set.weight !== undefined
+                              ? formatWeight(set.weight, units)
+                              : "bodyweight"
+                          }`}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2 text-xs"
+                      onClick={() => handleEditSet(set)}
+                    >
+                      <Pencil className="w-3 h-3 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                      onClick={() => handleDeleteSet(set.id)}
+                    >
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      Delete
+                    </Button>
+                    <Check className="w-4 h-4 text-green-600" />
+                  </div>
                 </div>
-                <Check className="w-4 h-4 text-green-600" />
-              </div>
-            ))}
+              )
+            })}
 
             {/* Add New Set - Always available */}
             <AddSetForm
@@ -460,7 +503,11 @@ export function WorkoutSession({
               targetType={currentExercise.targetType}
               currentExerciseTimer={exerciseTimer}
               lastSetData={getLastSetData()}
+              editingSet={editingSetForForm}
+              isResting={isResting}
               onAddSet={onAddSet}
+              onUpdateSet={onUpdateSet}
+              onCancelEdit={() => setEditingSetContext(null)}
             />
           </div>
 

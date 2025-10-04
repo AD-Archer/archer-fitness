@@ -17,13 +17,14 @@ interface WorkoutSession {
   exercises: Array<{
     exerciseId: string
     exerciseName: string
+    targetSets?: number
     sets: Array<{
       reps: number
       weight?: number
       completed: boolean
     }>
   }>
-  status: "completed" | "in_progress" | "skipped"
+  status: "active" | "completed" | "paused" | "cancelled" | "skipped" | "in_progress"
   notes?: string
 }
 
@@ -53,22 +54,26 @@ export function QuickViewModal({ workout, trigger, hasNewerStarted = false }: Qu
     return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`
   }
 
-  const getStatusDisplay = (status: string, exercises: Array<{ sets: Array<{ completed: boolean }> }>) => {
-    // Calculate completion rate
-    const totalSets = exercises.reduce((total, exercise) => total + exercise.sets.length, 0)
-    if (totalSets === 0) return hasNewerStarted ? "Incomplete" : "In Progress"
+  const getStatusDisplay = (status: string, exercises: Array<{ targetSets?: number; sets: Array<{ completed: boolean }> }>) => {
+    const totalTargetSets = exercises.reduce((total, exercise) => total + (exercise.targetSets ?? exercise.sets.length), 0)
+
+    if (totalTargetSets === 0) {
+      return hasNewerStarted ? "Incomplete" : status === "completed" ? "Completed" : "In Progress"
+    }
 
     const completedSets = exercises.reduce((total, exercise) =>
       total + exercise.sets.filter(set => set.completed).length, 0)
-    const completionRate = Math.round((completedSets / totalSets) * 100)
+    const completionRate = Math.round((completedSets / totalTargetSets) * 100)
 
-    if (completionRate >= 100) {
+    if (completionRate >= 50) {
       return "Completed"
-    } else if (completionRate > 0) {
-      return hasNewerStarted ? "Incomplete" : "In Progress"
-    } else {
-      return hasNewerStarted ? "Incomplete" : "Not Started"
     }
+
+    if (completionRate > 0) {
+      return hasNewerStarted ? "Incomplete" : "In Progress"
+    }
+
+    return hasNewerStarted ? "Incomplete" : "Not Started"
   }
 
   const calculateSetStats = (sets: Array<{ reps: number; weight?: number; completed: boolean }>) => {

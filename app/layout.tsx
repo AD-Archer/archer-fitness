@@ -5,8 +5,10 @@ import { Analytics } from '@vercel/analytics/next'
 import { AuthProvider } from '@/components/auth-provider'
 import { Toaster } from 'sonner'
 import Script from 'next/script'
+// @ts-ignore - allow importing global CSS without explicit type declarations
 import './globals.css'
 import { NotificationInitializer } from '@/components/notification-initializer'
+import { PrivacyCheck } from '@/components/privacy-check'
 
 const baseUrl = process.env.NEXTAUTH_URL || 'https://fitness.archer.software'
 
@@ -26,10 +28,10 @@ export const metadata: Metadata = {
     siteName: 'Archer Fitness',
     images: [
       {
-        url: '/logo.webp',
+        url: '/sitebanner.webp',
         width: 1200,
         height: 630,
-        alt: 'Archer Fitness logo',
+        alt: 'Archer Fitness banner',
       },
     ],
     locale: 'en_US',
@@ -40,7 +42,7 @@ export const metadata: Metadata = {
     title: 'Archer Fitness | AI Workout Dashboard',
     description:
       'AI-powered fitness app by Antonio Archer, a software developer from Philadelphia. Track workouts, nutrition, and progress with intelligent insights.',
-    images: ['/logo.webp'],
+    images: ['/sitebanner.webp'],
     creator: '@ad_archer_',
   },
   keywords: [
@@ -182,6 +184,7 @@ export default function RootLayout({
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <AuthProvider>
           <NotificationInitializer />
+          <PrivacyCheck />
           {children}
           <Toaster />
         </AuthProvider>

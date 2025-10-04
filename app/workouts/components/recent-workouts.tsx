@@ -17,13 +17,19 @@ interface WorkoutSession {
   exercises: Array<{
     exerciseId: string
     exerciseName: string
+    targetSets?: number
+    targetReps?: string
+    targetType?: "reps" | "time"
     sets: Array<{
       reps: number
       weight?: number
       completed: boolean
     }>
   }>
-  status: "completed" | "in_progress" | "skipped"
+  status: "completed" | "in_progress" | "active" | "paused" | "cancelled" | "skipped"
+  performanceStatus?: string
+  completionRate?: number
+  perfectionScore?: number
   notes?: string
   templateId?: string
 }
@@ -51,6 +57,9 @@ interface ApiWorkoutSession {
       id: string
       name: string
     }
+    targetSets: number
+    targetReps: string
+    targetType?: string
     sets: Array<{
       reps: number
       weight?: number
@@ -58,6 +67,9 @@ interface ApiWorkoutSession {
     }>
   }>
   status: string
+  performanceStatus?: string
+  completionRate?: number
+  perfectionScore?: number
   notes?: string
   workoutTemplateId?: string
   workoutTemplate?: {
@@ -98,23 +110,23 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutSession | null>(null)
 
   // Helper function to calculate completion percentage
-  const calculateCompletionRate = (exercises: Array<{ sets: Array<{ completed: boolean }> }>) => {
+  const calculateCompletionRate = (exercises: Array<{ targetSets?: number; sets: Array<{ completed: boolean }> }>) => {
     if (exercises.length === 0) return 0
 
-    const totalSets = exercises.reduce((total, exercise) => total + exercise.sets.length, 0)
-    if (totalSets === 0) return 0
+    const totalTargetSets = exercises.reduce((total, exercise) => total + (exercise.targetSets ?? exercise.sets.length), 0)
+    if (totalTargetSets === 0) return 0
 
     const completedSets = exercises.reduce((total, exercise) =>
       total + exercise.sets.filter(set => set.completed).length, 0)
 
-    return Math.round((completedSets / totalSets) * 100)
+    return Math.round(Math.min((completedSets / totalTargetSets) * 100, 100))
   }
 
   // Helper function to get status based on completion
-  const getStatusFromCompletion = useCallback((status: string, exercises: Array<{ sets: Array<{ completed: boolean }> }>): "completed" | "in_progress" | "skipped" => {
+  const getStatusFromCompletion = useCallback((status: string, exercises: Array<{ targetSets?: number; sets: Array<{ completed: boolean }> }>): WorkoutSession["status"] => {
     const completionRate = calculateCompletionRate(exercises)
 
-    if (completionRate >= 100) {
+    if (completionRate >= 50) {
       return "completed"
     } else if (completionRate > 0) {
       return "in_progress"
@@ -130,7 +142,20 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
         const sessionsResponse = await fetch('/api/workout-tracker/workout-sessions?limit=3')
         let sessionsData: ApiWorkoutSession[] = []
         if (sessionsResponse.ok) {
-          sessionsData = await sessionsResponse.json()
+          const allSessions = await sessionsResponse.json()
+          
+          // Filter out workouts that don't meet completion threshold
+          sessionsData = allSessions.filter((session: ApiWorkoutSession) => {
+            const exerciseSnapshots = session.exercises?.map(ex => ({
+              targetSets: ex.targetSets ?? 0,
+              sets: ex.sets || [],
+            })) || []
+
+            const completionRate = session.completionRate ?? calculateCompletionRate(exerciseSnapshots)
+            const meetsThreshold = completionRate >= 50 || session.performanceStatus === 'perfect'
+
+            return meetsThreshold
+          })
         }
 
         // Fetch workout templates
@@ -146,10 +171,18 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
           const exercises = session.exercises?.map(ex => ({
             exerciseId: ex.exerciseId,
             exerciseName: ex.exercise?.name || 'Unknown Exercise',
-            sets: ex.sets || []
+            targetSets: ex.targetSets ?? 0,
+            targetReps: ex.targetReps,
+            targetType: (ex.targetType as "reps" | "time") || "reps",
+            sets: (ex.sets || []).map(set => ({
+              reps: set.reps,
+              weight: set.weight,
+              completed: set.completed,
+            }))
           })) || []
 
           const status = getStatusFromCompletion(session.status, exercises)
+          const completionRate = session.completionRate ?? calculateCompletionRate(exercises)
 
           return {
             id: session.id,
@@ -160,6 +193,9 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
             status,
             notes: session.notes,
             templateId: session.workoutTemplateId,
+            performanceStatus: session.performanceStatus,
+            completionRate,
+            perfectionScore: session.perfectionScore,
           }
         })
 
@@ -322,7 +358,7 @@ export function RecentWorkouts({ onRepeatWorkout }: { onRepeatWorkout?: (workout
             // Assuming recentWorkouts is sorted desc by date (most recent first)
             const hasNewerStarted = recentWorkouts.some((w, i) => i < idx && new Date(w.date).getTime() > new Date(workout.date).getTime())
             const completionRate = calculateCompletionRate(workout.exercises)
-            const isCompleted = completionRate >= 100
+            const isCompleted = workout.performanceStatus === 'completed' || workout.performanceStatus === 'perfect' || completionRate > 0
             return (
               <div key={workout.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2 sm:p-3 rounded-lg border bg-card/50 gap-2 sm:gap-3">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
