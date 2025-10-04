@@ -55,6 +55,11 @@ model User {
   privacyAccepted     Boolean   @default(false) @map("privacy_accepted")
   privacyAcceptedAt   DateTime? @map("privacy_accepted_at")
 
+  // Two-factor authentication
+  twoFactorEnabled    Boolean   @default(false) @map("two_factor_enabled")
+  twoFactorSecret     String?   @map("two_factor_secret")
+  twoFactorBackupCodes String[] @default([]) @map("two_factor_backup_codes")
+
   // Fitness-related fields
   height        Float?
   weight        Float?  // Monthly average weight used for meal tracking and calculations

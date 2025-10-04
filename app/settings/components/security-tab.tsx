@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, Lock, ShieldOff, Mail, Plus } from "lucide-react"
+import { Loader2, Lock, ShieldOff, Mail, Plus, ShieldCheck, Copy, Check } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import Image from "next/image"
 
 interface SecurityState {
   hasPassword: boolean
@@ -28,6 +29,7 @@ interface SecurityState {
     id: string
     provider: string
   }[]
+  twoFactorEnabled: boolean
 }
 
 const providerLabels: Record<string, string> = {
@@ -55,6 +57,17 @@ export function SecurityTab() {
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false)
   const [newEmail, setNewEmail] = useState("")
   const [isUpdatingEmail, setIsUpdatingEmail] = useState(false)
+  const [is2FADialogOpen, setIs2FADialogOpen] = useState(false)
+  const [twoFactorSetup, setTwoFactorSetup] = useState<{
+    secret: string
+    qrCode: string
+    backupCodes: string[]
+  } | null>(null)
+  const [verificationCode, setVerificationCode] = useState("")
+  const [isSettingUp2FA, setIsSettingUp2FA] = useState(false)
+  const [isVerifying2FA, setIsVerifying2FA] = useState(false)
+  const [isDisabling2FA, setIsDisabling2FA] = useState(false)
+  const [copiedCodes, setCopiedCodes] = useState(false)
 
   const hasAlternativeLogin = useMemo(() => {
     if (!security) return false
@@ -219,6 +232,97 @@ export function SecurityTab() {
     }
   }
 
+  const handleSetup2FA = async () => {
+    setIsSettingUp2FA(true)
+
+    try {
+      const response = await fetch("/api/auth/2fa/setup", {
+        method: "POST",
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to setup 2FA")
+      }
+
+      const data = await response.json()
+      setTwoFactorSetup(data)
+      setIs2FADialogOpen(true)
+      toast.success("Scan the QR code with your authenticator app")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to setup 2FA")
+    } finally {
+      setIsSettingUp2FA(false)
+    }
+  }
+
+  const handleVerify2FA = async () => {
+    if (!verificationCode || verificationCode.length !== 6) {
+      toast.error("Please enter a 6-digit code")
+      return
+    }
+
+    setIsVerifying2FA(true)
+
+    try {
+      const response = await fetch("/api/auth/2fa/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: verificationCode }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Invalid code")
+      }
+
+      toast.success("Two-factor authentication enabled!")
+      setIs2FADialogOpen(false)
+      setVerificationCode("")
+      setTwoFactorSetup(null)
+      await loadSecurity()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Invalid code")
+    } finally {
+      setIsVerifying2FA(false)
+    }
+  }
+
+  const handleDisable2FA = async () => {
+    if (!confirm("Are you sure you want to disable two-factor authentication? This will make your account less secure.")) {
+      return
+    }
+
+    setIsDisabling2FA(true)
+
+    try {
+      const response = await fetch("/api/auth/2fa/disable", {
+        method: "POST",
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to disable 2FA")
+      }
+
+      toast.success("Two-factor authentication disabled")
+      await loadSecurity()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to disable 2FA")
+    } finally {
+      setIsDisabling2FA(false)
+    }
+  }
+
+  const handleCopyBackupCodes = () => {
+    if (twoFactorSetup?.backupCodes) {
+      navigator.clipboard.writeText(twoFactorSetup.backupCodes.join("\n"))
+      setCopiedCodes(true)
+      toast.success("Backup codes copied to clipboard")
+      setTimeout(() => setCopiedCodes(false), 2000)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -315,6 +419,190 @@ export function SecurityTab() {
               </DialogContent>
             </Dialog>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4" />
+            Two-Factor Authentication
+          </CardTitle>
+          <CardDescription>
+            Add an extra layer of security to your account
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {security.twoFactorEnabled ? (
+            <>
+              <Alert>
+                <ShieldCheck className="h-4 w-4" />
+                <AlertDescription>
+                  Two-factor authentication is <strong>enabled</strong>. Your account is protected.
+                </AlertDescription>
+              </Alert>
+              <Button 
+                variant="destructive" 
+                onClick={handleDisable2FA}
+                disabled={isDisabling2FA}
+              >
+                {isDisabling2FA ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Disabling...
+                  </>
+                ) : (
+                  "Disable 2FA"
+                )}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Alert>
+                <ShieldOff className="h-4 w-4" />
+                <AlertDescription>
+                  Two-factor authentication is <strong>not enabled</strong>. Enable it for better security.
+                </AlertDescription>
+              </Alert>
+              <Dialog open={is2FADialogOpen} onOpenChange={setIs2FADialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={handleSetup2FA} disabled={isSettingUp2FA}>
+                    {isSettingUp2FA ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Setting up...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Enable 2FA
+                      </>
+                    )}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+                  <DialogHeader className="flex-shrink-0">
+                    <DialogTitle>Setup Two-Factor Authentication</DialogTitle>
+                    <DialogDescription className="text-sm">
+                      Scan the QR code with your authenticator app
+                    </DialogDescription>
+                  </DialogHeader>
+                  {twoFactorSetup && (
+                    <div className="space-y-3 overflow-y-auto flex-1 pr-2">
+                      <div className="flex justify-center py-2">
+                        <Image 
+                          src={twoFactorSetup.qrCode} 
+                          alt="2FA QR Code" 
+                          width={160} 
+                          height={160}
+                          className="border rounded-lg p-1"
+                        />
+                      </div>
+                      
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">
+                          Manual entry code:
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <code className="flex-1 text-xs bg-muted p-2 rounded break-all">
+                            {twoFactorSetup.secret}
+                          </code>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                            onClick={() => {
+                              navigator.clipboard.writeText(twoFactorSetup.secret)
+                              toast.success("Secret copied!")
+                            }}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-semibold">Backup Codes</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Save these in a safe place for account recovery.
+                        </p>
+                        <div className="bg-muted p-2 rounded space-y-0.5 max-h-24 overflow-y-auto text-xs font-mono">
+                          {twoFactorSetup.backupCodes.map((code, idx) => (
+                            <div key={idx} className="text-xs">
+                              {code}
+                            </div>
+                          ))}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleCopyBackupCodes}
+                          className="w-full h-8 text-xs"
+                        >
+                          {copiedCodes ? (
+                            <>
+                              <Check className="mr-2 h-3 w-3" />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="mr-2 h-3 w-3" />
+                              Copy All Codes
+                            </>
+                          )}
+                        </Button>
+                      </div>
+
+                      <Separator />
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor="verificationCode" className="text-sm">Verification Code</Label>
+                        <Input
+                          id="verificationCode"
+                          type="text"
+                          placeholder="000000"
+                          value={verificationCode}
+                          onChange={(e) => setVerificationCode(e.target.value)}
+                          maxLength={6}
+                          className="text-center text-lg tracking-widest h-10"
+                        />
+                      </div>
+
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setIs2FADialogOpen(false)
+                            setTwoFactorSetup(null)
+                            setVerificationCode("")
+                          }}
+                          className="flex-1 h-9"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleVerify2FA}
+                          disabled={isVerifying2FA || verificationCode.length !== 6}
+                          className="flex-1 h-9"
+                        >
+                          {isVerifying2FA ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Verifying...
+                            </>
+                          ) : (
+                            "Verify & Enable"
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
+            </>
+          )}
         </CardContent>
       </Card>
 

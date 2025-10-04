@@ -6,11 +6,12 @@ export default withAuth(
     const { pathname } = req.nextUrl
     const token = req.nextauth.token
 
-    // Allow email verification and password reset pages even for authenticated users
+    // Allow email verification, password reset, and 2FA pages even for authenticated users
     const allowedAuthPaths = [
       "/auth/verify-email",
       "/auth/reset",
-      "/auth/forgot-password"
+      "/auth/forgot-password",
+      "/auth/2fa"
     ]
     
     if (allowedAuthPaths.some(path => pathname.startsWith(path))) {
@@ -35,11 +36,12 @@ export default withAuth(
       authorized: ({ token, req }) => {
         const { pathname } = req.nextUrl
         
-        // Always allow email verification and password reset pages
+        // Always allow email verification, password reset, and 2FA pages
         const allowedAuthPaths = [
           "/auth/verify-email",
           "/auth/reset",
-          "/auth/forgot-password"
+          "/auth/forgot-password",
+          "/auth/2fa"
         ]
         
         if (allowedAuthPaths.some(path => pathname.startsWith(path))) {

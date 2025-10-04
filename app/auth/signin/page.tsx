@@ -30,6 +30,36 @@ function SignInContent() {
     setIsLoading(true)
 
     try {
+      // First check if user has 2FA enabled
+      const check2FAResponse = await fetch("/api/auth/check-2fa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      })
+
+      const check2FAData = await check2FAResponse.json()
+
+      if (!check2FAData.credentialsValid) {
+        setError("Invalid email or password")
+        setIsLoading(false)
+        return
+      }
+
+      // If 2FA is required, redirect to 2FA page
+      if (check2FAData.requiresTwoFactor) {
+        const params = new URLSearchParams({
+          email: formData.email,
+          password: formData.password,
+          callbackUrl: callbackUrl,
+        })
+        router.push(`/auth/2fa?${params.toString()}`)
+        return
+      }
+
+      // Otherwise proceed with normal signin
       const result = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
