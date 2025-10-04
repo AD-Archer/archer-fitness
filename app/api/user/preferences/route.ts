@@ -48,6 +48,7 @@ const appPrefsSchema = z.object({
   weeklyReports: z.boolean().default(true),
   dataSharing: z.boolean().default(false),
   timezone: z.string().default("UTC"),
+  timeFormat: z.enum(["12h", "24h"]).default("24h"),
   adminNotifications: z.object({
     enabled: z.boolean().default(true),
     methods: z.array(z.enum(['smtp'])).default(['smtp']),
@@ -101,6 +102,7 @@ const appPrefsSchema = z.object({
   weeklyReports: true,
   dataSharing: false,
   timezone: "UTC",
+  timeFormat: "24h",
   adminNotifications: {
     enabled: true,
     methods: ['smtp'],
@@ -154,6 +156,7 @@ const preferencesSchema = z.object({
       weeklyReports: true,
       dataSharing: false,
       timezone: "UTC",
+      timeFormat: "24h",
       adminNotifications: {
         enabled: true,
         methods: ['smtp'],

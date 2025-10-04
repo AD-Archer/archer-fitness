@@ -195,7 +195,8 @@ export function TodaysFocus() {
     }
 
     fetchTodaysFocus()
-  }, [getStatusFromCompletion])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Empty dependency array - only fetch on mount
 
   const continueWorkout = () => {
     if (todaysSession) {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -8,7 +8,7 @@ import { Calendar, Clock, Users, CheckCircle2, Sparkles } from "lucide-react"
 import { WeeklyCalendar } from "./weekly-calendar"
 import { GeneratedScheduleImporter } from "./generated-schedule-importer"
 import { ScheduleTemplates } from "./schedule-templates"
-import { WeeklySchedule, ScheduleItem } from "../types/schedule"
+import { WeeklySchedule, ScheduleItem, ApplyTemplateOptions } from "../types/schedule"
 import { useScheduleApi } from "../hooks/use-schedule-api"
 import { useToast } from "@/hooks/use-toast"
 import { logger } from "@/lib/logger"
@@ -25,7 +25,8 @@ export function ScheduleManager() {
   const { toast } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { preferences } = useUserPreferences()
+  const { preferences, timeFormat } = useUserPreferences()
+  const hasInitialized = useRef(false)
 
   const preferredTimezone = useMemo(() => {
     if (preferences?.app?.timezone) {
@@ -39,13 +40,16 @@ export function ScheduleManager() {
     }
   }, [preferences])
 
+  const availableEquipment = preferences?.workout?.availableEquipment ?? []
+
   const [activeTimezone, setActiveTimezone] = useState<string>(preferredTimezone)
 
   useEffect(() => {
     if (preferredTimezone && preferredTimezone !== activeTimezone) {
       setActiveTimezone(preferredTimezone)
     }
-  }, [preferredTimezone, activeTimezone])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preferredTimezone]) // Only re-run when preferredTimezone changes, not activeTimezone
 
   const buildWeeklySchedule = useCallback((weekStart: Date, items: ScheduleItem[] = [], timezone?: string | null): WeeklySchedule => {
     const resolvedTimezone = timezone ?? activeTimezone ?? preferredTimezone ?? 'UTC'
@@ -156,10 +160,15 @@ export function ScheduleManager() {
   }, [buildWeeklySchedule, loadScheduleFromAPI, activeTimezone])
 
   useEffect(() => {
-    initializeCurrentWeek()
-  }, [initializeCurrentWeek])
+    // Only initialize once on mount
+    if (!hasInitialized.current) {
+      hasInitialized.current = true
+      initializeCurrentWeek()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Run only once on mount
 
-  const saveScheduleToAPI = async (schedule: WeeklySchedule) => {
+  const saveScheduleToAPI = async (schedule: WeeklySchedule): Promise<WeeklySchedule | null> => {
     try {
       const weekKey = schedule.weekStart.toISOString().split('T')[0]
       const allItems = schedule.days.flatMap(day => day.items)
@@ -170,6 +179,14 @@ export function ScheduleManager() {
       
       if (result) {
         logger.info('Schedule saved successfully:', result)
+
+        const normalizedWeekStart = new Date(schedule.weekStart)
+        const timezoneFromServer = (result as unknown as { timezone?: string })?.timezone ?? schedule.timezone ?? activeTimezone
+        const serverItems = ((result as unknown as { items?: ScheduleItem[] }).items ?? []) as ScheduleItem[]
+        const normalizedSchedule = buildWeeklySchedule(normalizedWeekStart, serverItems, timezoneFromServer)
+        setCurrentSchedule(normalizedSchedule)
+        await loadCompletedSessions(normalizedWeekStart)
+        return normalizedSchedule
       } else {
         logger.error('Failed to save schedule - no result returned')
       }
@@ -181,27 +198,96 @@ export function ScheduleManager() {
         variant: "destructive"
       })
     }
+
+    return null
   }
 
 
 
-  const deleteScheduleItem = async (itemId: string) => {
+  const deleteScheduleItem = async (itemId: string, deleteOption: "this" | "future" | "all" = "this") => {
     if (!currentSchedule) return
 
-    const updatedSchedule = {
-      ...currentSchedule,
-      days: currentSchedule.days.map(day => ({
-        ...day,
-        items: day.items.filter(item => item.id !== itemId)
-      }))
+    const itemToDelete = currentSchedule.days.flatMap(day => day.items).find(item => item.id === itemId)
+    if (!itemToDelete) return
+
+    const isRecurring = itemToDelete.isRecurring || itemToDelete.repeatPattern === "weekly"
+    const isVirtual = (itemToDelete as any).isVirtual || itemId.includes('-')
+
+    let updatedSchedule = { ...currentSchedule }
+
+    if (isRecurring && deleteOption !== "this") {
+      // For "future" or "all", we need to delete from the origin schedule
+      // This requires a more sophisticated approach - we'll mark it by setting an end date
+      if (deleteOption === "future") {
+        // Set the repeat end date to before this occurrence
+        const currentWeekStart = currentSchedule.weekStart
+        const endDate = new Date(currentWeekStart)
+        endDate.setDate(endDate.getDate() + itemToDelete.day - 1) // Day before this occurrence
+
+        updatedSchedule = {
+          ...currentSchedule,
+          days: currentSchedule.days.map(day => ({
+            ...day,
+            items: day.items.map(item => {
+              if (item.id === itemId || (isVirtual && (item as any).originId === (itemToDelete as any).originId)) {
+                return {
+                  ...item,
+                  repeatEndsOn: endDate.toISOString(),
+                  recurrenceRule: item.recurrenceRule ? {
+                    ...item.recurrenceRule,
+                    endsOn: endDate.toISOString()
+                  } : null
+                }
+              }
+              return item
+            }).filter(item => {
+              // Remove future virtual occurrences immediately
+              if ((item as any).isVirtual) {
+                const itemDate = new Date(currentWeekStart)
+                itemDate.setDate(itemDate.getDate() + item.day)
+                return itemDate <= endDate
+              }
+              return true
+            })
+          }))
+        }
+      } else if (deleteOption === "all") {
+        // Delete all occurrences - remove the item entirely
+        const originId = isVirtual ? (itemToDelete as any).originId : itemId
+        updatedSchedule = {
+          ...currentSchedule,
+          days: currentSchedule.days.map(day => ({
+            ...day,
+            items: day.items.filter(item => {
+              const itemOriginId = (item as any).originId || item.id
+              return itemOriginId !== originId
+            })
+          }))
+        }
+      }
+    } else {
+      // Delete only this occurrence
+      updatedSchedule = {
+        ...currentSchedule,
+        days: currentSchedule.days.map(day => ({
+          ...day,
+          items: day.items.filter(item => item.id !== itemId)
+        }))
+      }
     }
 
     setCurrentSchedule(updatedSchedule)
     await saveScheduleToAPI(updatedSchedule)
     
+    const deleteMessage = deleteOption === "all" 
+      ? "All occurrences deleted"
+      : deleteOption === "future"
+      ? "This and future occurrences deleted"
+      : "Schedule item removed"
+
     toast({
       title: "Schedule Updated",
-      description: "Schedule item removed",
+      description: deleteMessage,
     })
   }
 
@@ -238,14 +324,56 @@ export function ScheduleManager() {
     })
   }
 
-  const importGeneratedSchedule = async (items: Omit<ScheduleItem, "id">[]) => {
+  const importGeneratedSchedule = async (
+    items: Omit<ScheduleItem, "id">[],
+    options?: ApplyTemplateOptions
+  ) => {
     if (!currentSchedule) return
 
-    const newItems: ScheduleItem[] = items.map(item => ({
-      ...item,
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      isFromGenerator: true
-    }))
+    const generateId = () => {
+      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID()
+      }
+      return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+    }
+
+    const mode: ApplyTemplateOptions["mode"] = options?.mode ?? "append"
+
+    const newItems: ScheduleItem[] = items.map(item => {
+      const repeatEnabled = options?.enableRepeat ?? Boolean(item.repeatPattern === 'weekly' || item.isRecurring)
+      const repeatInterval = repeatEnabled
+        ? (options?.repeatIntervalWeeks ?? item.repeatInterval ?? 1)
+        : null
+      const repeatDays = repeatEnabled
+        ? (item.repeatDaysOfWeek && item.repeatDaysOfWeek.length > 0 ? item.repeatDaysOfWeek : [item.day])
+        : null
+
+      const recurrenceRule = repeatEnabled
+        ? {
+            frequency: 'weekly' as const,
+            interval: repeatInterval ?? 1,
+            endsOn: item.repeatEndsOn ?? null,
+            daysOfWeek: repeatDays ?? [item.day],
+            meta: {
+              ...(item.recurrenceRule?.meta ?? {}),
+              source: item.recurrenceRule?.meta?.source ?? 'schedule-generator',
+              appliedInterval: repeatInterval ?? 1
+            }
+          }
+        : null
+
+      return {
+        ...item,
+        id: generateId(),
+        isFromGenerator: item.isFromGenerator ?? true,
+        isRecurring: repeatEnabled,
+        repeatPattern: repeatEnabled ? 'weekly' : null,
+        repeatInterval: repeatEnabled ? (repeatInterval ?? 1) : null,
+        repeatEndsOn: repeatEnabled ? item.repeatEndsOn ?? null : null,
+        repeatDaysOfWeek: repeatEnabled ? repeatDays ?? [item.day] : undefined,
+        recurrenceRule
+      }
+    })
 
     // Group items by day
     const itemsByDay: { [key: number]: ScheduleItem[] } = {}
@@ -261,7 +389,7 @@ export function ScheduleManager() {
       days: currentSchedule.days.map(day => ({
         ...day,
         items: [
-          ...day.items,
+          ...(mode === 'replace' ? [] : day.items),
           ...(itemsByDay[day.dayOfWeek] || [])
         ].sort((a, b) => a.startTime.localeCompare(b.startTime))
       }))
@@ -271,8 +399,10 @@ export function ScheduleManager() {
     await saveScheduleToAPI(updatedSchedule)
     
     toast({
-      title: "Schedule Imported",
-      description: `Added ${newItems.length} items to your schedule`,
+      title: mode === 'replace' ? "Template Applied" : "Schedule Updated",
+      description: mode === 'replace'
+        ? `Replaced this week's plan with ${newItems.length} item${newItems.length === 1 ? '' : 's'}.`
+        : `Added ${newItems.length} item${newItems.length === 1 ? '' : 's'} to your schedule.`,
     })
   }
 
@@ -367,6 +497,7 @@ export function ScheduleManager() {
             onClearWeek={clearWeekSchedule}
             isLoading={loading}
             completedSessions={completedSessions}
+            timeFormat={timeFormat}
           />
         </TabsContent>
 
@@ -374,13 +505,16 @@ export function ScheduleManager() {
           <GeneratedScheduleImporter
             onImportSchedule={importGeneratedSchedule}
             currentWeek={currentSchedule.weekStart}
+            timeFormat={timeFormat}
           />
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-6">
           <ScheduleTemplates
-            onApplyTemplate={(items: Omit<ScheduleItem, "id">[]) => importGeneratedSchedule(items)}
+            onApplyTemplate={(items: Omit<ScheduleItem, "id">[], options?: ApplyTemplateOptions) => importGeneratedSchedule(items, options)}
             currentSchedule={currentSchedule}
+            timeFormat={timeFormat}
+            availableEquipment={availableEquipment}
           />
         </TabsContent>
       </Tabs>

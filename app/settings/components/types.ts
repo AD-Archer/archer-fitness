@@ -38,6 +38,7 @@ export interface AppPrefs {
   weeklyReports: boolean
   dataSharing: boolean
   timezone: string
+  timeFormat: "12h" | "24h"
   adminNotifications: {
     enabled: boolean
     methods: ('smtp')[]

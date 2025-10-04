@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useMemo } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -8,579 +9,172 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Users, Plus, Download, Save, Trash2, Clock, Calendar } from "lucide-react"
-import { ScheduleItem, ScheduleTemplate, WeeklySchedule } from "../types/schedule"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Users, Download, Save, Trash2, Clock, Calendar, RefreshCw, Wand2, Loader2, Sparkles } from "lucide-react"
+import { ScheduleItem, ScheduleTemplate, WeeklySchedule, TemplateGenerationRequest } from "../types/schedule"
 import { useScheduleApi } from "../hooks/use-schedule-api"
 import { useToast } from "@/hooks/use-toast"
 import { logger } from "@/lib/logger"
+import { formatTimeForDisplay, type TimeFormatPreference } from "@/lib/time-utils"
 
 interface ScheduleTemplatesProps {
   onApplyTemplate: (items: Omit<ScheduleItem, "id">[]) => void
   currentSchedule: WeeklySchedule
+  timeFormat?: TimeFormatPreference
+  availableEquipment?: string[]
 }
 
-type GeneratorExercise = {
-  name: string
-  sets: number
-  reps: string
-  rest: string
-  instructions: string
-  targetMuscles: string[]
-}
-
-const BASE_WARMUP = [
-  "5 minutes light cardio (marching, bike, or jump rope)",
-  "Dynamic mobility (arm circles, hip openers, leg swings)",
-  "Activation set with light resistance"
+const DAY_OPTIONS = [
+  { value: 0, label: "Sunday" },
+  { value: 1, label: "Monday" },
+  { value: 2, label: "Tuesday" },
+  { value: 3, label: "Wednesday" },
+  { value: 4, label: "Thursday" },
+  { value: 5, label: "Friday" },
+  { value: 6, label: "Saturday" }
 ]
 
-const BASE_COOLDOWN = [
-  "Slow walk and breathing reset (3 minutes)",
-  "Static stretches for tight areas (hold 30 seconds each)",
-  "Foam roll or gentle mobility as needed"
-]
+const START_TIME_OPTIONS = ["06:00", "07:00", "12:00", "18:00", "20:00"]
 
-const addMinutesToTime = (startTime: string, durationMinutes: number) => {
-  const [hour, minute] = startTime.split(":").map(Number)
-  const total = hour * 60 + minute + durationMinutes
-  const wrapped = ((total % (24 * 60)) + 24 * 60) % (24 * 60)
-  const endHour = Math.floor(wrapped / 60)
-  const endMinute = wrapped % 60
-  return `${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`
-}
+const DIFFICULTY_OPTIONS = ["Mixed", "Beginner", "Intermediate", "Advanced"]
 
-const createGeneratorData = (config: {
-  name: string
-  duration: number
-  difficulty: string
-  exercises: GeneratorExercise[]
-  warmup?: string[]
-  cooldown?: string[]
-}) => ({
-  name: config.name,
-  duration: config.duration,
-  difficulty: config.difficulty,
-  exercises: config.exercises,
-  warmup: config.warmup ?? BASE_WARMUP,
-  cooldown: config.cooldown ?? BASE_COOLDOWN
-})
+const DEFAULT_DAY_SEQUENCE = [1, 3, 5, 0, 2, 4, 6]
 
-const createWorkoutTemplateItem = (config: {
-  day: number
-  startTime: string
-  duration: number
-  category: string
-  difficulty: string
-  title: string
-  description: string
-  exercises: GeneratorExercise[]
-  warmup?: string[]
-  cooldown?: string[]
-}): Omit<ScheduleItem, "id"> => ({
-  type: 'workout',
-  title: config.title,
-  description: config.description,
-  day: config.day,
-  startTime: config.startTime,
-  endTime: addMinutesToTime(config.startTime, config.duration),
-  category: config.category,
-  difficulty: config.difficulty,
-  duration: config.duration,
-  isFromGenerator: true,
-  isRecurring: true,
-  repeatPattern: 'weekly',
-  repeatInterval: 1,
-  repeatDaysOfWeek: [config.day],
-  repeatEndsOn: null,
-  generatorData: createGeneratorData({
-    name: config.title,
-    duration: config.duration,
-    difficulty: config.difficulty,
-    exercises: config.exercises,
-    warmup: config.warmup,
-    cooldown: config.cooldown
-  })
-})
+const clampNumber = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
-const DEFAULT_TEMPLATES: ScheduleTemplate[] = [
-  {
-    id: 'beginner-full-body',
-    name: 'Beginner Full Body',
-    description: 'A simple 3-day full-body workout routine perfect for beginners',
-    isDefault: true,
-    items: [
-      {
-        type: 'workout',
-        title: 'Full Body Workout A',
-        description: 'Upper body focus with compound movements',
-        day: 1, // Monday
-        startTime: '18:00',
-        endTime: '19:00',
-        category: 'Strength Training',
-        difficulty: 'Beginner',
-        duration: 60,
-        isRecurring: true,
-        repeatPattern: 'weekly',
-        repeatInterval: 1,
-        repeatDaysOfWeek: [1],
-        repeatEndsOn: null
-      },
-      {
-        type: 'workout',
-        title: 'Full Body Workout B',
-        description: 'Lower body focus with functional movements',
-        day: 3, // Wednesday
-        startTime: '18:00',
-        endTime: '19:00',
-        category: 'Strength Training',
-        difficulty: 'Beginner',
-        duration: 60,
-        isRecurring: true,
-        repeatPattern: 'weekly',
-        repeatInterval: 1,
-        repeatDaysOfWeek: [3],
-        repeatEndsOn: null
-      },
-      {
-        type: 'workout',
-        title: 'Full Body Workout C',
-        description: 'Total body conditioning and flexibility',
-        day: 5, // Friday
-        startTime: '18:00',
-        endTime: '19:00',
-        category: 'Strength Training',
-        difficulty: 'Beginner',
-        duration: 60,
-        isRecurring: true,
-        repeatPattern: 'weekly',
-        repeatInterval: 1,
-        repeatDaysOfWeek: [5],
-        repeatEndsOn: null
-      }
-    ]
-  },
-  {
-    id: 'arms-legs-cardio',
-    name: 'Arms, Legs & Cardio Split',
-    description: 'Arms on Tuesday & Thursday, lower-body power midweek, and cardio to bookend the week.',
-    isDefault: true,
-    items: [
-      createWorkoutTemplateItem({
-        title: 'Sunday Endurance Cardio',
-        description: 'Steady-state conditioning to build your aerobic base.',
-        day: 0,
-        startTime: '09:00',
-        duration: 45,
-        category: 'Cardio',
-        difficulty: 'Intermediate',
-        exercises: [
-          {
-            name: 'Interval Bike Ride',
-            sets: 1,
-            reps: '45 min',
-            rest: '—',
-            instructions: 'Alternate 5 minutes easy with 5 minutes moderate while keeping cadence above 80 RPM.',
-            targetMuscles: ['Heart', 'Legs', 'Lungs']
-          },
-          {
-            name: 'Bodyweight Step-Ups',
-            sets: 3,
-            reps: '12/leg',
-            rest: '45s',
-            instructions: 'Drive through the heel, keep torso tall, and control the lowering phase.',
-            targetMuscles: ['Glutes', 'Quads', 'Core']
-          },
-          {
-            name: 'Core Stability Plank',
-            sets: 3,
-            reps: '45s hold',
-            rest: '30s',
-            instructions: 'Maintain neutral spine and keep ribs tucked while breathing through the belly.',
-            targetMuscles: ['Core', 'Shoulders']
-          }
-        ]
-      }),
-      createWorkoutTemplateItem({
-        title: 'Tuesday Arms & Shoulders',
-        description: 'Supersets and isolation work to build definition through the upper body.',
-        day: 2,
-        startTime: '18:00',
-        duration: 60,
-        category: 'Strength Training',
-        difficulty: 'Intermediate',
-        exercises: [
-          {
-            name: 'Dumbbell Shoulder Press',
-            sets: 4,
-            reps: '8-10',
-            rest: '75s',
-            instructions: 'Press with a controlled tempo and avoid locking elbows at the top.',
-            targetMuscles: ['Shoulders', 'Triceps']
-          },
-          {
-            name: 'Alternating Hammer Curl',
-            sets: 3,
-            reps: '12/side',
-            rest: '45s',
-            instructions: 'Keep elbows close to your ribs and squeeze at the peak of each rep.',
-            targetMuscles: ['Biceps', 'Forearms']
-          },
-          {
-            name: 'Cable Tricep Pushdown',
-            sets: 3,
-            reps: '12-15',
-            rest: '45s',
-            instructions: 'Pin elbows to your sides and focus on full extension with neutral wrists.',
-            targetMuscles: ['Triceps']
-          }
-        ]
-      }),
-      createWorkoutTemplateItem({
-        title: 'Wednesday Leg Power',
-        description: 'Compound work for strength plus posterior chain accessories.',
-        day: 3,
-        startTime: '18:00',
-        duration: 65,
-        category: 'Strength Training',
-        difficulty: 'Intermediate',
-        exercises: [
-          {
-            name: 'Barbell Back Squat',
-            sets: 4,
-            reps: '6-8',
-            rest: '120s',
-            instructions: 'Brace your core, drive knees over toes, and stand tall between reps.',
-            targetMuscles: ['Quads', 'Glutes', 'Core']
-          },
-          {
-            name: 'Romanian Deadlift',
-            sets: 3,
-            reps: '10-12',
-            rest: '90s',
-            instructions: 'Hinge from the hips, keep spine neutral, and feel the stretch through hamstrings.',
-            targetMuscles: ['Hamstrings', 'Glutes', 'Lower Back']
-          },
-          {
-            name: 'Walking Lunges',
-            sets: 2,
-            reps: '16 steps',
-            rest: '60s',
-            instructions: 'Stay tall, step softly, and drive through your front heel on each stride.',
-            targetMuscles: ['Glutes', 'Quads', 'Core']
-          }
-        ]
-      }),
-      createWorkoutTemplateItem({
-        title: 'Thursday Arms Finisher',
-        description: 'Volume-focused upper-body session to round out the week.',
-        day: 4,
-        startTime: '18:00',
-        duration: 55,
-        category: 'Strength Training',
-        difficulty: 'Intermediate',
-        exercises: [
-          {
-            name: 'Incline Dumbbell Press',
-            sets: 3,
-            reps: '10-12',
-            rest: '75s',
-            instructions: 'Control the lowering phase and keep shoulder blades set on the bench.',
-            targetMuscles: ['Chest', 'Shoulders', 'Triceps']
-          },
-          {
-            name: 'EZ-Bar Curl',
-            sets: 3,
-            reps: '10-12',
-            rest: '60s',
-            instructions: 'Use a shoulder-width grip, keep elbows planted, and squeeze at the top.',
-            targetMuscles: ['Biceps']
-          },
-          {
-            name: 'Cable Face Pull',
-            sets: 3,
-            reps: '15',
-            rest: '45s',
-            instructions: 'Pull the rope toward your forehead while rotating thumbs back to hit rear delts.',
-            targetMuscles: ['Rear Delts', 'Upper Back']
-          }
-        ]
-      }),
-      createWorkoutTemplateItem({
-        title: 'Saturday HIIT Conditioning',
-        description: 'Explosive intervals to sharpen power and stamina.',
-        day: 6,
-        startTime: '09:30',
-        duration: 40,
-        category: 'HIIT',
-        difficulty: 'Intermediate',
-        exercises: [
-          {
-            name: 'Rowing Machine Sprints',
-            sets: 8,
-            reps: '30s on / 30s off',
-            rest: '30s',
-            instructions: 'Drive through legs explosively on the work interval and recover with easy strokes.',
-            targetMuscles: ['Back', 'Legs', 'Cardio']
-          },
-          {
-            name: 'Battle Rope Waves',
-            sets: 3,
-            reps: '40s',
-            rest: '30s',
-            instructions: 'Maintain an athletic stance and generate powerful alternating waves.',
-            targetMuscles: ['Shoulders', 'Core', 'Cardio']
-          },
-          {
-            name: 'Box Jump to Step Down',
-            sets: 3,
-            reps: '8',
-            rest: '45s',
-            instructions: 'Explode onto the box, land softly, then step down under control to reset.',
-            targetMuscles: ['Glutes', 'Quads', 'Calves']
-          }
-        ],
-        warmup: [
-          '5 min easy row or bike',
-          'Dynamic leg swings and arm circles',
-          'Two rounds of 30s jump rope'
-        ],
-        cooldown: [
-          'Slow walk for 3 minutes',
-          'Calf & quad stretch (45s each side)',
-          'Diaphragmatic breathing (2 minutes)'
-        ]
-      })
-    ]
-  },
-  {
-    id: 'push-pull-legs',
-    name: 'Push/Pull/Legs Split',
-    description: 'Advanced 6-day training split focusing on movement patterns',
-    isDefault: true,
-    items: [
-      {
-        type: 'workout',
-        title: 'Push Day (Chest, Shoulders, Triceps)',
-        description: 'Pushing movements and tricep work',
-        day: 1, // Monday
-        startTime: '07:00',
-        endTime: '08:30',
-        category: 'Strength Training',
-        difficulty: 'Advanced',
-        duration: 90,
-        isRecurring: true,
-        repeatPattern: 'weekly',
-        repeatInterval: 1,
-        repeatDaysOfWeek: [1],
-        repeatEndsOn: null
-      },
-      {
-        type: 'workout',
-        title: 'Pull Day (Back, Biceps)',
-        description: 'Pulling movements and bicep work',
-        day: 2, // Tuesday
-        startTime: '07:00',
-        endTime: '08:30',
-        category: 'Strength Training',
-        difficulty: 'Advanced',
-        duration: 90,
-        isRecurring: true,
-        repeatPattern: 'weekly',
-        repeatInterval: 1,
-        repeatDaysOfWeek: [2],
-        repeatEndsOn: null
-      },
-      {
-        type: 'workout',
-        title: 'Legs Day (Quads, Hamstrings, Glutes)',
-        description: 'Complete lower body training',
-        day: 3, // Wednesday
-        startTime: '07:00',
-        endTime: '08:30',
-        category: 'Strength Training',
-        difficulty: 'Advanced',
-        duration: 90,
-        isRecurring: true,
-        repeatPattern: 'weekly',
-        repeatInterval: 1,
-        repeatDaysOfWeek: [3],
-        repeatEndsOn: null
-      },
-      {
-        type: 'workout',
-        title: 'Push Day (Repeat)',
-        description: 'Second push session of the week',
-        day: 4, // Thursday
-        startTime: '07:00',
-        endTime: '08:30',
-        category: 'Strength Training',
-        difficulty: 'Advanced',
-        duration: 90,
-        isRecurring: true,
-        repeatPattern: 'weekly',
-        repeatInterval: 1,
-        repeatDaysOfWeek: [4],
-        repeatEndsOn: null
-      },
-      {
-        type: 'workout',
-        title: 'Pull Day (Repeat)',
-        description: 'Second pull session of the week',
-        day: 5, // Friday
-        startTime: '07:00',
-        endTime: '08:30',
-        category: 'Strength Training',
-        difficulty: 'Advanced',
-        duration: 90,
-        isRecurring: true,
-        repeatPattern: 'weekly',
-        repeatInterval: 1,
-        repeatDaysOfWeek: [5],
-        repeatEndsOn: null
-      },
-      {
-        type: 'workout',
-        title: 'Legs Day (Repeat)',
-        description: 'Second leg session of the week',
-        day: 6, // Saturday
-        startTime: '09:00',
-        endTime: '10:30',
-        category: 'Strength Training',
-        difficulty: 'Advanced',
-        duration: 90,
-        isRecurring: true,
-        repeatPattern: 'weekly',
-        repeatInterval: 1,
-        repeatDaysOfWeek: [6],
-        repeatEndsOn: null
-      }
-    ]
-  },
-  {
-    id: 'cardio-hiit-week',
-    name: 'Cardio & HIIT Week',
-    description: 'High-intensity cardio schedule for fat loss and conditioning',
-    isDefault: true,
-    items: [
-      {
-        type: 'workout',
-        title: 'HIIT Morning Session',
-        description: '20-minute high-intensity interval training',
-        day: 1, // Monday
-        startTime: '06:30',
-        endTime: '07:00',
-        category: 'HIIT',
-        difficulty: 'Intermediate',
-        duration: 30,
-        isRecurring: true,
-        repeatPattern: 'weekly',
-        repeatInterval: 1,
-        repeatDaysOfWeek: [1],
-        repeatEndsOn: null
-      },
-      {
-        type: 'workout',
-        title: 'Steady State Cardio',
-        description: '45-minute moderate intensity cardio',
-        day: 2, // Tuesday
-        startTime: '18:00',
-        endTime: '18:45',
-        category: 'Cardio',
-        difficulty: 'Beginner',
-        duration: 45,
-        isRecurring: true,
-        repeatPattern: 'weekly',
-        repeatInterval: 1,
-        repeatDaysOfWeek: [2],
-        repeatEndsOn: null
-      },
-      {
-        type: 'workout',
-        title: 'HIIT Evening Session',
-        description: '25-minute interval training',
-        day: 3, // Wednesday
-        startTime: '19:00',
-        endTime: '19:30',
-        category: 'HIIT',
-        difficulty: 'Intermediate',
-        duration: 30,
-        isRecurring: true,
-        repeatPattern: 'weekly',
-        repeatInterval: 1,
-        repeatDaysOfWeek: [3],
-        repeatEndsOn: null
-      },
-      {
-        type: 'workout',
-        title: 'Active Recovery Walk',
-        description: 'Light walking or yoga session',
-        day: 4, // Thursday
-        startTime: '17:00',
-        endTime: '17:30',
-        category: 'Walking/Running',
-        difficulty: 'Beginner',
-        duration: 30,
-        isRecurring: true,
-        repeatPattern: 'weekly',
-        repeatInterval: 1,
-        repeatDaysOfWeek: [4],
-        repeatEndsOn: null
-      },
-      {
-        type: 'workout',
-        title: 'HIIT Circuit Training',
-        description: '30-minute full-body HIIT workout',
-        day: 5, // Friday
-        startTime: '06:30',
-        endTime: '07:00',
-        category: 'HIIT',
-        difficulty: 'Advanced',
-        duration: 30,
-        isRecurring: true,
-        repeatPattern: 'weekly',
-        repeatInterval: 1,
-        repeatDaysOfWeek: [5],
-        repeatEndsOn: null
-      },
-      {
-        type: 'workout',
-        title: 'Weekend Long Cardio',
-        description: '60-minute steady cardio session',
-        day: 6, // Saturday
-        startTime: '09:00',
-        endTime: '10:00',
-        category: 'Cardio',
-        difficulty: 'Intermediate',
-        duration: 60,
-        isRecurring: true,
-        repeatPattern: 'weekly',
-        repeatInterval: 1,
-        repeatDaysOfWeek: [6],
-        repeatEndsOn: null
-      }
-    ]
+const ensurePreferredDays = (current: number[], target: number) => {
+  const sanitized = Array.from(new Set(current.filter((day) => day >= 0 && day <= 6)))
+  if (sanitized.length >= target) {
+    return sanitized.slice(0, target)
   }
-]
+  const fallback = DEFAULT_DAY_SEQUENCE.filter((day) => !sanitized.includes(day))
+  return [...sanitized, ...fallback].slice(0, target)
+}
 
-export function ScheduleTemplates({ onApplyTemplate, currentSchedule }: ScheduleTemplatesProps) {
+const formatTotalDuration = (minutes: number) => {
+  if (!minutes) return "0m"
+  const hours = Math.floor(minutes / 60)
+  const remaining = minutes % 60
+  if (hours && remaining) {
+    return `${hours}h ${remaining}m`
+  }
+  if (hours) {
+    return `${hours}h`
+  }
+  return `${remaining}m`
+}
+
+const sanitizeTemplateItemsForSave = (items: Omit<ScheduleItem, "id">[]) =>
+  items.map((item) => ({
+    type: item.type,
+    title: item.title,
+    description: item.description,
+    day: item.day,
+    startTime: item.startTime,
+    endTime: item.endTime,
+    category: item.category,
+    calories: item.calories,
+    difficulty: item.difficulty,
+    duration: item.duration
+  }))
+
+const summarizeTemplateTags = (template: ScheduleTemplate) => {
+  const tags = new Set<string>()
+  template.items.forEach((item) => {
+    if (item.category) tags.add(item.category)
+    if (item.difficulty) tags.add(item.difficulty)
+  })
+  template.metadata?.tags?.forEach((tag) => tags.add(tag))
+  return Array.from(tags)
+}
+
+const sourceBadgeLabel = {
+  default: "Default",
+  custom: "My Template",
+  recommended: "Recommended",
+  generated: "Generated"
+} as const
+
+export function ScheduleTemplates({
+  onApplyTemplate,
+  currentSchedule,
+  timeFormat = "24h",
+  availableEquipment = []
+}: ScheduleTemplatesProps) {
   const [customTemplates, setCustomTemplates] = useState<ScheduleTemplate[]>([])
+  const [recommendedTemplates, setRecommendedTemplates] = useState<ScheduleTemplate[]>([])
+  const [generatedTemplates, setGeneratedTemplates] = useState<ScheduleTemplate[]>([])
+  const [availableCategories, setAvailableCategories] = useState<string[]>([])
+  const [availableDifficulties, setAvailableDifficulties] = useState<string[]>([])
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false)
-  const [newTemplateName, setNewTemplateName] = useState('')
-  const [newTemplateDescription, setNewTemplateDescription] = useState('')
+  const [newTemplateName, setNewTemplateName] = useState("")
+  const [newTemplateDescription, setNewTemplateDescription] = useState("")
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [isRefreshingRecommended, setIsRefreshingRecommended] = useState(false)
+  const [savingTemplateId, setSavingTemplateId] = useState<string | null>(null)
+  const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null)
+
   const { toast } = useToast()
-  const { 
-    loadTemplates, 
-    saveTemplate: saveTemplateAPI, 
-    deleteTemplate: deleteTemplateAPI
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Get subtab from URL or default to 'generate'
+  const activeSubTab = searchParams.get('subtab') || 'generate'
+
+  // Handle subtab changes and update URL
+  const handleSubTabChange = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('subtab', value)
+    router.push(`?${params.toString()}`, { scroll: false })
+  }
+  const {
+    loadTemplates,
+    saveTemplate: saveTemplateAPI,
+    deleteTemplate: deleteTemplateAPI,
+    loadRecommendedTemplates,
+    generateTemplates
   } = useScheduleApi()
 
-  // Load templates from API on component mount
+  const activeScheduleDays = useMemo(() => {
+    const daysWithItems = currentSchedule.days
+      .filter((day) => day.items.length > 0)
+      .map((day) => day.dayOfWeek)
+    return daysWithItems.length > 0 ? daysWithItems : DEFAULT_DAY_SEQUENCE.slice(0, 3)
+  }, [currentSchedule])
+
+  const initialDaysPerWeek = clampNumber(activeScheduleDays.length || 3, 1, 6)
+
+  const [generatorForm, setGeneratorForm] = useState(() => ({
+    daysPerWeek: initialDaysPerWeek,
+    preferredDays: ensurePreferredDays(activeScheduleDays, initialDaysPerWeek),
+    difficulty: "Mixed",
+    focus: [] as string[],
+    preferredStartTime: "18:00",
+    repeatIntervalWeeks: 1,
+    allowBackToBack: false,
+    includeRecovery: false,
+    count: 2
+  }))
+
+  useEffect(() => {
+    setGeneratorForm((prev) => {
+      const preferredDays = ensurePreferredDays(activeScheduleDays, prev.daysPerWeek)
+      return {
+        ...prev,
+        preferredDays
+      }
+    })
+  }, [activeScheduleDays])
+
   const loadTemplatesFromAPI = useCallback(async () => {
     try {
       const templates = await loadTemplates()
-      setCustomTemplates(templates.filter(t => !t.isDefault))
+      const customOnly = templates.filter((template) => !template.isDefault && template.metadata?.source !== "recommended")
+      setCustomTemplates(customOnly)
     } catch (error) {
-      logger.error('Failed to load templates:', error)
+      logger.error("Failed to load templates:", error)
       toast({
         title: "Error",
         description: "Failed to load templates",
@@ -589,24 +183,159 @@ export function ScheduleTemplates({ onApplyTemplate, currentSchedule }: Schedule
     }
   }, [loadTemplates, toast])
 
+  const loadRecommended = useCallback(async () => {
+    try {
+      setIsRefreshingRecommended(true)
+      const templates = await loadRecommendedTemplates(4)
+      setRecommendedTemplates(templates)
+      const derivedCategories = new Set<string>()
+      const derivedDifficulties = new Set<string>()
+      templates.forEach((template) => {
+        template.items.forEach((item) => {
+          if (item.category) derivedCategories.add(item.category)
+          if (item.difficulty) derivedDifficulties.add(item.difficulty)
+        })
+        template.metadata?.tags?.forEach((tag) => derivedCategories.add(tag))
+      })
+      if (derivedCategories.size > 0) {
+        setAvailableCategories(Array.from(derivedCategories))
+      }
+      if (derivedDifficulties.size > 0) {
+        setAvailableDifficulties(Array.from(derivedDifficulties))
+      }
+    } catch (error) {
+      logger.error("Failed to load recommended templates:", error)
+      toast({
+        title: "Error",
+        description: "Unable to load recommended templates",
+        variant: "destructive"
+      })
+    } finally {
+      setIsRefreshingRecommended(false)
+    }
+  }, [loadRecommendedTemplates, toast])
+
   useEffect(() => {
     loadTemplatesFromAPI()
   }, [loadTemplatesFromAPI])
 
+  useEffect(() => {
+    loadRecommended()
+  }, [loadRecommended])
+
+  const handleGeneratorFieldChange = (field: keyof typeof generatorForm, value: unknown) => {
+    setGeneratorForm((prev) => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const handleDaysPerWeekChange = (value: string) => {
+    const parsed = Number.parseInt(value, 10)
+    if (Number.isNaN(parsed)) return
+    const clamped = clampNumber(parsed, 1, 6)
+    setGeneratorForm((prev) => ({
+      ...prev,
+      daysPerWeek: clamped,
+      preferredDays: ensurePreferredDays(prev.preferredDays, clamped)
+    }))
+  }
+
+  const handleToggleDay = (day: number, checked: boolean) => {
+    setGeneratorForm((prev) => {
+      const current = new Set(prev.preferredDays)
+      if (checked) {
+        current.add(day)
+      } else {
+        current.delete(day)
+      }
+      // Allow any number of days to be selected
+      const next = Array.from(current).sort((a, b) => a - b)
+      return {
+        ...prev,
+        preferredDays: next
+      }
+    })
+  }
+
+  const handleFocusToggle = (category: string, checked: boolean) => {
+    setGeneratorForm((prev) => {
+      const set = new Set(prev.focus)
+      if (checked) {
+        set.add(category)
+      } else {
+        set.delete(category)
+      }
+      return {
+        ...prev,
+        focus: Array.from(set)
+      }
+    })
+  }
+
+  const handleGenerateTemplates = async () => {
+    try {
+      setIsGenerating(true)
+      const payload: TemplateGenerationRequest = {
+        daysPerWeek: generatorForm.daysPerWeek,
+        preferredDays: generatorForm.preferredDays, // Use selected days directly without limiting
+        difficulty: generatorForm.difficulty === "Mixed" ? null : generatorForm.difficulty,
+        focus: generatorForm.focus,
+        preferredStartTime: generatorForm.preferredStartTime,
+        repeatIntervalWeeks: generatorForm.repeatIntervalWeeks,
+        allowBackToBack: generatorForm.allowBackToBack,
+        includeRecovery: generatorForm.includeRecovery,
+        count: generatorForm.count
+      }
+
+      logger.info('Generating templates with payload:', payload)
+
+      const result = await generateTemplates(payload)
+      if (result && result.templates.length > 0) {
+        setGeneratedTemplates(result.templates)
+        if (result.availableCategories.length > 0) {
+          setAvailableCategories(result.availableCategories)
+        }
+        if (result.availableDifficulties.length > 0) {
+          setAvailableDifficulties(result.availableDifficulties)
+        }
+        toast({
+          title: "Templates generated",
+          description: `Created ${result.templates.length} plan${result.templates.length === 1 ? "" : "s"} tailored to your criteria`
+        })
+      } else {
+        setGeneratedTemplates([])
+        toast({
+          title: "No templates generated",
+          description: "Try relaxing your filters or adding more workout templates first.",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      logger.error("Failed to generate templates:", error)
+      toast({
+        title: "Generation failed",
+        description: "We couldn't create a plan using those criteria.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
   const createTemplateFromCurrent = async () => {
     if (!newTemplateName.trim()) {
       toast({
-        title: "Error",
-        description: "Template name is required",
+        title: "Name required",
+        description: "Give your template a name before saving.",
         variant: "destructive"
       })
       return
     }
 
-    // Convert current schedule to template items
     const templateItems: Omit<ScheduleItem, "id">[] = []
-    currentSchedule.days.forEach(day => {
-      day.items.forEach(item => {
+    currentSchedule.days.forEach((day) => {
+      day.items.forEach((item) => {
         templateItems.push({
           type: item.type,
           title: item.title,
@@ -624,181 +353,471 @@ export function ScheduleTemplates({ onApplyTemplate, currentSchedule }: Schedule
 
     if (templateItems.length === 0) {
       toast({
-        title: "Error",
-        description: "Current schedule is empty. Add some items first.",
+        title: "Nothing to save",
+        description: "Add a few workouts to this week first.",
         variant: "destructive"
       })
       return
     }
 
-    const newTemplate = {
-      name: newTemplateName.trim(),
-      description: newTemplateDescription.trim() || undefined,
-      items: templateItems,
-      isDefault: false
-    }
-
     try {
-      const savedTemplate = await saveTemplateAPI(newTemplate)
+      setSavingTemplateId("__current__")
+      const payload = {
+        name: newTemplateName.trim(),
+        description: newTemplateDescription.trim() || undefined,
+        items: sanitizeTemplateItemsForSave(templateItems)
+      }
+      const savedTemplate = await saveTemplateAPI(payload)
       if (savedTemplate) {
-        setCustomTemplates(prev => [...prev, savedTemplate])
-        
-        // Reset form
-        setNewTemplateName('')
-        setNewTemplateDescription('')
+        setCustomTemplates((prev) => [...prev, savedTemplate])
+        setNewTemplateName("")
+        setNewTemplateDescription("")
         setIsCreatingTemplate(false)
-
         toast({
-          title: "Template Created",
-          description: `"${savedTemplate.name}" has been saved as a template`,
+          title: "Template saved",
+          description: `"${savedTemplate.name}" is ready to reuse.`
         })
       }
     } catch (error) {
-      logger.error('Failed to save template:', error)
+      logger.error("Failed to save template:", error)
       toast({
-        title: "Error",
-        description: "Failed to save template",
+        title: "Save failed",
+        description: "We couldn't save this template right now.",
         variant: "destructive"
       })
+    } finally {
+      setSavingTemplateId(null)
     }
   }
 
   const deleteCustomTemplate = async (templateId: string) => {
     try {
+      setDeletingTemplateId(templateId)
       const success = await deleteTemplateAPI(templateId)
       if (success) {
-        setCustomTemplates(prev => prev.filter(t => t.id !== templateId))
+        setCustomTemplates((prev) => prev.filter((template) => template.id !== templateId))
         toast({
-          title: "Template Deleted",
-          description: "Template has been removed",
+          title: "Template removed",
+          description: "It's been deleted from your library."
         })
       }
     } catch (error) {
-      logger.error('Failed to delete template:', error)
+      logger.error("Failed to delete template:", error)
       toast({
-        title: "Error",
-        description: "Failed to delete template",
+        title: "Delete failed",
+        description: "We couldn't remove that template.",
         variant: "destructive"
       })
+    } finally {
+      setDeletingTemplateId(null)
     }
   }
 
   const applyTemplate = (template: ScheduleTemplate) => {
     onApplyTemplate(template.items)
     toast({
-      title: "Template Applied",
-      description: `"${template.name}" has been added to your schedule`,
+      title: "Template applied",
+      description: `"${template.name}" is on your calendar.`
     })
   }
 
+  const saveGeneratedAsTemplate = async (template: ScheduleTemplate) => {
+    try {
+      setSavingTemplateId(template.id)
+      const payload = {
+        name: template.name,
+        description: template.description,
+        items: sanitizeTemplateItemsForSave(template.items)
+      }
+      const saved = await saveTemplateAPI(payload)
+      if (saved) {
+        setCustomTemplates((prev) => [...prev, saved])
+        toast({
+          title: "Template saved",
+          description: `"${saved.name}" is now in your library.`
+        })
+      }
+    } catch (error) {
+      logger.error("Failed to persist generated template:", error)
+      toast({
+        title: "Save failed",
+        description: "That generated plan couldn't be saved.",
+        variant: "destructive"
+      })
+    } finally {
+      setSavingTemplateId(null)
+    }
+  }
+
+  const generatorFocusOptions = availableCategories.length > 0 ? availableCategories : [
+    "Strength Training",
+    "Cardio",
+    "HIIT",
+    "Mobility",
+    "Endurance"
+  ]
+
+  const generatorDifficultyOptions = availableDifficulties.length > 0
+    ? ["Mixed", ...availableDifficulties.filter((difficulty) => difficulty && difficulty !== "Mixed")]
+    : DIFFICULTY_OPTIONS
+
+  const generatorDayBadges = generatorForm.preferredDays
+    .slice(0, generatorForm.daysPerWeek)
+    .map((day) => DAY_OPTIONS.find((option) => option.value === day)?.label ?? "")
+
   return (
     <div className="space-y-6">
-      {/* Header */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5 text-purple-600" />
-            Schedule Templates
+            Schedule templates
           </CardTitle>
           <CardDescription>
-            Apply pre-made templates or create your own from your current schedule
+            Generate adaptive plans, grab quick recommendations, or save your favorite weekly layout for later.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm">
-                Current schedule has {currentSchedule.days.reduce((total, day) => total + day.items.length, 0)} items
-              </span>
-            </div>
-            <Button
-              onClick={() => setIsCreatingTemplate(!isCreatingTemplate)}
-              variant="outline"
-              size="sm"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Save as Template
-            </Button>
+        <CardContent className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            {currentSchedule.days.reduce((total, day) => total + day.items.length, 0)} scheduled items this week
           </div>
-
-          {isCreatingTemplate && (
-            <div className="mt-4 p-4 border rounded-lg bg-muted/50 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="templateName">Template Name *</Label>
-                <Input
-                  id="templateName"
-                  value={newTemplateName}
-                  onChange={(e) => setNewTemplateName(e.target.value)}
-                  placeholder="e.g., My Custom Routine"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="templateDescription">Description</Label>
-                <Textarea
-                  id="templateDescription"
-                  value={newTemplateDescription}
-                  onChange={(e) => setNewTemplateDescription(e.target.value)}
-                  placeholder="Describe your template..."
-                  rows={2}
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={createTemplateFromCurrent} size="sm">
-                  <Save className="h-4 w-4 mr-2" />
-                  Create Template
-                </Button>
-                <Button
-                  onClick={() => setIsCreatingTemplate(false)}
-                  variant="outline"
-                  size="sm"
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Generator target days: {generatorForm.daysPerWeek} ({generatorDayBadges.join(", ")})
+          </div>
         </CardContent>
       </Card>
 
-      {/* Templates */}
-      <Tabs defaultValue="default" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="default">Default Templates</TabsTrigger>
-          <TabsTrigger value="custom">
-            My Templates ({customTemplates.length})
+      <Tabs value={activeSubTab} onValueChange={handleSubTabChange} className="space-y-4">
+        <TabsList className="w-full grid grid-cols-3">
+          <TabsTrigger value="generate" className="flex items-center gap-2">
+            <Wand2 className="h-4 w-4" />
+            Generate
+          </TabsTrigger>
+          <TabsTrigger value="recommended" className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            Recommended
+          </TabsTrigger>
+          <TabsTrigger value="custom" className="flex items-center gap-2">
+            <Save className="h-4 w-4" />
+            My templates
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="default" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {DEFAULT_TEMPLATES.map((template) => (
-              <TemplateCard
-                key={template.id}
-                template={template}
-                onApply={applyTemplate}
-                onDelete={null}
-              />
-            ))}
+        <TabsContent value="generate" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Wand2 className="h-5 w-5 text-blue-600" />
+                Build a new schedule
+              </CardTitle>
+              <CardDescription>
+                Choose the cadence and focus areas you want. We'll mix in workouts from your library and the global catalog.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {availableEquipment.length > 0 && (
+                <div className="rounded-md border border-dashed border-muted-foreground/30 bg-muted/40 p-3 text-xs text-muted-foreground">
+                  We'll prioritize workouts that match your equipment: <span className="font-medium text-foreground">{availableEquipment.join(", ")}</span>
+                </div>
+              )}
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Workouts per week</Label>
+                  <Select value={String(generatorForm.daysPerWeek)} onValueChange={handleDaysPerWeekChange}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5, 6].map((value) => (
+                        <SelectItem key={value} value={String(value)}>
+                          {value} day{value === 1 ? "" : "s"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Preferred start time</Label>
+                  <Select value={generatorForm.preferredStartTime} onValueChange={(value) => handleGeneratorFieldChange("preferredStartTime", value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={formatTimeForDisplay(generatorForm.preferredStartTime, timeFormat)} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {START_TIME_OPTIONS.map((time) => (
+                        <SelectItem key={time} value={time}>
+                          {formatTimeForDisplay(time, timeFormat)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Difficulty</Label>
+                  <Select value={generatorForm.difficulty} onValueChange={(value) => handleGeneratorFieldChange("difficulty", value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {generatorDifficultyOptions.map((option) => (
+                        <SelectItem key={option} value={option}>{option}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Repeat cadence</Label>
+                  <Select value={String(generatorForm.repeatIntervalWeeks)} onValueChange={(value) => handleGeneratorFieldChange("repeatIntervalWeeks", Number.parseInt(value, 10))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Every week</SelectItem>
+                      <SelectItem value="2">Every other week</SelectItem>
+                      <SelectItem value="3">Every 3 weeks</SelectItem>
+                      <SelectItem value="4">Every 4 weeks</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Training days</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {DAY_OPTIONS.map((option) => (
+                      <div key={option.value} className="flex items-center space-x-2 rounded border p-2">
+                        <Checkbox
+                          id={`generator-day-${option.value}`}
+                          checked={generatorForm.preferredDays.includes(option.value)}
+                          onCheckedChange={(checked) => handleToggleDay(option.value, Boolean(checked))}
+                        />
+                        <Label htmlFor={`generator-day-${option.value}`} className="text-sm font-medium">
+                          {option.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Select the days you want to train. You can choose any number of days regardless of the "workouts per week" setting.
+                  </p>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Focus areas</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {generatorFocusOptions.map((category) => {
+                      const checked = generatorForm.focus.includes(category)
+                      return (
+                        <Button
+                          key={category}
+                          type="button"
+                          size="sm"
+                          variant={checked ? "secondary" : "outline"}
+                          onClick={() => handleFocusToggle(category, !checked)}
+                        >
+                          {category}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Leave blank for a balanced mix. We use your selections to bias the generator.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="allowBackToBack" className="text-sm font-medium">Allow back-to-back repeats</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Let the generator reuse the same workout on consecutive days if variety is limited.
+                    </p>
+                  </div>
+                  <Switch
+                    id="allowBackToBack"
+                  
+                    checked={generatorForm.allowBackToBack}
+                    onCheckedChange={(checked) => handleGeneratorFieldChange("allowBackToBack", checked)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="includeRecovery" className="text-sm font-medium">Include recovery days</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Adds active recovery or mobility sessions when we have spare days.
+                    </p>
+                  </div>
+                  <Switch
+                    id="includeRecovery"
+                    checked={generatorForm.includeRecovery}
+                    onCheckedChange={(checked) => handleGeneratorFieldChange("includeRecovery", checked)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Plans to generate</Label>
+                  <Select value={String(generatorForm.count)} onValueChange={(value) => handleGeneratorFieldChange("count", Number.parseInt(value, 10))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4].map((count) => (
+                        <SelectItem key={count} value={String(count)}>
+                          {count}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={handleGenerateTemplates} disabled={isGenerating}>
+                  {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                  Generate schedule
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setGeneratorForm({
+                      daysPerWeek: initialDaysPerWeek,
+                      preferredDays: ensurePreferredDays(activeScheduleDays, initialDaysPerWeek),
+                      difficulty: "Mixed",
+                      focus: [],
+                      preferredStartTime: "18:00",
+                      repeatIntervalWeeks: 1,
+                      allowBackToBack: false,
+                      includeRecovery: false,
+                      count: 2
+                    })
+                    setGeneratedTemplates([])
+                  }}
+                >
+                  Reset
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {generatedTemplates.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {generatedTemplates.map((template) => (
+                <TemplateCard
+                  key={template.id}
+                  template={template}
+                  onApply={applyTemplate}
+                  onDelete={undefined}
+                  onSaveAsTemplate={saveGeneratedAsTemplate}
+                  isSaving={savingTemplateId === template.id}
+                />
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col gap-3 p-8 text-center text-muted-foreground">
+                <Wand2 className="mx-auto h-10 w-10" />
+                <p className="font-medium text-foreground">No generated plans yet</p>
+                <p className="text-sm">Choose your cadence, hit Generate, and we'll craft a tailored split instantly.</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="recommended" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Quick-start plans curated from popular templates and AI picks.
+            </p>
+            <Button size="sm" variant="outline" onClick={loadRecommended} disabled={isRefreshingRecommended}>
+              {isRefreshingRecommended ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              Refresh
+            </Button>
           </div>
+
+          {recommendedTemplates.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center text-muted-foreground">
+                <Sparkles className="mx-auto mb-3 h-10 w-10" />
+                <p className="font-medium text-foreground">No recommendations yet</p>
+                <p className="text-sm">Try refreshing or generate a custom plan to get started.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {recommendedTemplates.map((template) => (
+                <TemplateCard
+                  key={template.id}
+                  template={template}
+                  onApply={applyTemplate}
+                  onDelete={undefined}
+                  onSaveAsTemplate={saveGeneratedAsTemplate}
+                  isSaving={savingTemplateId === template.id}
+                />
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="custom" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Save className="h-5 w-5 text-green-600" />
+                Save this week as a template
+              </CardTitle>
+              <CardDescription>
+                Capture your current schedule so you can reapply it anytime.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="templateName">Template name</Label>
+                  <Input
+                    id="templateName"
+                    value={newTemplateName}
+                    onChange={(event) => setNewTemplateName(event.target.value)}
+                    placeholder="e.g., Push/Pull Beginner"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="templateDescription">Description</Label>
+                  <Textarea
+                    id="templateDescription"
+                    value={newTemplateDescription}
+                    onChange={(event) => setNewTemplateDescription(event.target.value)}
+                    placeholder="Optional notes about this routine"
+                    rows={2}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={createTemplateFromCurrent} disabled={savingTemplateId === "__current__"}>
+                  {savingTemplateId === "__current__" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  Save template
+                </Button>
+                <Button variant="outline" onClick={() => setIsCreatingTemplate((value) => !value)}>
+                  {isCreatingTemplate ? "Hide details" : "Toggle extra details"}
+                </Button>
+              </div>
+              {isCreatingTemplate && (
+                <p className="text-xs text-muted-foreground">
+                  We'll capture every item on the calendar exactly as it appears right now.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
           {customTemplates.length === 0 ? (
             <Card>
-              <CardContent className="p-8 text-center">
-                <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="font-medium mb-2">No Custom Templates</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Create templates from your current schedule to reuse them later
-                </p>
-                <Button
-                  onClick={() => setIsCreatingTemplate(true)}
-                  variant="outline"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create First Template
-                </Button>
+              <CardContent className="p-8 text-center text-muted-foreground">
+                <Users className="mx-auto mb-3 h-10 w-10" />
+                <p className="font-medium text-foreground">No saved templates yet</p>
+                <p className="text-sm">Generate a plan or save this week's schedule to build your personal library.</p>
               </CardContent>
             </Card>
           ) : (
@@ -808,7 +827,9 @@ export function ScheduleTemplates({ onApplyTemplate, currentSchedule }: Schedule
                   key={template.id}
                   template={template}
                   onApply={applyTemplate}
-                  onDelete={deleteCustomTemplate}
+                  onDelete={(templateId) => deleteCustomTemplate(templateId)}
+                  onSaveAsTemplate={undefined}
+                  isDeleting={deletingTemplateId === template.id}
                 />
               ))}
             </div>
@@ -822,100 +843,117 @@ export function ScheduleTemplates({ onApplyTemplate, currentSchedule }: Schedule
 interface TemplateCardProps {
   template: ScheduleTemplate
   onApply: (template: ScheduleTemplate) => void
-  onDelete: ((templateId: string) => void) | null
+  onDelete?: (templateId: string) => void
+  onSaveAsTemplate?: (template: ScheduleTemplate) => void
+  isSaving?: boolean
+  isDeleting?: boolean
 }
 
-function TemplateCard({ template, onApply, onDelete }: TemplateCardProps) {
-  const workoutCount = template.items.filter(item => item.type === 'workout').length
+function TemplateCard({ template, onApply, onDelete, onSaveAsTemplate, isSaving = false, isDeleting = false }: TemplateCardProps) {
+  const workoutCount = template.items.filter((item) => item.type === "workout").length
   const totalDuration = template.items.reduce((sum, item) => sum + (item.duration || 0), 0)
-
-  const formatTotalDuration = (minutes: number) => {
-    if (!minutes) return "0m"
-    const hours = Math.floor(minutes / 60)
-    const remaining = minutes % 60
-    if (hours && remaining) {
-      return `${hours}h ${remaining}m`
-    }
-    if (hours) {
-      return `${hours}h`
-    }
-    return `${remaining}m`
-  }
+  const previewItems = template.items.slice(0, 3)
+  const additionalCount = Math.max(template.items.length - previewItems.length, 0)
+  const tags = summarizeTemplateTags(template)
+  const source = template.metadata?.source ?? (template.isDefault ? "default" : "custom")
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div>
-            <CardTitle className="text-lg">{template.name}</CardTitle>
+    <Card className="transition-shadow hover:shadow-md">
+      <CardHeader className="space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <CardTitle className="text-lg leading-tight">{template.name}</CardTitle>
             {template.description && (
-              <CardDescription className="mt-1">
-                {template.description}
-              </CardDescription>
+              <CardDescription>{template.description}</CardDescription>
             )}
           </div>
-          {template.isDefault && (
-            <Badge variant="secondary" className="text-xs">
-              Default
-            </Badge>
-          )}
+          <Badge variant="secondary" className="text-xs">
+            {sourceBadgeLabel[source]}
+          </Badge>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {/* Stats */}
-          <div className="grid grid-cols-2 gap-4 text-center">
-            <div>
-              <div className="text-lg font-semibold text-blue-600">{workoutCount}</div>
-              <div className="text-xs text-muted-foreground">Workouts</div>
-            </div>
-            <div>
-              <div className="text-lg font-semibold text-purple-600">{formatTotalDuration(totalDuration)}</div>
-              <div className="text-xs text-muted-foreground">Scheduled Time</div>
-            </div>
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {tags.map((tag) => (
+              <Badge key={`${template.id}-${tag}`} variant="outline" className="text-xs">
+                {tag}
+              </Badge>
+            ))}
           </div>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-4 text-center">
+          <div>
+            <div className="text-lg font-semibold text-blue-600">{workoutCount}</div>
+            <div className="text-xs text-muted-foreground">Workouts</div>
+          </div>
+          <div>
+            <div className="text-lg font-semibold text-purple-600">{formatTotalDuration(totalDuration)}</div>
+            <div className="text-xs text-muted-foreground">Scheduled time</div>
+          </div>
+        </div>
 
-          {/* Preview */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Preview</h4>
           <div className="space-y-2">
-            <h4 className="text-sm font-medium">Preview:</h4>
-            <div className="max-h-24 overflow-y-auto space-y-1">
-              {template.items.slice(0, 3).map((item, index) => (
-                <div key={index} className="text-xs p-2 bg-muted/50 rounded flex items-center gap-2">
+            {previewItems.map((item, index) => (
+              <div key={`${template.id}-${index}`} className="flex items-center justify-between rounded border bg-muted/40 px-3 py-2 text-xs">
+                <div className="flex items-center gap-2">
                   <Clock className="h-3 w-3" />
                   <span className="font-medium">{item.title}</span>
-                  <Badge variant="outline" className="text-xs py-0 px-1">
-                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][item.day]}
-                  </Badge>
                 </div>
-              ))}
-              {template.items.length > 3 && (
-                <div className="text-xs text-muted-foreground text-center">
-                  +{template.items.length - 3} more items
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <span>{DAY_OPTIONS[item.day]?.label ?? ""}</span>
+                  <span>{item.startTime}</span>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-2">
-            <Button
-              onClick={() => onApply(template)}
-              className="flex-1"
-              size="sm"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Apply Template
-            </Button>
-            {onDelete && (
-              <Button
-                onClick={() => onDelete(template.id)}
-                variant="destructive"
-                size="sm"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              </div>
+            ))}
+            {additionalCount > 0 && (
+              <p className="text-center text-xs text-muted-foreground">+{additionalCount} more item{additionalCount === 1 ? "" : "s"}</p>
             )}
           </div>
+        </div>
+
+        {template.metadata?.insights && template.metadata.insights.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">Highlights</p>
+            <ul className="space-y-1 text-xs text-muted-foreground">
+              {template.metadata.insights.map((insight, index) => (
+                <li key={`${template.id}-insight-${index}`}>• {insight}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => onApply(template)} size="sm" className="flex-1" disabled={isSaving || isDeleting}>
+            <Download className="mr-2 h-4 w-4" />
+            Apply
+          </Button>
+          {onSaveAsTemplate && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => onSaveAsTemplate(template)}
+              disabled={isSaving || isDeleting}
+            >
+              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              Save copy
+            </Button>
+          )}
+          {onDelete && (
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              onClick={() => onDelete(template.id)}
+              disabled={isDeleting || isSaving}
+            >
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Delete
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

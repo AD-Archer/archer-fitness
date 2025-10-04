@@ -81,4 +81,49 @@ export interface ScheduleTemplate {
   usageCount?: number
   createdAt?: Date
   updatedAt?: Date
+  metadata?: ScheduleTemplateMetadata
+}
+
+export type ScheduleTemplateSource = "default" | "custom" | "recommended" | "generated"
+
+export interface ScheduleTemplateMetadata {
+  source?: ScheduleTemplateSource
+  generatedAt?: string
+  criteria?: TemplateGenerationCriteria
+  tags?: string[]
+  insights?: string[]
+  allowedEquipment?: string[]
+}
+
+export interface TemplateGenerationCriteria {
+  daysPerWeek: number
+  preferredDays?: number[]
+  difficulty?: string | null
+  focus?: string[]
+  preferredStartTime?: string
+  repeatIntervalWeeks?: number
+  timezone?: string | null
+  allowBackToBack?: boolean
+  includeRecovery?: boolean
+  includeCardio?: boolean
+  allowedEquipment?: string[]
+}
+
+export interface TemplateGenerationRequest extends Partial<TemplateGenerationCriteria> {
+  count?: number
+  seed?: string
+}
+
+export interface TemplateGenerationResponse {
+  templates: ScheduleTemplate[]
+  criteria: TemplateGenerationCriteria
+  availableCategories: string[]
+  availableDifficulties: string[]
+  availableEquipment?: string[]
+}
+
+export interface ApplyTemplateOptions {
+  mode?: "replace" | "append"
+  repeatIntervalWeeks?: number | null
+  enableRepeat?: boolean
 }

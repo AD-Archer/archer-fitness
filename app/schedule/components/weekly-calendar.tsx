@@ -5,13 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ChevronLeft, ChevronRight, Trash2, Clock, Dumbbell, CalendarDays } from "lucide-react"
-import { WeeklySchedule } from "../types/schedule"
+import { WeeklySchedule, ScheduleItem } from "../types/schedule"
+import { formatTimeRangeForDisplay, type TimeFormatPreference } from "@/lib/time-utils"
 import { cn } from "@/lib/utils"
+import { DeleteScheduleItemDialog } from "./delete-schedule-item-dialog"
 
 interface WeeklyCalendarProps {
   schedule: WeeklySchedule
   onNavigateWeek: (direction: 'prev' | 'next') => void
-  onItemDelete: (itemId: string) => void
+  onItemDelete: (itemId: string, deleteOption?: "this" | "future" | "all") => void
   onClearWeek: () => void
   onGoToCurrentWeek?: () => void
   isLoading: boolean
@@ -21,6 +23,7 @@ interface WeeklyCalendarProps {
     startTime: string
     status: string
   }>
+  timeFormat?: TimeFormatPreference
 }
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -32,9 +35,12 @@ export function WeeklyCalendar({
   onClearWeek,
   onGoToCurrentWeek,
   isLoading,
-  completedSessions = []
+  completedSessions = [],
+  timeFormat = '24h'
 }: WeeklyCalendarProps) {
   const [selectedItem, setSelectedItem] = useState<string | null>(null)
+  const [itemToDelete, setItemToDelete] = useState<ScheduleItem | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   const isCurrentWeek = () => {
     const today = new Date()
@@ -72,17 +78,8 @@ export function WeeklyCalendar({
     })
   }
 
-  const formatTimeRange = (startTime: string, endTime: string) => {
-    const formatTime = (time: string) => {
-      const [hours, minutes] = time.split(':')
-      const hour = parseInt(hours)
-      const ampm = hour >= 12 ? 'PM' : 'AM'
-      const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
-      return `${displayHour}:${minutes} ${ampm}`
-    }
-    
-    return `${formatTime(startTime)} - ${formatTime(endTime)}`
-  }
+  const formatTimeRange = (startTime: string, endTime: string) =>
+    formatTimeRangeForDisplay(startTime, endTime, timeFormat)
 
   const getItemIcon = (type: string) => {
     switch (type) {
@@ -243,7 +240,8 @@ export function WeeklyCalendar({
                                 className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  onItemDelete(item.id)
+                                  setItemToDelete(item)
+                                  setDeleteDialogOpen(true)
                                   setSelectedItem(null)
                                 }}
                               >
@@ -266,6 +264,18 @@ export function WeeklyCalendar({
           ))}
         </div>
       </CardContent>
+
+      <DeleteScheduleItemDialog
+        item={itemToDelete}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={(deleteOption) => {
+          if (itemToDelete) {
+            onItemDelete(itemToDelete.id, deleteOption)
+            setItemToDelete(null)
+          }
+        }}
+      />
     </Card>
   )
 }

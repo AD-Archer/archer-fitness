@@ -164,7 +164,8 @@ export function DashboardStats() {
     }
 
     fetchData()
-  }, [isWorkoutCompleted])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Empty dependency array - only fetch on mount
 
   // Calculate workout statistics
   const calculateWorkoutStats = () => {

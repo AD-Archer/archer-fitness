@@ -63,6 +63,7 @@ export function SettingsForm() {
         return "UTC"
       }
     })(),
+    timeFormat: "24h" as "12h" | "24h",
     adminNotifications: {
       enabled: true,
       methods: ['smtp'] as ('smtp')[],
@@ -114,6 +115,7 @@ export function SettingsForm() {
     weeklyReports: true,
     dataSharing: false,
     timezone: "UTC",
+    timeFormat: "24h",
     adminNotifications: {
       enabled: true,
       methods: ['smtp'],
@@ -191,6 +193,7 @@ export function SettingsForm() {
             setAppPrefs({
               ...defaultAppPrefs,
               ...data.preferences.appPrefs,
+              timeFormat: data.preferences.appPrefs?.timeFormat === "12h" ? "12h" : "24h",
               adminNotifications: {
                 ...defaultAppPrefs.adminNotifications,
                 ...data.preferences.appPrefs?.adminNotifications

@@ -1,5 +1,11 @@
 import { useState, useCallback } from 'react'
-import type { Schedule, ScheduleItem, ScheduleTemplate } from '../types/schedule'
+import type {
+  Schedule,
+  ScheduleItem,
+  ScheduleTemplate,
+  TemplateGenerationRequest,
+  TemplateGenerationResponse
+} from '../types/schedule'
 import { logger } from "@/lib/logger"
 
 interface SaveScheduleOptions {
@@ -16,6 +22,8 @@ interface UseScheduleApiReturn {
   saveTemplate: (template: Omit<ScheduleTemplate, 'id' | 'createdAt' | 'updatedAt' | 'usageCount'>) => Promise<ScheduleTemplate | null>
   applyTemplate: (templateId: string, weekStart: string) => Promise<Schedule | null>
   deleteTemplate: (templateId: string) => Promise<boolean>
+  loadRecommendedTemplates: (count?: number) => Promise<ScheduleTemplate[]>
+  generateTemplates: (request: TemplateGenerationRequest) => Promise<TemplateGenerationResponse | null>
 }
 
 export function useScheduleApi(): UseScheduleApiReturn {
@@ -84,6 +92,25 @@ export function useScheduleApi(): UseScheduleApiReturn {
     return result || []
   }, [handleApiCall])
 
+  const loadRecommendedTemplates = useCallback(async (count = 3): Promise<ScheduleTemplate[]> => {
+    const result = await handleApiCall(
+      () => fetch(`/api/schedule/templates/recommended?count=${encodeURIComponent(String(count))}`),
+      (data) => (data as { templates: ScheduleTemplate[] }).templates
+    )
+    return result || []
+  }, [handleApiCall])
+
+  const generateTemplates = useCallback(async (requestPayload: TemplateGenerationRequest): Promise<TemplateGenerationResponse | null> => {
+    return handleApiCall(
+      () => fetch('/api/schedule/templates/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestPayload)
+      }),
+      (data) => data as TemplateGenerationResponse
+    )
+  }, [handleApiCall])
+
   const saveTemplate = useCallback(async (
     template: Omit<ScheduleTemplate, 'id' | 'createdAt' | 'updatedAt' | 'usageCount'>
   ): Promise<ScheduleTemplate | null> => {
@@ -126,6 +153,8 @@ export function useScheduleApi(): UseScheduleApiReturn {
     loadTemplates,
     saveTemplate,
     applyTemplate,
-    deleteTemplate
+    deleteTemplate,
+    loadRecommendedTemplates,
+    generateTemplates
   }
 }

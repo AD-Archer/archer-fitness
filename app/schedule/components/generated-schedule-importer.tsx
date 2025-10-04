@@ -5,14 +5,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Calendar, Sparkles } from "lucide-react"
 import { ScheduleItem } from "../types/schedule"
+import { type TimeFormatPreference } from "@/lib/time-utils"
 import { WorkoutTemplateSelector } from "./workout-template-selector"
 
 interface GeneratedScheduleImporterProps {
   onImportSchedule: (items: Omit<ScheduleItem, "id">[]) => Promise<void> | void
   currentWeek: Date
+  timeFormat?: TimeFormatPreference
 }
 
-export function GeneratedScheduleImporter({ onImportSchedule, currentWeek }: GeneratedScheduleImporterProps) {
+export function GeneratedScheduleImporter({ onImportSchedule, currentWeek, timeFormat = '24h' }: GeneratedScheduleImporterProps) {
   const [isSaving, setIsSaving] = useState(false)
 
   const handleImport = useCallback(async (items: Omit<ScheduleItem, "id">[]) => {
@@ -56,7 +58,7 @@ export function GeneratedScheduleImporter({ onImportSchedule, currentWeek }: Gen
         </CardContent>
       </Card>
 
-      <WorkoutTemplateSelector onSelectWorkout={handleImport} currentWeek={currentWeek} />
+  <WorkoutTemplateSelector onSelectWorkout={handleImport} currentWeek={currentWeek} timeFormat={timeFormat} />
 
       <Card>
         <CardContent className="flex flex-col gap-3 text-sm text-muted-foreground">

@@ -138,6 +138,25 @@ export function AppTab({ appPrefs, setAppPrefs }: AppTabProps) {
               Used for scheduling, progress tracking, and notifications
             </p>
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="time-format">Time Format</Label>
+            <Select
+              value={appPrefs.timeFormat}
+              onValueChange={(value) => setAppPrefs({ ...appPrefs, timeFormat: value as "12h" | "24h" })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="12h">12-hour (AM/PM)</SelectItem>
+                <SelectItem value="24h">24-hour</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Controls how workout times appear across schedules and reminders.
+            </p>
+          </div>
         </div>
 
         <Separator />

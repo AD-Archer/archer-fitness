@@ -124,6 +124,11 @@ export async function GET(request: NextRequest) {
 
     const weekStartDate = new Date(weekStart)
     
+    logger.info('GET /api/schedule called:', { 
+      userId: session.user.id,
+      weekStart: weekStartDate.toISOString()
+    })
+    
     // Get or create schedule for the week
     let schedule = await prisma.schedule.findUnique({
       where: {
@@ -143,6 +148,7 @@ export async function GET(request: NextRequest) {
     })
 
     if (!schedule) {
+      logger.info('No schedule found, creating empty schedule:', { userId: session.user.id, weekStart: weekStartDate })
       // Create empty schedule for the week
       schedule = await prisma.schedule.create({
         data: {
@@ -154,6 +160,11 @@ export async function GET(request: NextRequest) {
         }
       })
     }
+
+    logger.info('Schedule retrieved:', { 
+      scheduleId: schedule.id, 
+      itemCount: schedule.items?.length 
+    })
 
     const weekKey = weekStartDate.toISOString().split('T')[0]
 
@@ -239,7 +250,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-  const { weekStart, items, timezone } = body
+    const { weekStart, items, timezone } = body
+
+    logger.info('POST /api/schedule called:', { 
+      userId: session.user.id,
+      weekStart, 
+      itemCount: items?.length,
+      timezone 
+    })
 
     if (!weekStart) {
       return NextResponse.json({ error: "weekStart is required" }, { status: 400 })
@@ -258,29 +276,34 @@ export async function POST(request: NextRequest) {
     })
 
     if (!schedule) {
+      logger.info('Creating new schedule:', { userId: session.user.id, weekStart: weekStartDate })
       schedule = await prisma.schedule.create({
         data: {
           userId: session.user.id,
           weekStart: weekStartDate,
           timezone: timezone || 'UTC'
-        } as any
+        }
       })
+      logger.info('Schedule created:', { scheduleId: schedule.id })
     } else if (timezone && (schedule as any).timezone !== timezone) {
+      logger.info('Updating schedule timezone:', { scheduleId: schedule.id, oldTimezone: (schedule as any).timezone, newTimezone: timezone })
       schedule = await prisma.schedule.update({
         where: { id: schedule.id },
-        data: { timezone } as any
+        data: { timezone }
       })
     }
 
     // Update schedule items
     if (items && Array.isArray(items)) {
       // Delete existing items
-      await prisma.scheduleItem.deleteMany({
+      const deletedCount = await prisma.scheduleItem.deleteMany({
         where: { scheduleId: schedule.id }
       })
+      logger.info('Deleted existing items:', { scheduleId: schedule.id, count: deletedCount.count })
 
       // Create new items
       if (items.length > 0) {
+        logger.info('Creating new items:', { scheduleId: schedule.id, itemCount: items.length })
         await prisma.scheduleItem.createMany({
           data: items.map((item: {
             type: string;
@@ -323,6 +346,7 @@ export async function POST(request: NextRequest) {
             repeatDaysOfWeek: item.repeatDaysOfWeek ?? undefined
           }))
         })
+        logger.info('Items created successfully')
       }
     }
 
@@ -337,6 +361,11 @@ export async function POST(request: NextRequest) {
           ]
         }
       }
+    })
+
+    logger.info('Schedule saved successfully:', { 
+      scheduleId: schedule.id, 
+      itemCount: updatedSchedule?.items?.length 
     })
 
     return NextResponse.json({ schedule: updatedSchedule })

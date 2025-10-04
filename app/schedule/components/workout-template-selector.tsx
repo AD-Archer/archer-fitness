@@ -12,6 +12,7 @@ import { Dumbbell, Zap, Plus, Search, Repeat } from "lucide-react"
 import { ScheduleItem } from "../types/schedule"
 import { useToast } from "@/hooks/use-toast"
 import { logger } from "@/lib/logger"
+import { formatTimeForDisplay, type TimeFormatPreference } from "@/lib/time-utils"
 
 interface WorkoutTemplate {
   id: string
@@ -51,6 +52,7 @@ interface WorkoutTemplate {
 interface WorkoutTemplateSelectorProps {
   onSelectWorkout: (items: Omit<ScheduleItem, "id">[]) => void
   currentWeek: Date
+  timeFormat?: TimeFormatPreference
 }
 
 const DAYS = [
@@ -70,19 +72,18 @@ const SPLIT_PRESETS: Array<{ label: string; days: number[] }> = [
   { label: "Weekend Warrior", days: [5, 6] }
 ]
 
-const TIME_OPTIONS = [
-  { value: "06:00", label: "6:00 AM" },
-  { value: "07:00", label: "7:00 AM" },
-  { value: "12:00", label: "12:00 PM" },
-  { value: "18:00", label: "6:00 PM" },
-  { value: "20:00", label: "8:00 PM" }
-]
+const TIME_OPTIONS = ["06:00", "07:00", "12:00", "18:00", "20:00"] as const
 
-const REPEAT_OPTIONS: Array<{ value: "none" | "daily" | "weekly" | "yearly"; label: string }> = [
+type RepeatWeekOption = "none" | "1" | "2" | "3" | "4" | "6" | "8"
+
+const WEEKLY_REPEAT_OPTIONS: Array<{ value: RepeatWeekOption; label: string }> = [
   { value: "none", label: "Do not repeat" },
-  { value: "daily", label: "Every day" },
-  { value: "weekly", label: "Every week" },
-  { value: "yearly", label: "Every year" }
+  { value: "1", label: "Every week" },
+  { value: "2", label: "Every other week" },
+  { value: "3", label: "Every 3 weeks" },
+  { value: "4", label: "Every 4 weeks" },
+  { value: "6", label: "Every 6 weeks" },
+  { value: "8", label: "Every 8 weeks" }
 ]
 
 const calculateEndTime = (startTime: string, durationMinutes: number) => {
@@ -105,7 +106,7 @@ const isPromise = <T = unknown>(value: unknown): value is Promise<T> => {
 }
 
 
-export function WorkoutTemplateSelector({ onSelectWorkout, currentWeek }: WorkoutTemplateSelectorProps) {
+export function WorkoutTemplateSelector({ onSelectWorkout, currentWeek, timeFormat = "24h" }: WorkoutTemplateSelectorProps) {
   const [userTemplates, setUserTemplates] = useState<WorkoutTemplate[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -249,6 +250,7 @@ export function WorkoutTemplateSelector({ onSelectWorkout, currentWeek }: Workou
                   key={template.id}
                   template={template}
                   onAdd={(items) => handleAddToSchedule(items, template.name)}
+                  timeFormat={timeFormat}
                 />
               ))}
             </div>
@@ -262,13 +264,13 @@ export function WorkoutTemplateSelector({ onSelectWorkout, currentWeek }: Workou
 interface WorkoutTemplateCardProps {
   template: WorkoutTemplate
   onAdd: (items: Omit<ScheduleItem, "id">[]) => Promise<void> | void
+  timeFormat: TimeFormatPreference
 }
 
-function WorkoutTemplateCard({ template, onAdd }: WorkoutTemplateCardProps) {
+function WorkoutTemplateCard({ template, onAdd, timeFormat }: WorkoutTemplateCardProps) {
   const [selectedDays, setSelectedDays] = useState<number[]>([])
   const [selectedTime, setSelectedTime] = useState<string>("18:00")
-  const [repeatPattern, setRepeatPattern] = useState<"none" | "daily" | "weekly" | "yearly">("none")
-  const [repeatInterval, setRepeatInterval] = useState<number>(1)
+  const [repeatEveryWeeks, setRepeatEveryWeeks] = useState<RepeatWeekOption>("none")
   const [repeatForever, setRepeatForever] = useState<boolean>(true)
   const [repeatEndDate, setRepeatEndDate] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -293,17 +295,19 @@ function WorkoutTemplateCard({ template, onAdd }: WorkoutTemplateCardProps) {
     setSelectedDays(days)
   }
 
-  const handleRepeatIntervalChange = (value: string) => {
-    const parsed = parseInt(value, 10)
-    if (!Number.isNaN(parsed) && parsed > 0) {
-      setRepeatInterval(parsed)
+  const repeatIntervalValue = repeatEveryWeeks === "none" ? null : Number.parseInt(repeatEveryWeeks, 10)
+
+  const handleRepeatSelectionChange = (value: RepeatWeekOption) => {
+    setRepeatEveryWeeks(value)
+    if (value === "none") {
+      setRepeatForever(true)
+      setRepeatEndDate("")
     }
   }
 
   const resetFormState = () => {
     setSelectedDays([])
-    setRepeatPattern("none")
-    setRepeatInterval(1)
+    setRepeatEveryWeeks("none")
     setRepeatForever(true)
     setRepeatEndDate("")
   }
@@ -324,7 +328,7 @@ function WorkoutTemplateCard({ template, onAdd }: WorkoutTemplateCardProps) {
         const muscleText = primaryMuscles.length > 0 ? ` • ${primaryMuscles.join(", ")}` : ""
         const description = `${exerciseCount} exercises${muscleText} • ${template.difficulty || "Unknown difficulty"}`
 
-        const isRecurring = repeatPattern !== "none"
+        const isRecurring = repeatIntervalValue !== null
         const repeatEndsOnIso = repeatForever || !repeatEndDate ? null : new Date(repeatEndDate).toISOString()
 
         return {
@@ -354,15 +358,15 @@ function WorkoutTemplateCard({ template, onAdd }: WorkoutTemplateCardProps) {
             cooldown: []
           },
           isRecurring,
-          repeatPattern: isRecurring ? repeatPattern : null,
-          repeatInterval: isRecurring ? repeatInterval : null,
+          repeatPattern: isRecurring ? "weekly" : null,
+          repeatInterval: isRecurring ? repeatIntervalValue : null,
           repeatEndsOn: isRecurring ? repeatEndsOnIso : null,
-          repeatDaysOfWeek: isRecurring && repeatPattern === "weekly" ? sortedDays : null,
+          repeatDaysOfWeek: isRecurring ? sortedDays : null,
           recurrenceRule: isRecurring ? {
-            frequency: repeatPattern,
-            interval: repeatInterval,
+            frequency: "weekly",
+            interval: repeatIntervalValue,
             endsOn: repeatEndsOnIso,
-            daysOfWeek: repeatPattern === "weekly" ? sortedDays : null
+            daysOfWeek: sortedDays
           } : null
         }
       })
@@ -446,17 +450,17 @@ function WorkoutTemplateCard({ template, onAdd }: WorkoutTemplateCardProps) {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <p className="text-sm font-medium">Time of day</p>
               <Select value={selectedTime} onValueChange={setSelectedTime}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder={formatTimeForDisplay(selectedTime, timeFormat)} />
                 </SelectTrigger>
                 <SelectContent>
                   {TIME_OPTIONS.map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
+                    <SelectItem key={option} value={option}>
+                      {formatTimeForDisplay(option, timeFormat)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -465,39 +469,27 @@ function WorkoutTemplateCard({ template, onAdd }: WorkoutTemplateCardProps) {
 
             <div className="space-y-2">
               <p className="text-sm font-medium">Repeat</p>
-              <Select value={repeatPattern} onValueChange={(value: "none" | "daily" | "weekly" | "yearly") => setRepeatPattern(value)}>
+              <Select value={repeatEveryWeeks} onValueChange={handleRepeatSelectionChange}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {REPEAT_OPTIONS.map(option => (
+                  {WEEKLY_REPEAT_OPTIONS.map(option => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            {repeatPattern !== "none" && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Repeat every</p>
-                <Input
-                  type="number"
-                  min={1}
-                  value={repeatInterval}
-                  onChange={(event) => handleRepeatIntervalChange(event.target.value)}
-                />
+              {repeatIntervalValue !== null && (
                 <p className="text-xs text-muted-foreground">
-                  {repeatPattern === "daily" && "day(s)"}
-                  {repeatPattern === "weekly" && "week(s)"}
-                  {repeatPattern === "yearly" && "year(s)"}
+                  Repeats every {repeatIntervalValue === 1 ? "week" : `${repeatIntervalValue} weeks`} on selected days.
                 </p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
-          {repeatPattern !== "none" && (
+          {repeatIntervalValue !== null && (
             <div className="space-y-3 rounded-lg border border-dashed p-4">
               <div className="flex items-center justify-between">
                 <div>
