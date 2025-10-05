@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
@@ -53,7 +52,6 @@ export function WorkoutSelection({
     if (workout.isAIGenerated || workout.name.toLowerCase().includes('ai-generated')) {
       return {
         icon: Zap,
-        label: 'AI Generated',
         bgColor: 'bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30',
         borderColor: 'border-purple-200 dark:border-purple-800',
         iconColor: 'text-purple-600',
@@ -62,10 +60,9 @@ export function WorkoutSelection({
     } else if (workout.isCustom) {
       return {
         icon: User,
-        label: 'Custom',
-        bgColor: 'bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30',
-        borderColor: 'border-green-200 dark:border-green-800',
-        iconColor: 'text-green-600',
+        bgColor: 'bg-gradient-to-br from-red-50 to-coral-50 dark:from-red-950/30 dark:to-coral-950/30',
+        borderColor: 'border-red-200 dark:border-green-800',
+        iconColor: 'text-red-600',
         badgeVariant: 'secondary' as const
       }
     } else {
@@ -106,9 +103,6 @@ export function WorkoutSelection({
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <Icon className={`w-4 h-4 ${typeInfo.iconColor}`} />
-                          <Badge variant={typeInfo.badgeVariant} className="text-xs">
-                            {typeInfo.label}
-                          </Badge>
                         </div>
                         <CardTitle className="text-base flex items-center">
                           {workout.name}
@@ -164,8 +158,8 @@ export function WorkoutSelection({
                         workout.isAIGenerated || workout.name.toLowerCase().includes('ai-generated')
                           ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700'
                           : workout.isCustom
-                          ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
-                          : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+                          ? 'bg-gradient-to-r from-black-600 to-black-600 hover:from-black-700 hover:to-black-700'
+                          : 'bg-gradient-to-r from-black-600 to-red-600 hover:from-black-700 hover:to-black-700'
                       }`}
                     >
                       <Play className="w-4 h-4 mr-2" />
@@ -214,6 +208,7 @@ export function WorkoutSelection({
                             targetReps: ex.targetReps,
                             targetType: ex.targetType ?? "reps", // default to "reps" if undefined
                             instructions: ex.instructions,
+                            exercise: ex.exercise,
                           })),
                         }
                       : undefined
