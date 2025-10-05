@@ -25,7 +25,9 @@ export default function SignUpPage() {
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [privacyAccepted, setPrivacyAccepted] = useState(false)
+  const [termsAccepted, setTermsAccepted] = useState(false)
   const [showPrivacyModal, setShowPrivacyModal] = useState(false)
+  const [showTermsModal, setShowTermsModal] = useState(false)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,6 +37,12 @@ export default function SignUpPage() {
 
     if (!privacyAccepted) {
       setError("You must accept the privacy policy to create an account")
+      setIsLoading(false)
+      return
+    }
+
+    if (!termsAccepted) {
+      setError("You must accept the terms of service to create an account")
       setIsLoading(false)
       return
     }
@@ -225,7 +233,28 @@ export default function SignUpPage() {
                   </Label>
                 </div>
 
-                <Button type="submit" className="w-full" disabled={isLoading || !privacyAccepted}>
+                <div className="flex items-start space-x-2">
+                  <input
+                    type="checkbox"
+                    id="termsAccept"
+                    checked={termsAccepted}
+                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-gray-300"
+                    disabled={isLoading}
+                  />
+                  <Label htmlFor="termsAccept" className="text-sm font-normal leading-tight cursor-pointer">
+                    I have read and accept the{" "}
+                    <button
+                      type="button"
+                      onClick={() => setShowTermsModal(true)}
+                      className="font-medium text-blue-600 hover:text-blue-500 underline"
+                    >
+                      Terms of Service
+                    </button>
+                  </Label>
+                </div>
+
+                <Button type="submit" className="w-full" disabled={isLoading || !privacyAccepted || !termsAccepted}>
                   {isLoading ? "Creating account..." : "Create account"}
                 </Button>
               </form>
@@ -360,6 +389,67 @@ export default function SignUpPage() {
             <Button 
               variant="outline" 
               onClick={() => setShowPrivacyModal(false)} 
+              className="flex items-center gap-2"
+            >
+              <X className="h-4 w-4" />
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showTermsModal} onOpenChange={setShowTermsModal}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">Terms of Service</DialogTitle>
+            <DialogDescription>
+              Please read these terms carefully before creating an account.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh] pr-4">
+            <div className="prose max-w-none">
+              <p className="text-sm text-muted-foreground mb-4">
+                Last Updated: October 5, 2025
+              </p>
+
+              <h2 className="text-xl font-semibold mb-4">Key Points</h2>
+              <ul className="list-disc list-inside mb-4 space-y-1">
+                <li>This Service is provided &quot;as is&quot; without warranties</li>
+                <li>Physical exercise involves inherent risks - consult a doctor before starting</li>
+                <li>This is not medical advice - always seek professional medical guidance</li>
+                <li>You retain ownership of your data</li>
+                <li>The Service is open-source and can be self-hosted</li>
+                <li>We may modify or discontinue the Service at any time</li>
+                <li>You are responsible for maintaining backups of your data</li>
+              </ul>
+
+              <h2 className="text-xl font-semibold mb-4">Medical Disclaimer</h2>
+              <p className="mb-4 font-semibold text-red-600">
+                IMPORTANT: Archer Fitness is not a medical service and does not provide medical advice.
+              </p>
+              <p className="mb-4">
+                The fitness and nutrition information provided is for informational purposes only. 
+                Always seek the advice of your physician before starting any fitness program.
+              </p>
+
+              <h2 className="text-xl font-semibold mb-4">Assumption of Risk</h2>
+              <p className="mb-4">
+                You acknowledge that physical exercise involves inherent risks of injury. By using this Service, 
+                you voluntarily assume all such risks and release Archer Fitness from liability.
+              </p>
+
+              <p className="mb-4">
+                For the complete terms, please visit our{" "}
+                <a href="/terms" target="_blank" className="text-blue-600 hover:text-blue-800 underline">
+                  Terms of Service page
+                </a>.
+              </p>
+            </div>
+          </ScrollArea>
+          <div className="flex gap-4 justify-end mt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowTermsModal(false)} 
               className="flex items-center gap-2"
             >
               <X className="h-4 w-4" />

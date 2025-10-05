@@ -14,7 +14,15 @@ export default withAuth(
       "/auth/2fa"
     ]
     
+    // Public pages that don't require authentication
+    const publicPages = ["/privacy","/terms"]
+    
     if (allowedAuthPaths.some(path => pathname.startsWith(path))) {
+      return NextResponse.next()
+    }
+
+    // Allow public pages without authentication
+    if (publicPages.some(path => pathname.startsWith(path))) {
       return NextResponse.next()
     }
 
@@ -44,7 +52,15 @@ export default withAuth(
           "/auth/2fa"
         ]
         
+        // Public pages that don't require authentication
+        const publicPages = ["/privacy","/terms"]
+        
         if (allowedAuthPaths.some(path => pathname.startsWith(path))) {
+          return true
+        }
+        
+        // Allow public pages
+        if (publicPages.some(path => pathname.startsWith(path))) {
           return true
         }
         

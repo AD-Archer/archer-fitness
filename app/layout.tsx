@@ -11,7 +11,7 @@ import { NotificationInitializer } from '@/components/notification-initializer'
 import { PrivacyCheck } from '@/components/privacy-check'
 import { Footer } from '@/components/footer'
 
-const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+const baseUrl = process.env.NEXTAUTH_URL || 'http://fitness.adarcher.app'
 
 export const metadata: Metadata = {
   title: 'Archer Fitness | AI Workout Dashboard',
