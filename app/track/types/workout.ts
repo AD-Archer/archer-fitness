@@ -8,6 +8,29 @@ export interface ExerciseSet {
   completed: boolean
 }
 
+export interface ExerciseAssociation {
+  id: string
+  name: string
+}
+
+export interface ExerciseMetadata {
+  id: string
+  name: string
+  description?: string
+  instructions?: string
+  gifUrl?: string
+  bodyParts?: Array<{
+    bodyPart: ExerciseAssociation
+  }>
+  muscles?: Array<{
+    muscle: ExerciseAssociation
+    isPrimary: boolean
+  }>
+  equipments?: Array<{
+    equipment: ExerciseAssociation
+  }>
+}
+
 export interface TrackedExercise {
   id: string
   name: string
@@ -17,26 +40,7 @@ export interface TrackedExercise {
   instructions?: string
   sets: ExerciseSet[]
   completed: boolean
-  exercise?: {
-    id: string
-    name: string
-    description?: string
-    instructions?: string
-    gifUrl?: string
-    muscles: Array<{
-      muscle: {
-        id: string
-        name: string
-      }
-      isPrimary: boolean
-    }>
-    equipments: Array<{
-      equipment: {
-        id: string
-        name: string
-      }
-    }>
-  }
+  exercise?: ExerciseMetadata
 }
 
 export interface WorkoutTemplateExercise {
@@ -46,6 +50,7 @@ export interface WorkoutTemplateExercise {
   targetReps: string
   targetType?: "reps" | "time"
   instructions?: string
+  exercise?: ExerciseMetadata
 }
 
 export interface WorkoutTemplate {

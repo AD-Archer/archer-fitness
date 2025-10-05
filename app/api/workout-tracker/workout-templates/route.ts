@@ -24,6 +24,11 @@ export async function GET(request: NextRequest) {
             include: { 
               exercise: {
                 include: {
+                  bodyParts: {
+                    include: {
+                      bodyPart: true,
+                    },
+                  },
                   muscles: {
                     include: {
                       muscle: true
@@ -56,6 +61,11 @@ export async function GET(request: NextRequest) {
           include: { 
             exercise: {
               include: {
+                bodyParts: {
+                  include: {
+                    bodyPart: true,
+                  },
+                },
                 muscles: {
                   include: {
                     muscle: true
@@ -201,18 +211,23 @@ export async function POST(request: NextRequest) {
         exercises: {
           include: {
             exercise: {
-              include: {
-                muscles: {
-                  include: {
-                    muscle: true
-                  }
-                },
-                equipments: {
-                  include: {
-                    equipment: true
+                include: {
+                  bodyParts: {
+                    include: {
+                      bodyPart: true,
+                    },
+                  },
+                  muscles: {
+                    include: {
+                      muscle: true
+                    }
+                  },
+                  equipments: {
+                    include: {
+                      equipment: true
+                    }
                   }
                 }
-              }
             }
           },
           orderBy: {

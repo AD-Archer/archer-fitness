@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { Target, Search, Plus, Trash2, Eye } from "lucide-react"
+import { Target, Search, Plus, PlusCircle, Trash2, Eye } from "lucide-react"
 import { logger } from "@/lib/logger"
 
 interface Exercise {
@@ -443,9 +443,10 @@ export function AddExerciseModal({ isOpen, onClose, onAddExercise, isLoading = f
                       ) : (
                         <Button
                           onClick={() => setShowCreateForm(true)}
-                          className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 border-2 flex items-center justify-center h-14 text-base font-medium"
+                          variant="outline"
+                          className="self-start"
                         >
-                          <Plus className="w-6 h-6 mr-3" />
+                          <PlusCircle className="mr-2 h-5 w-5" />
                           Create Custom Exercise
                         </Button>
                       )}

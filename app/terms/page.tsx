@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { useSession, signOut } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Check, X } from "lucide-react"
 import { Sidebar } from "@/components/sidebar"
 import { toast } from "sonner"
@@ -13,7 +12,6 @@ import { logger } from "@/lib/logger"
 
 export default function TermsPage() {
   const { data: session } = useSession()
-  const router = useRouter()
   const [termsAccepted, setTermsAccepted] = useState<boolean | null>(null)
   const [showAcceptanceDialog, setShowAcceptanceDialog] = useState(false)
   const [isAccepting, setIsAccepting] = useState(false)

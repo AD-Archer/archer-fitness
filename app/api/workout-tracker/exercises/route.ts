@@ -49,6 +49,11 @@ export async function GET(request: NextRequest) {
         description: true,
         instructions: true,
         gifUrl: true,
+        bodyParts: {
+          include: {
+            bodyPart: true
+          }
+        },
         muscles: {
           include: {
             muscle: true
@@ -104,6 +109,11 @@ export async function GET(request: NextRequest) {
         description: true,
         instructions: true,
         gifUrl: true,
+        bodyParts: {
+          include: {
+            bodyPart: true
+          }
+        },
         muscles: {
           include: {
             muscle: true

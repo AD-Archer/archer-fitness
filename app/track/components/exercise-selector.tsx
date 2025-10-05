@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Search, Plus, Trash2, Eye, Target } from "lucide-react"
+import { Search, Plus, PlusCircle, Trash2, Eye, Target } from "lucide-react"
 import Fuse from 'fuse.js'
 import { logger } from "@/lib/logger"
 
@@ -343,17 +343,20 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
   }
 
   return (
-    <div className="w-full h-full flex flex-col">
-      <div className="flex items-center justify-between p-6 border-b flex-shrink-0">
-        <h2 className="text-xl md:text-2xl font-semibold">Select Exercise</h2>
-        <Button onClick={onClose} variant="outline" size="lg" className="h-11 px-6">
-          Cancel
-        </Button>
-      </div>
+    <div className="flex flex-col h-full min-h-[600px]">
+      <DialogHeader className="px-4 py-3 md:px-6 md:py-4 border-b flex-shrink-0">
+        <DialogTitle className="flex items-center gap-2 text-lg md:text-xl">
+          <Target className="w-5 h-5 text-blue-600" />
+          Select Exercise
+        </DialogTitle>
+        <DialogDescription className="text-sm md:text-base">
+          Choose an exercise to add to your custom workout plan.
+        </DialogDescription>
+      </DialogHeader>
 
-      {/* Scrollable Content Area */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-6 space-y-6">
+      <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4 md:p-6 space-y-6">
           {/* Create Custom Exercise Button/Form - Always Visible */}
           <div className="bg-background">
             {showCreateForm ? (
@@ -409,9 +412,10 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
             ) : (
               <Button
                 onClick={() => setShowCreateForm(true)}
-                className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 border-2 flex items-center justify-center h-14 text-base font-medium"
+                variant="outline"
+                className="self-start h-12 px-5 text-base font-medium"
               >
-                <Plus className="w-6 h-6 mr-3" />
+                <PlusCircle className="w-5 h-5 mr-2" />
                 Create Custom Exercise
               </Button>
             )}
@@ -620,7 +624,21 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
               </Button>
             </div>
           )}
+          </div>
         </div>
+      </div>
+
+      <div className="border-t px-4 py-3 md:px-6 md:py-4 flex-shrink-0">
+        <DialogFooter className="flex flex-col sm:flex-row gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            className="w-full sm:w-auto h-10"
+          >
+            Cancel
+          </Button>
+        </DialogFooter>
       </div>
 
       {/* GIF Modal */}
