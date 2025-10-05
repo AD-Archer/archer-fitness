@@ -2,9 +2,9 @@
 
 An AI-powered fitness tracking application built by Antonio Archer, a software developer from Philadelphia. Track workouts, monitor nutrition, and analyze your fitness progress with intelligent insights and personalized recommendations.
 
-🌐 **Live App**: [fitness.archer.app](https://fitness.archer.app)
+🌐 **Live App**: [fitness.archer.app](https://fitness.adarcher.app)
 
-[![Archer Fitness Banner](https://fitness.archer.app/sitebanner.webp)](https://fitness.archer.app)
+[![Archer Fitness Banner](https://fitness.adarcher.app/sitebanner.webp)](https://fitness.adarcher.app)
 
 ![Archer Fitness](https://img.shields.io/badge/Archer-Fitness-blue?style=for-the-badge&logo=fitness&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-14.2.16-black?style=flat-square&logo=next.js)
