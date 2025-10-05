@@ -203,20 +203,6 @@ export function WorkoutTracker() {
 
     setIsSavingWorkout(true)
     try {
-      // First save the session progress
-      await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          currentExerciseIndex,
-          timer,
-          exerciseTimer,
-          isTimerRunning,
-          isResting,
-          restTimer,
-        }),
-      })
-
       // Create new workout template
       const exercisesForTemplate = session.exercises.map((ex, index) => ({
         name: ex.name,
@@ -242,15 +228,25 @@ export function WorkoutTracker() {
         throw new Error("Failed to create workout template")
       }
 
-      // Update session status to paused
+      // Mark session as completed (since we're saving and exiting)
       await fetch(`/api/workout-tracker/workout-sessions/${session.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          status: "paused",
+          status: "completed",
+          endTime: new Date().toISOString(),
           duration: timer,
         }),
       })
+
+      // Clear any saved state since workout is completed
+      try {
+        await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
+          method: "DELETE",
+        })
+      } catch {
+        // No saved state to clear
+      }
 
       // Reset everything and go back to selection
       reset()
@@ -272,20 +268,6 @@ export function WorkoutTracker() {
 
     setIsSavingWorkout(true)
     try {
-      // First save the session progress
-      await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          currentExerciseIndex,
-          timer,
-          exerciseTimer,
-          isTimerRunning,
-          isResting,
-          restTimer,
-        }),
-      })
-
       // Update existing workout template
       const exercisesForTemplate = session.exercises.map((ex, index) => ({
         name: ex.name,
@@ -309,15 +291,25 @@ export function WorkoutTracker() {
         throw new Error("Failed to update workout template")
       }
 
-      // Update session status to paused
+      // Mark session as completed (since we're saving and exiting)
       await fetch(`/api/workout-tracker/workout-sessions/${session.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          status: "paused",
+          status: "completed",
+          endTime: new Date().toISOString(),
           duration: timer,
         }),
       })
+
+      // Clear any saved state since workout is completed
+      try {
+        await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
+          method: "DELETE",
+        })
+      } catch {
+        // No saved state to clear
+      }
 
       // Reset everything and go back to selection
       reset()
