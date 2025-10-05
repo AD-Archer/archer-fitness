@@ -140,19 +140,88 @@ export function WorkoutSession({
   if (!currentExercise) {
     return (
       <div className="space-y-6">
-        <Card>
+        {/* Workout Header */}
+        <Card ref={workoutHeaderRef}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Timer className="w-5 h-5 text-red-600" />
-              No Exercises Found
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Timer className="w-5 h-5 text-green-600" />
+                  {session.name}
+                </CardTitle>
+                <CardDescription>
+                  Empty workout - add exercises to get started
+                </CardDescription>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold">{formatTime(timer)}</div>
+                <div className="text-sm text-muted-foreground">Total Time</div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button onClick={onPauseWorkout} variant="outline" className="bg-transparent flex-1 sm:flex-none">
+                {isTimerRunning ? <Pause className="w-4 h-4 mr-1" /> : <Play className="w-4 h-4 mr-1" />}
+                {isTimerRunning ? "Resume" : "Pause"}
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="bg-transparent text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 flex-1 sm:flex-none">
+                    <Square className="w-4 h-4 mr-1" />
+                    Stop
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Stop Workout</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      What would you like to do with your current workout progress?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="flex-col sm:flex-col gap-2">
+                    <AlertDialogAction
+                      onClick={onSaveWorkout}
+                      className="bg-green-600 hover:bg-green-700 text-white w-full"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      Save & Exit Workout
+                    </AlertDialogAction>
+                    <AlertDialogAction
+                      onClick={onStopWorkout}
+                      className="bg-red-600 hover:bg-red-700 text-white w-full"
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Discard & Exit
+                    </AlertDialogAction>
+                    <AlertDialogCancel className="w-full">
+                      Continue Workout
+                    </AlertDialogCancel>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <Button onClick={onBackToSelection} variant="outline" className="bg-transparent flex-1 sm:flex-none">
+                Back to Selection
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Add Exercise Button - Prominent */}
+        <Card className="border-2 border-dashed border-blue-200 dark:border-blue-800">
+          <CardHeader className="text-center">
+            <CardTitle className="flex items-center justify-center gap-2">
+              <Target className="w-5 h-5 text-blue-600" />
+              No Exercises Yet
             </CardTitle>
             <CardDescription>
-              This workout session doesn&apos;t have any exercises. Please go back and select a different workout.
+              This is a blank workout. Add your first exercise to get started!
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button onClick={onBackToSelection} variant="outline" className="bg-transparent">
-              Back to Selection
+          <CardContent className="flex justify-center">
+            <Button onClick={onAddExercise} className="bg-blue-600 hover:bg-blue-700 text-white" size="lg">
+              <Target className="w-5 h-5 mr-2" />
+              Add First Exercise
             </Button>
           </CardContent>
         </Card>

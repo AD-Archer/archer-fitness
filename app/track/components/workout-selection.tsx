@@ -9,7 +9,7 @@ import {
   DialogContent,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Dumbbell, Play, Plus, Trash2, Zap, User, Settings } from "lucide-react"
+import { Dumbbell, Play, Plus, Trash2, Zap, User, Settings, ListPlus } from "lucide-react"
 import { CustomWorkoutForm } from "./custom-workout-form"
 import type { WorkoutTemplate } from "../types/workout"
 
@@ -35,6 +35,20 @@ export function WorkoutSelection({
   const filteredWorkouts = availableWorkouts.filter(workout => 
     workout.isAIGenerated || workout.isCustom || workout.name.toLowerCase().includes('ai-generated')
   )
+
+  const startBlankWorkout = () => {
+    const blankWorkout: WorkoutTemplate = {
+      id: `blank-${Date.now()}`,
+      name: "Blank Workout",
+      description: "Empty workout session - add exercises as you go",
+      estimatedDuration: 0,
+      exercises: [],
+      isCustom: true,
+      isAIGenerated: false,
+    }
+    onStartWorkout(blankWorkout)
+  }
+  
   const getWorkoutTypeInfo = (workout: WorkoutTemplate) => {
     if (workout.isAIGenerated || workout.name.toLowerCase().includes('ai-generated')) {
       return {
@@ -163,7 +177,16 @@ export function WorkoutSelection({
             })}
           </div>
 
-          <div className="flex justify-center pt-4">
+          <div className="flex flex-col sm:flex-row justify-center gap-3 pt-4">
+            <Button 
+              onClick={startBlankWorkout}
+              variant="default"
+              className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
+            >
+              <ListPlus className="w-4 h-4 mr-2" />
+              Start Blank Workout
+            </Button>
+
             <Dialog open={showCustomWorkoutDialog} onOpenChange={(open) => { if (!open) { setEditingWorkout(null) } setShowCustomWorkoutDialog(open) }}>
               <DialogTrigger asChild>
                 <Button variant="outline" className="bg-transparent">
