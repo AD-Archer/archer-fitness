@@ -18,6 +18,10 @@ export function Footer() {
                 Privacy
             </Link>
             <span className="hidden sm:inline">•</span>
+            <Link href="/terms" className="hover:text-primary">
+                Terms
+            </Link>
+            <span className="hidden sm:inline">•</span>
             <a href="https://github.com/ad-archer/archer-fitness" className="hover:text-primary" target="_blank" rel="noreferrer">
                 GitHub
             </a>

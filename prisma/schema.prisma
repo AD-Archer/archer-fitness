@@ -55,6 +55,10 @@ model User {
   privacyAccepted     Boolean   @default(false) @map("privacy_accepted")
   privacyAcceptedAt   DateTime? @map("privacy_accepted_at")
 
+  // Terms of service acceptance
+  termsAccepted       Boolean   @default(false) @map("terms_accepted")
+  termsAcceptedAt     DateTime? @map("terms_accepted_at")
+
   // Two-factor authentication
   twoFactorEnabled    Boolean   @default(false) @map("two_factor_enabled")
   twoFactorSecret     String?   @map("two_factor_secret")
