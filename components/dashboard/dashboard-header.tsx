@@ -25,8 +25,8 @@ export function DashboardHeader() {
       </div>
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <UserNav />
-        <Link href="/generate">
-          <Button className="bg-blue-700 hover:bg-blue-800 text-white w-full sm:w-auto">Generate Workout</Button>
+        <Link href="/track">
+          <Button className="bg-blue-700 hover:bg-blue-800 text-white w-full sm:w-auto">Begin Workout</Button>
         </Link>
       </div>
     </div>

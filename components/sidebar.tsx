@@ -15,6 +15,7 @@ import {
   X,
   LogOut,
   Bug,
+  GitBranch,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
@@ -23,6 +24,7 @@ import { signOut } from "next-auth/react"
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Progression", href: "/progression", icon: GitBranch },
   { name: "Generate", href: "/generate", icon: Zap },
   { name: "Workout", href: "/track", icon: Dumbbell },
   { name: "History", href: "/workouts", icon: Play },
