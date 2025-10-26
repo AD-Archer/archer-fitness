@@ -15,6 +15,7 @@ import {
   X,
   LogOut,
   Bug,
+  GitBranch,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
@@ -27,6 +28,7 @@ const navigation = [
   { name: "Workout", href: "/track", icon: Dumbbell },
   { name: "History", href: "/workouts", icon: Play },
   { name: "Statistics", href: "/progress", icon: TrendingUp },
+  { name: "Progression", href: "/progression", icon: GitBranch },
   { name: "Schedule", href: "/schedule", icon: Calendar },
   { name: "Recovery", href: "/recovery", icon: Pill },
 ]

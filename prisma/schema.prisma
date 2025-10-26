@@ -52,46 +52,48 @@ model User {
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
   // Privacy policy acceptance
-  privacyAccepted     Boolean   @default(false) @map("privacy_accepted")
-  privacyAcceptedAt   DateTime? @map("privacy_accepted_at")
+  privacyAccepted   Boolean   @default(false) @map("privacy_accepted")
+  privacyAcceptedAt DateTime? @map("privacy_accepted_at")
 
   // Terms of service acceptance
-  termsAccepted       Boolean   @default(false) @map("terms_accepted")
-  termsAcceptedAt     DateTime? @map("terms_accepted_at")
+  termsAccepted   Boolean   @default(false) @map("terms_accepted")
+  termsAcceptedAt DateTime? @map("terms_accepted_at")
 
   // Two-factor authentication
-  twoFactorEnabled    Boolean   @default(false) @map("two_factor_enabled")
-  twoFactorSecret     String?   @map("two_factor_secret")
+  twoFactorEnabled     Boolean  @default(false) @map("two_factor_enabled")
+  twoFactorSecret      String?  @map("two_factor_secret")
   twoFactorBackupCodes String[] @default([]) @map("two_factor_backup_codes")
 
   // Fitness-related fields
-  height        Float?
-  weight        Float?  // Monthly average weight used for meal tracking and calculations
-  birthdate     DateTime? // User's date of birth for age calculation
-  gender        String?   // "male" or "female"
-  fitnessGoals  String?
-  activityLevel String?
-  experienceLevel String? @default("beginner") // "beginner", "intermediate", "advanced"
+  height          Float?
+  weight          Float? // Monthly average weight used for meal tracking and calculations
+  birthdate       DateTime? // User's date of birth for age calculation
+  gender          String? // "male" or "female"
+  fitnessGoals    String?
+  activityLevel   String?
+  experienceLevel String?   @default("beginner") // "beginner", "intermediate", "advanced"
 
-  accounts      Account[]
-  sessions      Session[]
-  workouts      Workout[]
-  workoutTemplates WorkoutTemplate[]
-  workoutSessions WorkoutSession[]
-  exercises     Exercise[]
-  nutritionLogs NutritionLog[]
-  preferences   UserPreference?
-  foods         Food[]
-  meals         Meal[]
-  savedWorkoutStates SavedWorkoutState[]
-  weightEntries WeightEntry[]
-  schedules     Schedule[]
-  scheduleTemplates ScheduleTemplate[]
-  pushSubscriptions PushSubscription[]
-  completedDays CompletedDay[]
-  recoveryFeedbacks RecoveryFeedback[]
-  passwordResetTokens PasswordResetToken[]
+  accounts                Account[]
+  sessions                Session[]
+  workouts                Workout[]
+  workoutTemplates        WorkoutTemplate[]
+  workoutSessions         WorkoutSession[]
+  exercises               Exercise[]
+  nutritionLogs           NutritionLog[]
+  preferences             UserPreference?
+  foods                   Food[]
+  meals                   Meal[]
+  savedWorkoutStates      SavedWorkoutState[]
+  weightEntries           WeightEntry[]
+  schedules               Schedule[]
+  scheduleTemplates       ScheduleTemplate[]
+  pushSubscriptions       PushSubscription[]
+  completedDays           CompletedDay[]
+  recoveryFeedbacks       RecoveryFeedback[]
+  passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
+  progressionNodes        ProgressionNodeProgress[]
+  progressionProfile      ProgressionProfile?
 
   @@map("users")
 }
@@ -119,13 +121,13 @@ model PasswordResetToken {
 }
 
 model EmailVerificationToken {
-  id        String   @id @default(cuid())
-  userId    String   @map("user_id")
-  email     String   // Email to verify
-  token     String   @unique // URL token
-  code      String   // 6-digit verification code
-  expiresAt DateTime @map("expires_at")
-  createdAt DateTime @default(now()) @map("created_at")
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  email      String // Email to verify
+  token      String    @unique // URL token
+  code       String // 6-digit verification code
+  expiresAt  DateTime  @map("expires_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
   verifiedAt DateTime? @map("verified_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -136,71 +138,112 @@ model EmailVerificationToken {
   @@map("email_verification_tokens")
 }
 
+enum ProgressionNodeStatus {
+  LOCKED
+  AVAILABLE
+  COMPLETED
+}
+
+model ProgressionNodeProgress {
+  id              String                @id @default(cuid())
+  userId          String                @map("user_id")
+  nodeId          String                @map("node_id")
+  status          ProgressionNodeStatus @default(AVAILABLE)
+  completionCount Int                   @default(0) @map("completion_count")
+  xpEarned        Int                   @default(0) @map("xp_earned")
+  lastCompletedAt DateTime?             @map("last_completed_at")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, nodeId])
+  @@index([nodeId])
+  @@map("progression_node_progress")
+}
+
+model ProgressionProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  alias     String   @unique
+  crowns    Int      @default(0)
+  totalXp   Int      @default(0) @map("total_xp")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("progression_profiles")
+}
+
 // Fitness-related models
 model WorkoutTemplate {
-  id               String   @id @default(cuid())
-  userId           String?  @map("user_id") // null for predefined templates
-  name             String
-  description      String?
-  estimatedDuration Int     @default(30) // minutes
-  category         String?  // e.g., "upper-body", "lower-body", "full-body"
-  difficulty       String?  // "beginner", "intermediate", "advanced"
-  isPublic         Boolean  @default(false)
-  isPredefined     Boolean  @default(false)
-  isAiGenerated    Boolean  @default(false) // flag to track AI-generated templates
-  usageCount       Int      @default(0)
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(cuid())
+  userId            String?  @map("user_id") // null for predefined templates
+  name              String
+  description       String?
+  estimatedDuration Int      @default(30) // minutes
+  category          String? // e.g., "upper-body", "lower-body", "full-body"
+  difficulty        String? // "beginner", "intermediate", "advanced"
+  isPublic          Boolean  @default(false)
+  isPredefined      Boolean  @default(false)
+  isAiGenerated     Boolean  @default(false) // flag to track AI-generated templates
+  usageCount        Int      @default(0)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
-  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  exercises        WorkoutTemplateExercise[]
-  workoutSessions  WorkoutSession[]
+  user            User?                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercises       WorkoutTemplateExercise[]
+  workoutSessions WorkoutSession[]
 
   @@map("workout_templates")
 }
 
 model Exercise {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
   instructions String?
-  gifUrl      String?
-  isPublic    Boolean  @default(false)
-  isPredefined Boolean @default(false)
-  userId      String?  @map("user_id") // null for predefined exercises
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  gifUrl       String?
+  isPublic     Boolean  @default(false)
+  isPredefined Boolean  @default(false)
+  userId       String?  @map("user_id") // null for predefined exercises
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User?                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   templateExercises WorkoutTemplateExercise[]
   sessionExercises  WorkoutSessionExercise[]
 
   // Relations to global entities
-  bodyParts   ExerciseBodyPart[]
-  equipments  ExerciseEquipment[]
-  muscles     ExerciseMuscle[]
+  bodyParts  ExerciseBodyPart[]
+  equipments ExerciseEquipment[]
+  muscles    ExerciseMuscle[]
 
   @@map("exercises")
 }
 
 model BodyPart {
-  id   String @id @default(cuid())
-  name String @unique
+  id        String             @id @default(cuid())
+  name      String             @unique
   exercises ExerciseBodyPart[]
+
   @@map("body_parts")
 }
 
 model Equipment {
-  id   String @id @default(cuid())
-  name String @unique
+  id        String              @id @default(cuid())
+  name      String              @unique
   exercises ExerciseEquipment[]
+
   @@map("equipments")
 }
 
 model Muscle {
-  id   String @id @default(cuid())
-  name String @unique
+  id        String           @id @default(cuid())
+  name      String           @unique
   exercises ExerciseMuscle[]
+
   @@map("muscles")
 }
 
@@ -211,16 +254,18 @@ model ExerciseBodyPart {
   exerciseId String   @map("exercise_id")
   bodyPart   BodyPart @relation(fields: [bodyPartId], references: [id], onDelete: Cascade)
   bodyPartId String   @map("body_part_id")
+
   @@unique([exerciseId, bodyPartId])
   @@map("exercise_body_parts")
 }
 
 model ExerciseEquipment {
-  id         String   @id @default(cuid())
-  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
-  exerciseId String   @map("exercise_id")
-  equipment  Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
-  equipmentId String  @map("equipment_id")
+  id          String    @id @default(cuid())
+  exercise    Exercise  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  exerciseId  String    @map("exercise_id")
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  equipmentId String    @map("equipment_id")
+
   @@unique([exerciseId, equipmentId])
   @@map("exercise_equipments")
 }
@@ -232,52 +277,53 @@ model ExerciseMuscle {
   muscle     Muscle   @relation(fields: [muscleId], references: [id], onDelete: Cascade)
   muscleId   String   @map("muscle_id")
   isPrimary  Boolean  @default(false)
+
   @@unique([exerciseId, muscleId])
   @@map("exercise_muscles")
 }
 
 model WorkoutTemplateExercise {
-  id               String  @id @default(cuid())
+  id                String  @id @default(cuid())
   workoutTemplateId String  @map("workout_template_id")
-  exerciseId       String  @map("exercise_id")
-  order            Int     @default(0)
-  targetSets       Int     @default(3)
-  targetReps       String  @default("8-12") // can be "8-12" or "30 seconds"
-  targetType       String  @default("reps") // "reps" or "time"
-  targetWeight     Float?  // optional target weight
-  restTime         Int     @default(90) // seconds
-  notes            String?
+  exerciseId        String  @map("exercise_id")
+  order             Int     @default(0)
+  targetSets        Int     @default(3)
+  targetReps        String  @default("8-12") // can be "8-12" or "30 seconds"
+  targetType        String  @default("reps") // "reps" or "time"
+  targetWeight      Float? // optional target weight
+  restTime          Int     @default(90) // seconds
+  notes             String?
 
   workoutTemplate WorkoutTemplate @relation(fields: [workoutTemplateId], references: [id], onDelete: Cascade)
-  exercise         Exercise        @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  exercise        Exercise        @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
 
   @@unique([workoutTemplateId, exerciseId])
   @@map("workout_template_exercises")
 }
 
 model WorkoutSession {
-  id               String   @id @default(cuid())
-  userId           String   @map("user_id")
-  workoutTemplateId String? @map("workout_template_id") // null for custom sessions
-  name             String
-  description      String?
-  startTime        DateTime @default(now())
-  endTime          DateTime?
-  duration         Int?     // actual duration in seconds
-  status           String   @default("active") // "active", "completed", "paused"
+  id                String    @id @default(cuid())
+  userId            String    @map("user_id")
+  workoutTemplateId String?   @map("workout_template_id") // null for custom sessions
+  name              String
+  description       String?
+  startTime         DateTime  @default(now())
+  endTime           DateTime?
+  duration          Int? // actual duration in seconds
+  status            String    @default("active") // "active", "completed", "paused"
   performanceStatus String? // "completed", "perfect"
-  completionRate   Float?   // percentage of workout completed (0-100)
-  perfectionScore  Float?   // score for how well user performed (0-100)
-  notes            String?
-  isArchived       Boolean  @default(false) @map("is_archived")
-  archivedAt       DateTime? @map("archived_at")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  completionRate    Float? // percentage of workout completed (0-100)
+  perfectionScore   Float? // score for how well user performed (0-100)
+  notes             String?
+  isArchived        Boolean   @default(false) @map("is_archived")
+  archivedAt        DateTime? @map("archived_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
-  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workoutTemplate  WorkoutTemplate? @relation(fields: [workoutTemplateId], references: [id])
-  exercises        WorkoutSessionExercise[]
-  savedState       SavedWorkoutState?
+  user            User?                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutTemplate WorkoutTemplate?         @relation(fields: [workoutTemplateId], references: [id])
+  exercises       WorkoutSessionExercise[]
+  savedState      SavedWorkoutState?
 
   @@map("workout_sessions")
 }
@@ -293,7 +339,7 @@ model WorkoutSessionExercise {
   notes            String?
   completed        Boolean  @default(false)
   completedSets    Int      @default(0) // track how many sets were actually completed
-  perfectionScore  Float?   // individual exercise performance score (0-100)
+  perfectionScore  Float? // individual exercise performance score (0-100)
   createdAt        DateTime @default(now()) @map("created_at")
 
   workoutSession WorkoutSession @relation(fields: [workoutSessionId], references: [id], onDelete: Cascade)
@@ -304,16 +350,16 @@ model WorkoutSessionExercise {
 }
 
 model ExerciseSet {
-  id                    String   @id @default(cuid())
-  workoutSessionExerciseId String @map("workout_session_exercise_id")
-  setNumber             Int
-  reps                  Int?
-  weight                Float?
-  duration              Int?     // for time-based exercises (seconds)
-  completed             Boolean  @default(false)
-  restTime              Int?     // actual rest time taken
-  notes                 String?
-  createdAt             DateTime @default(now()) @map("created_at")
+  id                       String   @id @default(cuid())
+  workoutSessionExerciseId String   @map("workout_session_exercise_id")
+  setNumber                Int
+  reps                     Int?
+  weight                   Float?
+  duration                 Int? // for time-based exercises (seconds)
+  completed                Boolean  @default(false)
+  restTime                 Int? // actual rest time taken
+  notes                    String?
+  createdAt                DateTime @default(now()) @map("created_at")
 
   workoutSessionExercise WorkoutSessionExercise @relation(fields: [workoutSessionExerciseId], references: [id], onDelete: Cascade)
 
@@ -329,13 +375,13 @@ enum RecoveryFeeling {
 }
 
 model RecoveryFeedback {
-  id         String          @id @default(cuid())
-  userId     String          @map("user_id")
-  bodyPart   String          @map("body_part")
-  feeling    RecoveryFeeling @default(GOOD)
-  intensity  Int?
-  note       String?
-  createdAt  DateTime        @default(now()) @map("created_at")
+  id        String          @id @default(cuid())
+  userId    String          @map("user_id")
+  bodyPart  String          @map("body_part")
+  feeling   RecoveryFeeling @default(GOOD)
+  intensity Int?
+  note      String?
+  createdAt DateTime        @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -346,21 +392,21 @@ model RecoveryFeedback {
 
 // Model to save workout progress when user exits mid-workout
 model SavedWorkoutState {
-  id               String   @id @default(cuid())
-  userId           String   @map("user_id")
-  workoutSessionId String   @unique @map("workout_session_id")
-  currentExerciseIndex Int  @default(0)
-  timer            Int      @default(0) // seconds
-  exerciseTimer    Int      @default(0) // seconds for current exercise
-  isTimerRunning   Boolean  @default(false)
-  isResting        Boolean  @default(false)
-  restTimer        Int      @default(0)
-  lastSetData      Json?    // Store last set data (reps, weight) for quick access
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id                   String   @id @default(cuid())
+  userId               String   @map("user_id")
+  workoutSessionId     String   @unique @map("workout_session_id")
+  currentExerciseIndex Int      @default(0)
+  timer                Int      @default(0) // seconds
+  exerciseTimer        Int      @default(0) // seconds for current exercise
+  isTimerRunning       Boolean  @default(false)
+  isResting            Boolean  @default(false)
+  restTimer            Int      @default(0)
+  lastSetData          Json? // Store last set data (reps, weight) for quick access
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
 
-  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workoutSession   WorkoutSession @relation(fields: [workoutSessionId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutSession WorkoutSession @relation(fields: [workoutSessionId], references: [id], onDelete: Cascade)
 
   @@map("saved_workout_states")
 }
@@ -370,8 +416,8 @@ model Workout {
   userId      String   @map("user_id")
   name        String
   description String?
-  duration    Int      // minutes
-  exercises   Json     // Store exercises as JSON - keeping for backward compatibility
+  duration    Int // minutes
+  exercises   Json // Store exercises as JSON - keeping for backward compatibility
   date        DateTime @default(now())
   createdAt   DateTime @default(now()) @map("created_at")
 
@@ -384,7 +430,7 @@ model NutritionLog {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
   date      DateTime @default(now())
-  meals     Json     // Store meals as JSON
+  meals     Json // Store meals as JSON
   calories  Int
   protein   Float
   carbs     Float
@@ -398,72 +444,64 @@ model NutritionLog {
 
 // User preferences stored as JSON for flexibility
 model UserPreference {
-  userId     String   @id @map("user_id")
-  workout    Json
-  nutrition  Json
-  app        Json
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  userId    String   @id @map("user_id")
+  workout   Json
+  nutrition Json
+  app       Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_preferences")
 }
 
-/*
-model UserPreference {
-  userId     String   @id @map("user_id")
-
-  // Workout preferences
-  defaultDuration String @default("45")
-  difficultyLevel String @default("intermediate")
-  preferredTime   String @default("morning")
-  availableEquipment Json // Array of equipment strings
-  restDayReminders Boolean @default(true)
-
-  // Nutrition preferences
-  dailyCalories String @default("2200")
-  proteinTarget String @default("150")
-  carbTarget    String @default("250")
-  fatTarget     String @default("80")
-  dietaryRestrictions Json // Array of restriction strings
-  trackWater    Boolean @default(true)
-  waterTarget   String @default("2500")
-  useSmartCalculations Boolean @default(true)
-
-  // App preferences
-  theme         String @default("system")
-  units         String @default("imperial")
-  notifications Boolean @default(true)
-  weeklyReports Boolean @default(true)
-  dataSharing   Boolean @default(false)
-
-  // Email notification preferences
-  emailNotifications   Boolean @default(true)
-  pushNotifications    Boolean @default(true)
-  weighInNotifications Boolean @default(true)
-  weighInFrequency     Int @default(1) // 1, 2, or 3
-  mealNotifications    Boolean @default(true)
-  mealFrequency        Int @default(3) // 1 or 3
-  sleepNotifications   Boolean @default(true)
-  exerciseNotifications Boolean @default(true)
-  workoutReminders     Boolean @default(true)
-  weightReminders      Boolean @default(true)
-  nutritionReminders   Boolean @default(true)
-  streakReminders      Boolean @default(true)
-  reminderTime         String @default("09:00")
-
-  // Admin notification settings
-  adminNotifications Json // { enabled: boolean, methods: string[], errorAlerts: boolean, startupAlerts: boolean }
-
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("user_preferences")
-}
-*/
+/**
+ * model UserPreference {
+ * userId     String   @id @map("user_id")
+ * // Workout preferences
+ * defaultDuration String @default("45")
+ * difficultyLevel String @default("intermediate")
+ * preferredTime   String @default("morning")
+ * availableEquipment Json // Array of equipment strings
+ * restDayReminders Boolean @default(true)
+ * // Nutrition preferences
+ * dailyCalories String @default("2200")
+ * proteinTarget String @default("150")
+ * carbTarget    String @default("250")
+ * fatTarget     String @default("80")
+ * dietaryRestrictions Json // Array of restriction strings
+ * trackWater    Boolean @default(true)
+ * waterTarget   String @default("2500")
+ * useSmartCalculations Boolean @default(true)
+ * // App preferences
+ * theme         String @default("system")
+ * units         String @default("imperial")
+ * notifications Boolean @default(true)
+ * weeklyReports Boolean @default(true)
+ * dataSharing   Boolean @default(false)
+ * // Email notification preferences
+ * emailNotifications   Boolean @default(true)
+ * pushNotifications    Boolean @default(true)
+ * weighInNotifications Boolean @default(true)
+ * weighInFrequency     Int @default(1) // 1, 2, or 3
+ * mealNotifications    Boolean @default(true)
+ * mealFrequency        Int @default(3) // 1 or 3
+ * sleepNotifications   Boolean @default(true)
+ * exerciseNotifications Boolean @default(true)
+ * workoutReminders     Boolean @default(true)
+ * weightReminders      Boolean @default(true)
+ * nutritionReminders   Boolean @default(true)
+ * streakReminders      Boolean @default(true)
+ * reminderTime         String @default("09:00")
+ * // Admin notification settings
+ * adminNotifications Json // { enabled: boolean, methods: string[], errorAlerts: boolean, startupAlerts: boolean }
+ * createdAt  DateTime @default(now()) @map("created_at")
+ * updatedAt  DateTime @updatedAt @map("updated_at")
+ * user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+ * @@map("user_preferences")
+ * }
+ */
 
 model Food {
   id          String   @id @default(cuid())
@@ -476,25 +514,25 @@ model Food {
   fiber       Float?
   sugar       Float?
   sodium      Float?
-  servingSize Float    // in grams
+  servingSize Float // in grams
   servingUnit String   @default("g")
-  category    String?  // e.g., "protein", "vegetable", "fruit", etc.
+  category    String? // e.g., "protein", "vegetable", "fruit", etc.
   verified    Boolean  @default(false) // for user-added vs verified foods
   isPublic    Boolean  @default(false) // allow users to share their custom foods
   userId      String?  @map("user_id") // null for global foods, userId for custom foods
   usageCount  Int      @default(0) // track how many times this food is used
   createdAt   DateTime @default(now()) @map("created_at")
 
-  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
   mealIngredients MealIngredient[]
 
   @@map("foods")
 }
 
 model Meal {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
   totalCalories Float
   totalProtein  Float
   totalCarbs    Float
@@ -502,21 +540,21 @@ model Meal {
   totalFiber    Float?
   totalSugar    Float?
   totalSodium   Float?
-  isPublic     Boolean @default(false)
-  userId       String  @map("user_id")
-  createdAt    DateTime @default(now()) @map("created_at")
+  isPublic      Boolean  @default(false)
+  userId        String   @map("user_id")
+  createdAt     DateTime @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   ingredients MealIngredient[]
 
   @@map("meals")
 }
 
 model MealIngredient {
-  id        String  @id @default(cuid())
-  mealId    String  @map("meal_id")
-  foodId    String  @map("food_id")
-  quantity  Float   // how many servings/units
+  id        String   @id @default(cuid())
+  mealId    String   @map("meal_id")
+  foodId    String   @map("food_id")
+  quantity  Float // how many servings/units
   createdAt DateTime @default(now()) @map("created_at")
 
   meal Meal @relation(fields: [mealId], references: [id], onDelete: Cascade)
@@ -528,9 +566,9 @@ model MealIngredient {
 model WeightEntry {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
-  weight    Float    // weight in pounds or kg depending on user preference
+  weight    Float // weight in pounds or kg depending on user preference
   date      DateTime @default(now()) // when the weight was recorded
-  notes     String?  // optional notes about the weigh-in
+  notes     String? // optional notes about the weigh-in
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -546,12 +584,12 @@ model Schedule {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
   weekStart DateTime // Start of the week (Sunday)
-  name      String?  // Optional name for the schedule
+  name      String? // Optional name for the schedule
   timezone  String?  @default("UTC")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   items ScheduleItem[]
 
   @@unique([userId, weekStart])
@@ -560,28 +598,28 @@ model Schedule {
 }
 
 model ScheduleItem {
-  id          String   @id @default(cuid())
-  scheduleId  String   @map("schedule_id")
-  type        String   // "workout" | "meal"
-  title       String
-  description String?
-  startTime   String   // HH:MM format
-  endTime     String   // HH:MM format
-  day         Int      // 0 = Sunday, 1 = Monday, etc.
-  category    String?
-  calories    Int?
-  difficulty  String?
-  duration    Int?     // in minutes
-  isRecurring Boolean  @default(false) @map("is_recurring")
-  repeatPattern String? @map("repeat_pattern") // "daily" | "weekly" | "yearly"
-  repeatInterval Int?   @map("repeat_interval")
-  repeatEndsOn DateTime? @map("repeat_ends_on")
-  recurrenceRule Json?  @map("recurrence_rule")
-  repeatDaysOfWeek Int[] @map("repeat_days_of_week")
-  isFromGenerator Boolean @default(false)
-  generatorData Json?  // Original data from AI generator
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id               String    @id @default(cuid())
+  scheduleId       String    @map("schedule_id")
+  type             String // "workout" | "meal"
+  title            String
+  description      String?
+  startTime        String // HH:MM format
+  endTime          String // HH:MM format
+  day              Int // 0 = Sunday, 1 = Monday, etc.
+  category         String?
+  calories         Int?
+  difficulty       String?
+  duration         Int? // in minutes
+  isRecurring      Boolean   @default(false) @map("is_recurring")
+  repeatPattern    String?   @map("repeat_pattern") // "daily" | "weekly" | "yearly"
+  repeatInterval   Int?      @map("repeat_interval")
+  repeatEndsOn     DateTime? @map("repeat_ends_on")
+  recurrenceRule   Json?     @map("recurrence_rule")
+  repeatDaysOfWeek Int[]     @map("repeat_days_of_week")
+  isFromGenerator  Boolean   @default(false)
+  generatorData    Json? // Original data from AI generator
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
   schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
 
@@ -600,26 +638,26 @@ model ScheduleTemplate {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  user  User?                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User?                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   items ScheduleTemplateItem[]
 
   @@map("schedule_templates")
 }
 
 model ScheduleTemplateItem {
-  id               String   @id @default(cuid())
-  templateId       String   @map("template_id")
-  type             String   // "workout" | "meal"
-  title            String
-  description      String?
-  startTime        String   // HH:MM format
-  endTime          String   // HH:MM format
-  day              Int      // 0 = Sunday, 1 = Monday, etc.
-  category         String?
-  calories         Int?
-  difficulty       String?
-  duration         Int?     // in minutes
-  createdAt        DateTime @default(now()) @map("created_at")
+  id          String   @id @default(cuid())
+  templateId  String   @map("template_id")
+  type        String // "workout" | "meal"
+  title       String
+  description String?
+  startTime   String // HH:MM format
+  endTime     String // HH:MM format
+  day         Int // 0 = Sunday, 1 = Monday, etc.
+  category    String?
+  calories    Int?
+  difficulty  String?
+  duration    Int? // in minutes
+  createdAt   DateTime @default(now()) @map("created_at")
 
   template ScheduleTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
 
@@ -632,7 +670,7 @@ model PushSubscription {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
   endpoint  String   @unique
-  keys      Json     // Store p256dh and auth keys
+  keys      Json // Store p256dh and auth keys
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -649,7 +687,7 @@ model CompletedDay {
   userId    String   @map("user_id")
   date      DateTime // The date that was completed (date only, time set to 00:00:00)
   status    String   @default("completed") // "completed", "in_progress"
-  notes     String?  // Optional notes about the completion
+  notes     String? // Optional notes about the completion
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
