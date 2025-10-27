@@ -49,6 +49,63 @@ interface ExerciseSelectorProps {
   onClose: () => void
 }
 
+const normalizeSearchToken = (value: string): string => {
+  const cleaned = value.toLowerCase().replace(/[^a-z0-9]/g, "")
+  if (cleaned.length > 3 && cleaned.endsWith("s")) {
+    return cleaned.slice(0, -1)
+  }
+  return cleaned
+}
+
+const tokenizeSearch = (value: string): string[] =>
+  value
+    .toLowerCase()
+    .split(/[^a-z0-9]+/g)
+    .map(normalizeSearchToken)
+    .filter(Boolean)
+
+const computeSearchBonus = (exercise: Exercise, rawTerm: string): number => {
+  const normalizedTerm = normalizeSearchToken(rawTerm)
+  if (!normalizedTerm) {
+    return 0
+  }
+
+  const normalizedName = normalizeSearchToken(exercise.name)
+  let bonus = 0
+
+  if (normalizedName === normalizedTerm) {
+    bonus += 6
+  } else if (normalizedName.startsWith(normalizedTerm)) {
+    bonus += 4
+  } else if (normalizedName.includes(normalizedTerm)) {
+    bonus += 2
+  }
+
+  const tokenPool = new Set<string>(tokenizeSearch(exercise.name))
+
+  exercise.muscles?.forEach((muscle) => {
+    tokenizeSearch(muscle.muscle.name).forEach((token) => tokenPool.add(token))
+  })
+
+  exercise.bodyParts?.forEach((bodyPart) => {
+    if (bodyPart.bodyPart?.name) {
+      tokenizeSearch(bodyPart.bodyPart.name).forEach((token) => tokenPool.add(token))
+    }
+  })
+
+  exercise.equipments?.forEach((equipment) => {
+    if (equipment.equipment?.name) {
+      tokenizeSearch(equipment.equipment.name).forEach((token) => tokenPool.add(token))
+    }
+  })
+
+  if (tokenPool.has(normalizedTerm)) {
+    bonus += 2.5
+  }
+
+  return bonus
+}
+
 export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [allExercises, setAllExercises] = useState<Exercise[]>([]) // Store all exercises for client-side search
@@ -204,12 +261,22 @@ export function ExerciseSelector({ onSelect, onClose }: ExerciseSelectorProps) {
       // Apply search if there's a search term
       if (debouncedSearchTerm.trim() && fuse) {
         const searchResults = fuse.search(debouncedSearchTerm)
-        const searchedExercises = searchResults.map(result => result.item)
-        
-        // Combine with filtered exercises (intersection)
-        filteredExercises = searchedExercises.filter(exercise => 
-          filteredExercises.some(filtered => filtered.id === exercise.id)
-        )
+        const prioritized = searchResults
+          .map(result => ({
+            exercise: result.item,
+            fuseScore: result.score ?? 0,
+            bonus: computeSearchBonus(result.item, debouncedSearchTerm)
+          }))
+          .sort((a, b) => {
+            if (b.bonus !== a.bonus) {
+              return b.bonus - a.bonus
+            }
+            return a.fuseScore - b.fuseScore
+          })
+          .map(entry => entry.exercise)
+
+        const filteredIds = new Set(filteredExercises.map(exercise => exercise.id))
+        filteredExercises = prioritized.filter(exercise => filteredIds.has(exercise.id))
       }
 
       logger.info('Final filtered exercises:', filteredExercises.length)
