@@ -1,26 +1,34 @@
-"use client"
+"use client";
 
-import { useMemo, useState } from "react"
-import { AlertOctagon, RefreshCcw } from "lucide-react"
-import { parseISO } from "date-fns"
+import { useMemo, useState, useEffect } from "react";
+import { AlertOctagon, RefreshCcw } from "lucide-react";
+import { parseISO } from "date-fns";
 
-import { useRecoveryData } from "@/hooks/use-recovery-data"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Badge } from "@/components/ui/badge"
-import { useSearchParams, useRouter } from 'next/navigation'
-import { RecoverySummary } from "./recovery-summary"
-import { SorenessDialog } from "./soreness-dialog"
-import { RecoveryTabs } from "./recovery-tabs"
+import { useRecoveryData } from "@/hooks/use-recovery-data";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { useSearchParams, useRouter } from "next/navigation";
+import { RecoverySummary } from "./recovery-summary";
+import { SorenessDialog } from "./soreness-dialog";
+import { RecoveryTabs } from "./recovery-tabs";
 
 function getTrendData(parts: any[]) {
-  const map = new Map<string, number>()
+  const map = new Map<string, number>();
   for (const part of parts) {
     for (const point of part.trend) {
-      const date = point.date.includes("T") ? point.date : `${point.date}T00:00:00`
-      const key = parseISO(date).toISOString()
-      map.set(key, (map.get(key) ?? 0) + point.volume)
+      const date = point.date.includes("T")
+        ? point.date
+        : `${point.date}T00:00:00`;
+      const key = parseISO(date).toISOString();
+      map.set(key, (map.get(key) ?? 0) + point.volume);
     }
   }
 
@@ -29,25 +37,63 @@ function getTrendData(parts: any[]) {
     .slice(-10)
     .map(([iso, volume]) => ({
       iso,
-      label: new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      label: new Date(iso).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      }),
       volume,
-    }))
+    }));
 }
 
 export function RecoveryMonitor() {
-  const { data, loading, error, refreshing, refresh, submitFeedback, submitting } = useRecoveryData()
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const {
+    data,
+    loading,
+    error,
+    refreshing,
+    refresh,
+    submitFeedback,
+    submitting,
+  } = useRecoveryData();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [bodyPartOptions, setBodyPartOptions] = useState<string[]>([]);
 
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const activeTab = searchParams.get('tab') || 'status'
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const activeTab = searchParams.get("tab") || "status";
 
-  const trendData = useMemo(() => (data ? getTrendData(data.bodyParts) : []), [data])
+  const trendData = useMemo(
+    () => (data ? getTrendData(data.bodyParts) : []),
+    [data]
+  );
 
-  const bodyPartOptions = useMemo(() => {
-    if (!data?.bodyParts?.length) return []
-    return Array.from(new Set(data.bodyParts.map((part) => part.bodyPart))).sort((a, b) => a.localeCompare(b))
-  }, [data?.bodyParts])
+  // Fetch body part options for soreness dialog
+  useEffect(() => {
+    const fetchBodyParts = async () => {
+      try {
+        const response = await fetch("/api/workout-tracker/body-parts");
+        if (response.ok) {
+          const bodyParts = await response.json();
+          setBodyPartOptions(
+            bodyParts.map((bp: { name: string }) => bp.name).sort()
+          );
+        }
+      } catch (error) {
+        console.error("Failed to fetch body parts:", error);
+        // Fallback to some common body parts
+        setBodyPartOptions([
+          "Chest",
+          "Back",
+          "Shoulders",
+          "Arms",
+          "Legs",
+          "Core",
+          "Waist",
+        ]);
+      }
+    };
+    fetchBodyParts();
+  }, []);
 
   if (loading) {
     return (
@@ -59,7 +105,7 @@ export function RecoveryMonitor() {
           <Skeleton className="h-64 w-full rounded-xl" />
         </div>
       </div>
-    )
+    );
   }
 
   if (error || !data) {
@@ -77,7 +123,7 @@ export function RecoveryMonitor() {
           </Button>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -89,13 +135,17 @@ export function RecoveryMonitor() {
               <AlertOctagon className="size-5" /> Pain alerts
             </CardTitle>
             <CardDescription>
-              You flagged {data.summary.painAlerts.length} area{data.summary.painAlerts.length > 1 ? "s" : ""}. Consider active
+              You flagged {data.summary.painAlerts.length} area
+              {data.summary.painAlerts.length > 1 ? "s" : ""}. Consider active
               recovery or consulting a coach.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             {data.summary.painAlerts.map((alert) => (
-              <Badge key={alert} className="bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-200">
+              <Badge
+                key={alert}
+                className="bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-200"
+              >
                 {alert}
               </Badge>
             ))}
@@ -122,15 +172,17 @@ export function RecoveryMonitor() {
         bodyParts={data.bodyParts}
         trendData={trendData}
         summary={data.summary}
-        recentSessions={data.recentSessions.map(session => ({ ...session, durationMinutes: session.durationMinutes ?? undefined }))}
+        recentSessions={data.recentSessions.map((session) => ({
+          ...session,
+          durationMinutes: session.durationMinutes ?? undefined,
+        }))}
         value={activeTab}
         onValueChange={(value) => {
-          const params = new URLSearchParams(searchParams)
-          params.set('tab', value)
-          router.replace(`?${params.toString()}`, { scroll: false })
+          const params = new URLSearchParams(searchParams);
+          params.set("tab", value);
+          router.replace(`?${params.toString()}`, { scroll: false });
         }}
       />
     </div>
-  )
+  );
 }
-

@@ -1,65 +1,100 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { CheckCircle2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Slider } from "@/components/ui/slider"
-import { Textarea } from "@/components/ui/textarea"
-import type { RecoveryFeeling } from "@/types/recovery"
+import { useState } from "react";
+import { CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { Textarea } from "@/components/ui/textarea";
+import type { RecoveryFeeling } from "@/types/recovery";
 
-const FEELINGS: Array<{ value: RecoveryFeeling; label: string; description: string }> = [
-  { value: "GOOD", label: "All clear", description: "Feels great—ready to train" },
+const FEELINGS: Array<{
+  value: RecoveryFeeling;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "GOOD",
+    label: "All clear",
+    description: "Feels great—ready to train",
+  },
   { value: "TIGHT", label: "Tight", description: "A little stiff or fatigued" },
   { value: "SORE", label: "Sore", description: "Soreness present" },
   { value: "INJURED", label: "Hurts", description: "Painful or needs rest" },
-]
+];
 
 interface SorenessDialogProps {
-  isOpen: boolean
-  onOpenChange: (open: boolean) => void
-  bodyPartOptions: string[]
-  onSubmit: (data: { bodyPart: string; feeling: RecoveryFeeling; intensity: number; note?: string }) => Promise<boolean>
-  submitting: boolean
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  bodyPartOptions: string[];
+  onSubmit: (data: {
+    bodyPart: string;
+    feeling: RecoveryFeeling;
+    intensity: number;
+    note?: string;
+  }) => Promise<boolean>;
+  submitting: boolean;
 }
 
-export function SorenessDialog({ isOpen, onOpenChange, bodyPartOptions, onSubmit, submitting }: SorenessDialogProps) {
-  const [selectedBodyPart, setSelectedBodyPart] = useState<string>("")
-  const [feeling, setFeeling] = useState<RecoveryFeeling>("SORE")
-  const [intensity, setIntensity] = useState<number>(5)
-  const [note, setNote] = useState<string>("")
+export function SorenessDialog({
+  isOpen,
+  onOpenChange,
+  bodyPartOptions,
+  onSubmit,
+  submitting,
+}: SorenessDialogProps) {
+  const [selectedBodyPart, setSelectedBodyPart] = useState<string>("");
+  const [feeling, setFeeling] = useState<RecoveryFeeling>("SORE");
+  const [intensity, setIntensity] = useState<number>(5);
+  const [note, setNote] = useState<string>("");
 
   const handleSubmit = async () => {
-    if (!selectedBodyPart) return
+    if (!selectedBodyPart) return;
     const success = await onSubmit({
       bodyPart: selectedBodyPart,
       feeling,
       intensity,
       note: note.trim() ? note.trim() : undefined,
-    })
+    });
 
     if (success) {
-      onOpenChange(false)
-      setNote("")
-      setIntensity(5)
+      onOpenChange(false);
+      setNote("");
+      setIntensity(5);
     }
-  }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg gap-6">
-        <DialogHeader>
+      <DialogContent className="max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Body check-in</DialogTitle>
           <DialogDescription>
-            Capture how each area feels right now. These notes help guide your next session plan.
+            Capture how each area feels right now. These notes help guide your
+            next session plan.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-5">
+        <div className="flex-1 overflow-y-auto space-y-5 pr-1">
           <div className="space-y-2">
             <Label>Body part</Label>
-            <Select value={selectedBodyPart} onValueChange={setSelectedBodyPart}>
+            <Select
+              value={selectedBodyPart}
+              onValueChange={setSelectedBodyPart}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Choose an area" />
               </SelectTrigger>
@@ -92,7 +127,9 @@ export function SorenessDialog({ isOpen, onOpenChange, bodyPartOptions, onSubmit
                   }`}
                 >
                   <p className="font-medium text-sm">{item.label}</p>
-                  <p className="text-xs text-muted-foreground">{item.description}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.description}
+                  </p>
                 </button>
               ))}
             </div>
@@ -101,7 +138,9 @@ export function SorenessDialog({ isOpen, onOpenChange, bodyPartOptions, onSubmit
           <div className="space-y-4">
             <div className="flex items-center justify-between text-sm font-medium">
               <Label htmlFor="intensity">Intensity {intensity}/10</Label>
-              <span className="text-muted-foreground">0 = fine, 10 = severe</span>
+              <span className="text-muted-foreground">
+                0 = fine, 10 = severe
+              </span>
             </div>
             <Slider
               id="intensity"
@@ -124,7 +163,7 @@ export function SorenessDialog({ isOpen, onOpenChange, bodyPartOptions, onSubmit
             />
           </div>
         </div>
-        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end flex-shrink-0">
           <Button
             type="button"
             variant="outline"
@@ -144,5 +183,5 @@ export function SorenessDialog({ isOpen, onOpenChange, bodyPartOptions, onSubmit
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

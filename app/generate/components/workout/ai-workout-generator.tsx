@@ -32,6 +32,7 @@ interface DatabaseExercise {
   equipment: string
   gifUrl: string
   source?: string
+  matchScore?: number
 }
 
 interface ApiMuscle {
@@ -77,6 +78,133 @@ const toTitleCase = (value: string): string =>
 
 const normalizeEquipmentName = (value: string): string =>
   value.toLowerCase().replace(/[^a-z0-9]/g, "")
+
+const normalizeToken = (value: string): string => {
+  const cleaned = value.toLowerCase().replace(/[^a-z0-9]/g, "")
+  if (cleaned.length > 3 && cleaned.endsWith("s")) {
+    return cleaned.slice(0, -1)
+  }
+  return cleaned
+}
+
+const tokenize = (value: string): string[] =>
+  value
+    .toLowerCase()
+    .split(/[^a-z0-9]+/g)
+    .map(normalizeToken)
+    .filter(Boolean)
+
+const TOKEN_SYNONYMS: Record<string, string[]> = {
+  chest: ["pec", "pectoral", "pectoralis"],
+  pec: ["chest"],
+  pectoral: ["chest"],
+  pectoralis: ["chest"],
+  back: ["lat", "lats", "latissimus", "trap", "traps", "rhomboid", "posterior"],
+  lat: ["back"],
+  lats: ["back"],
+  latissimus: ["back"],
+  trap: ["back"],
+  traps: ["back"],
+  rhomboid: ["back"],
+  posterior: ["back"],
+  shoulders: ["deltoid", "delt", "delts"],
+  deltoid: ["shoulders"],
+  delt: ["shoulders"],
+  delts: ["shoulders"],
+  legs: ["quad", "quadricep", "quadriceps", "hamstring", "calf", "lowerbody", "lower"],
+  quadricep: ["legs"],
+  quadriceps: ["legs"],
+  quad: ["legs"],
+  hamstring: ["legs"],
+  calf: ["legs"],
+  calves: ["legs"],
+  lower: ["legs"],
+  lowerbody: ["legs"],
+  glute: ["glutes"],
+  glutes: ["glute"],
+  gluteus: ["glute"],
+  arms: ["bicep", "tricep", "forearm"],
+  bicep: ["arms"],
+  tricep: ["arms"],
+  forearm: ["arms"],
+  core: ["abs", "ab", "oblique"],
+  abs: ["core"],
+  ab: ["core"],
+  oblique: ["core"],
+  cardio: ["hiit", "conditioning", "endurance"],
+  hiit: ["cardio"],
+  conditioning: ["cardio"],
+  endurance: ["cardio"],
+  fullbody: ["full", "total"],
+  mobility: ["flexibility"],
+  flexibility: ["mobility"],
+  stretch: ["mobility", "flexibility"],
+}
+
+const addSynonyms = (tokens: Set<string>): Set<string> => {
+  const expanded = new Set(tokens)
+  tokens.forEach((token) => {
+    const synonyms = TOKEN_SYNONYMS[token]
+    if (synonyms) {
+      synonyms.forEach((synonym) => {
+        expanded.add(normalizeToken(synonym))
+      })
+    }
+  })
+  return expanded
+}
+
+const buildExerciseTokenSet = (exercise: DatabaseExercise): Set<string> => {
+  const tokens = new Set<string>()
+
+  const addValue = (value: string | undefined) => {
+    if (!value) return
+    const normalized = normalizeToken(value)
+    if (normalized) {
+      tokens.add(normalized)
+    }
+    tokenize(value).forEach((token) => tokens.add(token))
+  }
+
+  const addValues = (values: string[]) => {
+    values.forEach(addValue)
+  }
+
+  addValue(exercise.name)
+  addValue(exercise.bodyPart)
+  addValue(exercise.target)
+  addValues(exercise.bodyParts)
+  addValues(exercise.targetMuscles)
+  addValues(exercise.secondaryMuscles)
+
+  return addSynonyms(tokens)
+}
+
+const tokenMatches = (tokenSet: Set<string>, needle: string): boolean => {
+  const normalizedNeedle = normalizeToken(needle)
+  if (!normalizedNeedle) {
+    return false
+  }
+  if (tokenSet.has(normalizedNeedle)) {
+    return true
+  }
+
+  const synonyms = TOKEN_SYNONYMS[normalizedNeedle] ?? []
+  for (const synonym of synonyms) {
+    const normalizedSynonym = normalizeToken(synonym)
+    if (normalizedSynonym && tokenSet.has(normalizedSynonym)) {
+      return true
+    }
+  }
+
+  for (const token of tokenSet) {
+    if (token.includes(normalizedNeedle) || normalizedNeedle.includes(token)) {
+      return true
+    }
+  }
+
+  return false
+}
 
 const formatLabel = (value: string): string => {
   const trimmed = value.trim()
@@ -602,27 +730,46 @@ const buildFallbackExercisePool = (equipment: string[]): DatabaseExercise[] => {
 
 const selectVariedExercises = (exercises: DatabaseExercise[], count: number): DatabaseExercise[] => {
   if (exercises.length <= count) {
-    return shuffleArray(exercises)
+    return weightedShuffle(exercises)
   }
-
-  const muscleGroups: Record<string, DatabaseExercise[]> = {}
-  exercises.forEach((exercise) => {
-    const key = exercise.targetMuscles[0] || exercise.bodyParts[0] || "general"
-    muscleGroups[key] = muscleGroups[key] ? [...muscleGroups[key], exercise] : [exercise]
-  })
-
-  const muscleKeys = Object.keys(muscleGroups)
-  muscleKeys.forEach((key) => {
-    muscleGroups[key] = shuffleArray(muscleGroups[key])
-  })
 
   const selected: DatabaseExercise[] = []
   const selectedIds = new Set<string>()
+  const grouped = new Map<string, DatabaseExercise[]>()
+
+  exercises.forEach((exercise) => {
+    const groupKey =
+      exercise.targetMuscles[0] ||
+      exercise.bodyParts[0] ||
+      exercise.target ||
+      exercise.bodyPart ||
+      "general"
+
+    const existing = grouped.get(groupKey) ?? []
+    existing.push(exercise)
+    grouped.set(groupKey, existing)
+  })
+
+  const rankedGroups = Array.from(grouped.entries())
+    .map(([key, entries]) => {
+      const shuffled = weightedShuffle(entries)
+      const bestScore = Math.max(...shuffled.map((item) => item.matchScore ?? 0), 0)
+      return { key, entries: shuffled, score: bestScore }
+    })
+    .sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score
+      }
+      return Math.random() - 0.5
+    })
+
+  const groupOrder = rankedGroups.map((entry) => entry.key)
+  const groupLookup = new Map(rankedGroups.map((entry) => [entry.key, entry.entries]))
   let guard = 0
 
-  while (selected.length < count && guard < count * muscleKeys.length * 2) {
-    const key = muscleKeys[guard % muscleKeys.length]
-    const bucket = muscleGroups[key]
+  while (selected.length < count && guard < count * groupOrder.length * 2) {
+    const key = groupOrder[guard % groupOrder.length]
+    const bucket = groupLookup.get(key)
     if (bucket && bucket.length > 0) {
       const candidate = bucket.shift()!
       const candidateId = getExerciseId(candidate)
@@ -635,7 +782,7 @@ const selectVariedExercises = (exercises: DatabaseExercise[], count: number): Da
   }
 
   if (selected.length < count) {
-    const remaining = shuffleArray(
+    const remaining = weightedShuffle(
       exercises.filter((exercise) => !selectedIds.has(getExerciseId(exercise)))
     )
     selected.push(...remaining.slice(0, count - selected.length))
@@ -767,7 +914,95 @@ const loadExerciseDatabase = async (
   }
 }
 
-// Filter exercises based on criteria
+const isBodyweightEquipment = (value: string): boolean => {
+  const normalized = value.toLowerCase().replace(/[^a-z0-9]/g, "")
+  return (
+    normalized.length === 0 ||
+    normalized === "bodyweight" ||
+    normalized === "body" ||
+    normalized === "none" ||
+    normalized === "noequipment"
+  )
+}
+
+const buildEquipmentSet = (exercise: DatabaseExercise): Set<string> => {
+  const equipmentSet = new Set<string>()
+
+  exercise.equipments.forEach((entry) => {
+    const normalized = normalizeEquipmentName(entry)
+    if (normalized) {
+      equipmentSet.add(normalized)
+    }
+  })
+
+  const primary = normalizeEquipmentName(exercise.equipment)
+  if (primary) {
+    equipmentSet.add(primary)
+  }
+
+  equipmentSet.delete("")
+  return equipmentSet
+}
+
+const WORKOUT_TYPE_KEYWORDS: Record<string, string[]> = {
+  strength: ["strength", "power", "press", "row", "deadlift", "squat", "hinge", "pull", "push", "lift"],
+  cardio: ["cardio", "conditioning", "endurance", "run", "cycle", "bike", "jump", "burpee", "sprint", "interval"],
+  hiit: ["hiit", "interval", "plyometric", "tabata", "burpee", "sprint", "circuit"],
+  flexibility: ["flexibility", "mobility", "stretch", "yoga", "pilates", "recover"],
+}
+
+const computeWorkoutTypeScore = (
+  exercise: DatabaseExercise,
+  workoutType: string,
+  tokens: Set<string>
+): number => {
+  const normalizedType = normalizeToken(workoutType)
+  if (!normalizedType) {
+    return 0
+  }
+
+  const keywords = WORKOUT_TYPE_KEYWORDS[normalizedType]
+  if (!keywords || keywords.length === 0) {
+    return 0
+  }
+
+  let matches = 0
+  keywords.forEach((keyword) => {
+    if (tokenMatches(tokens, keyword)) {
+      matches += 1
+    }
+  })
+
+  const name = exercise.name.toLowerCase()
+  if (normalizedType === "cardio") {
+    if (name.includes("run") || name.includes("row") || name.includes("bike") || name.includes("jump")) {
+      matches += 1
+    }
+  }
+
+  if (normalizedType === "strength") {
+    if (name.includes("press") || name.includes("row") || name.includes("deadlift") || name.includes("squat") || name.includes("pull") || name.includes("push")) {
+      matches += 1
+    }
+  }
+
+  if (normalizedType === "flexibility") {
+    if (name.includes("stretch") || name.includes("mobility") || name.includes("yoga")) {
+      matches += 1
+    }
+  }
+
+  if (normalizedType === "hiit") {
+    if (name.includes("hiit") || name.includes("interval") || name.includes("circuit")) {
+      matches += 1
+    }
+  }
+
+  const capped = Math.min(matches, 5)
+  return capped > 0 ? 1.5 + capped : 0
+}
+
+// Filter exercises based on criteria and score them for smarter randomness
 const filterExercises = (
   exercises: DatabaseExercise[],
   workoutType: string,
@@ -775,165 +1010,121 @@ const filterExercises = (
   targetBodyParts: string[],
   equipment: string[]
 ): DatabaseExercise[] => {
-  // If no filters are applied, return all exercises
-  if (targetMuscles.length === 0 && targetBodyParts.length === 0 && equipment.length === 0) {
+  const normalizedMuscles = targetMuscles.map(normalizeToken).filter(Boolean)
+  const normalizedBodyParts = targetBodyParts.map(normalizeToken).filter(Boolean)
+  const allowedEquipment = new Set(
+    equipment.map(normalizeEquipmentName).filter(Boolean)
+  )
+
+  if (
+    normalizedMuscles.length === 0 &&
+    normalizedBodyParts.length === 0 &&
+    allowedEquipment.size === 0 &&
+    !workoutType
+  ) {
     return exercises
   }
 
-  return exercises.filter(exercise => {
-    // Filter by workout type
-    const matchesWorkoutType = (() => {
-      const bodyParts = exercise.bodyParts || []
-      const targetMuscles = exercise.targetMuscles || []
+  const scored: DatabaseExercise[] = []
 
-      switch (workoutType) {
-        case 'strength':
-          return bodyParts.some(part =>
-            ['chest', 'back', 'shoulders', 'arms', 'biceps', 'triceps', 'legs', 'quadriceps', 'hamstrings', 'glutes', 'core', 'abs'].includes(part.toLowerCase())
-          ) || targetMuscles.some(muscle =>
-            ['chest', 'back', 'shoulders', 'arms', 'biceps', 'triceps', 'legs', 'quadriceps', 'hamstrings', 'glutes', 'core', 'abs'].includes(muscle.toLowerCase())
-          )
-        case 'cardio':
-          // For cardio, include exercises that are cardio-related OR can be done as cardio
-          return bodyParts.includes('cardio') ||
-                 targetMuscles.some(muscle => muscle.toLowerCase().includes('cardio')) ||
-                 exercise.name.toLowerCase().includes('run') ||
-                 exercise.name.toLowerCase().includes('jump') ||
-                 exercise.name.toLowerCase().includes('burpee') ||
-                 exercise.name.toLowerCase().includes('mountain climber') ||
-                 exercise.name.toLowerCase().includes('high knees') ||
-                 exercise.name.toLowerCase().includes('jumping jacks') ||
-                 // Also include strength exercises that can be done with cardio timing
-                 bodyParts.some(part =>
-                   ['full body', 'legs', 'core', 'back', 'chest', 'shoulders'].includes(part.toLowerCase())
-                 ) ||
-                 targetMuscles.some(muscle =>
-                   ['legs', 'core', 'back', 'chest', 'shoulders', 'full body'].includes(muscle.toLowerCase())
-                 ) ||
-                 true // Allow any exercise for cardio if no other matches
-        case 'hiit':
-          return bodyParts.some(part =>
-            ['cardio', 'full body', 'legs', 'core', 'abs', 'back', 'chest'].includes(part.toLowerCase())
-          ) || targetMuscles.some(muscle =>
-            ['cardio', 'full body', 'legs', 'core', 'abs', 'back', 'chest'].includes(muscle.toLowerCase())
-          ) || exercise.name.toLowerCase().includes('burpee') ||
-             exercise.name.toLowerCase().includes('mountain climber') ||
-             exercise.name.toLowerCase().includes('squat') ||
-             exercise.name.toLowerCase().includes('push') ||
-             exercise.name.toLowerCase().includes('pull')
-        case 'flexibility':
-          return bodyParts.some(part =>
-            ['core', 'abs', 'back', 'legs', 'shoulders'].includes(part.toLowerCase())
-          ) || targetMuscles.some(muscle =>
-            ['core', 'abs', 'back', 'legs', 'shoulders'].includes(muscle.toLowerCase())
-          ) || exercise.name.toLowerCase().includes('stretch') ||
-             exercise.name.toLowerCase().includes('yoga') ||
-             exercise.name.toLowerCase().includes('plank') ||
-             exercise.name.toLowerCase().includes('downward dog')
-        default:
-          return true
+  exercises.forEach((exercise) => {
+    const tokens = buildExerciseTokenSet(exercise)
+    const equipmentSet = buildEquipmentSet(exercise)
+    const hasEquipment = equipmentSet.size > 0
+    const requiresSpecificEquipment = allowedEquipment.size > 0
+
+    if (requiresSpecificEquipment) {
+      const hasMismatch = Array.from(equipmentSet).some(
+        (item) => !isBodyweightEquipment(item) && !allowedEquipment.has(item)
+      )
+      if (hasMismatch) {
+        return
       }
-    })()
+    }
 
-    // Filter by target muscles if specified
-    const matchesTargetMuscles = targetMuscles.length === 0 ||
-      targetMuscles.some(muscle => {
-        const muscleLower = muscle.toLowerCase()
-
-        // Check primary target muscles
-        const primaryMatch = exercise.targetMuscles.some((exMuscle: string) => {
-          const exMuscleLower = exMuscle.toLowerCase()
-          return exMuscleLower.includes(muscleLower) ||
-                 muscleLower.includes(exMuscleLower) ||
-                 // Handle common muscle group variations
-                 (muscleLower === 'back' && (exMuscleLower.includes('lats') || exMuscleLower.includes('traps') || exMuscleLower.includes('rhomboids'))) ||
-                 (muscleLower === 'chest' && exMuscleLower.includes('pecs')) ||
-                 (muscleLower === 'legs' && (exMuscleLower.includes('quad') || exMuscleLower.includes('hamstring') || exMuscleLower.includes('calf'))) ||
-                 (muscleLower === 'arms' && (exMuscleLower.includes('bicep') || exMuscleLower.includes('tricep'))) ||
-                 (muscleLower === 'shoulders' && exMuscleLower.includes('delts'))
-        })
-
-        // Check body parts
-        const bodyPartMatch = exercise.bodyParts.some((bodyPart: string) => {
-          const bodyPartLower = bodyPart.toLowerCase()
-          return bodyPartLower.includes(muscleLower) ||
-                 muscleLower.includes(bodyPartLower) ||
-                 // Handle body part to muscle mapping
-                 (muscleLower === 'back' && bodyPartLower === 'posterior') ||
-                 (muscleLower === 'chest' && bodyPartLower === 'anterior') ||
-                 (muscleLower === 'legs' && (bodyPartLower === 'lower body' || bodyPartLower === 'quadriceps'))
-        })
-
-        // Check exercise name for muscle clues
-        const nameMatch = exercise.name.toLowerCase().includes(muscleLower) ||
-                         (muscleLower === 'back' && (exercise.name.toLowerCase().includes('row') || exercise.name.toLowerCase().includes('pull') || exercise.name.toLowerCase().includes('extension'))) ||
-                         (muscleLower === 'chest' && exercise.name.toLowerCase().includes('press')) ||
-                         (muscleLower === 'legs' && (exercise.name.toLowerCase().includes('squat') || exercise.name.toLowerCase().includes('lunge')))
-
-        return primaryMatch || bodyPartMatch || nameMatch || true // Allow exercise if muscle filter is applied but no match
-      })
-
-    // Filter by target body parts if specified
-    const matchesTargetBodyParts = targetBodyParts.length === 0 ||
-      targetBodyParts.some(bodyPart => {
-        const bodyPartLower = bodyPart.toLowerCase()
-
-        // Check if exercise body parts match
-        const bodyPartMatch = exercise.bodyParts.some((exBodyPart: string) => {
-          const exBodyPartLower = exBodyPart.toLowerCase()
-          return exBodyPartLower.includes(bodyPartLower) || bodyPartLower.includes(exBodyPartLower)
-        })
-
-        // Check exercise name for body part clues
-        const nameMatch = exercise.name.toLowerCase().includes(bodyPartLower) ||
-                         (bodyPartLower.includes('upper') && (exercise.name.toLowerCase().includes('press') || exercise.name.toLowerCase().includes('pull') || exercise.name.toLowerCase().includes('row'))) ||
-                         (bodyPartLower.includes('lower') && (exercise.name.toLowerCase().includes('squat') || exercise.name.toLowerCase().includes('lunge') || exercise.name.toLowerCase().includes('calf'))) ||
-                         (bodyPartLower.includes('full') && (exercise.name.toLowerCase().includes('burpee') || exercise.name.toLowerCase().includes('deadlift')))
-
-        return bodyPartMatch || nameMatch || true // Allow exercise if body part filter is applied but no match
-      })
-
-    // Filter by available equipment
-    const matchesEquipment = equipment.length === 0 ||
-      equipment.some(eq => {
-        const exerciseEquipments = exercise.equipments || []
-        const eqLower = eq.toLowerCase()
-
-        if (eqLower === 'bodyweight' || eqLower === 'body weight' || eqLower === 'body-weight') {
-          // Only include exercises that truly don't require equipment
-          return exerciseEquipments.length === 0 ||
-                 exerciseEquipments.some(e => {
-                   const eLower = e.toLowerCase()
-                   return eLower.includes('body') || 
-                          eLower.includes('bodyweight') ||
-                          eLower === '' ||
-                          eLower === 'none' ||
-                          eLower === 'no equipment'
-                 })
+    let equipmentScore = 0
+    if (requiresSpecificEquipment) {
+      let matchedEquipment = 0
+      allowedEquipment.forEach((item) => {
+        if (!item) return
+        if (item === "bodyweight") {
+          if (equipmentSet.size === 0 || Array.from(equipmentSet).some(isBodyweightEquipment)) {
+            matchedEquipment += 1
+          }
+          return
         }
 
-        // For other equipment, check if the exercise requires that specific equipment
-        return exerciseEquipments.some(e => {
-          const eLower = e.toLowerCase()
-          const normalizedEq = eqLower.replace('-', ' ').replace('_', ' ')
-          const normalizedE = eLower.replace('-', ' ').replace('_', ' ')
-          
-          return normalizedE.includes(normalizedEq) || 
-                 normalizedEq.includes(normalizedE) ||
-                 // Handle common equipment variations
-                 (normalizedEq.includes('dumbbell') && normalizedE.includes('dumbbell')) ||
-                 (normalizedEq.includes('barbell') && normalizedE.includes('barbell')) ||
-                 (normalizedEq.includes('kettlebell') && normalizedE.includes('kettlebell')) ||
-                 (normalizedEq.includes('resistance') && normalizedE.includes('band')) ||
-                 (normalizedEq.includes('band') && normalizedE.includes('resistance')) ||
-                 (normalizedEq.includes('pull') && normalizedE.includes('bar')) ||
-                 (normalizedEq.includes('cable') && normalizedE.includes('machine')) ||
-                 (normalizedEq.includes('bench') && normalizedE.includes('bench'))
-        })
+        if (
+          equipmentSet.has(item) ||
+          Array.from(equipmentSet).some(
+            (entry) => entry.includes(item) || item.includes(entry)
+          )
+        ) {
+          matchedEquipment += 1
+        }
       })
 
-    return matchesWorkoutType && matchesTargetMuscles && matchesTargetBodyParts && matchesEquipment
+      if (matchedEquipment === 0 && hasEquipment) {
+        return
+      }
+
+      equipmentScore = matchedEquipment > 0 ? 4 + matchedEquipment * 1.2 : hasEquipment ? 1 : 2
+    } else {
+      equipmentScore = hasEquipment ? 1 : 2.5
+    }
+
+    const matchedMuscles = normalizedMuscles.filter((needle) =>
+      tokenMatches(tokens, needle)
+    ).length
+    const matchedBodyParts = normalizedBodyParts.filter((needle) =>
+      tokenMatches(tokens, needle)
+    ).length
+
+    const workoutScore = computeWorkoutTypeScore(exercise, workoutType, tokens)
+
+    let score = equipmentScore + workoutScore
+
+    if (normalizedMuscles.length > 0) {
+      score += matchedMuscles > 0 ? matchedMuscles * 4 : -3
+    }
+
+    if (normalizedBodyParts.length > 0) {
+      score += matchedBodyParts > 0 ? matchedBodyParts * 3 : -1.5
+    }
+
+    const normalizedName = normalizeToken(exercise.name)
+    if (
+      normalizedMuscles.some((muscle) => normalizedName.includes(muscle))
+    ) {
+      score += 1.25
+    }
+    if (
+      normalizedBodyParts.some((bodyPart) => normalizedName.includes(bodyPart))
+    ) {
+      score += 0.75
+    }
+
+    const targetsCount =
+      normalizedMuscles.length + normalizedBodyParts.length
+    if (targetsCount > 0) {
+      const coverage = matchedMuscles + matchedBodyParts
+      score += (coverage / targetsCount) * 1.5
+    }
+
+    score += Math.random() * 0.25
+
+    const matchScore = Number(score.toFixed(3))
+    scored.push({
+      ...exercise,
+      matchScore,
+    })
   })
+
+  if (scored.length === 0) {
+    return []
+  }
+
+  return scored.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
 }
 
 // Calculate sets, reps, and rest based on workout type and duration
@@ -987,6 +1178,16 @@ function shuffleArray<T>(array: T[]): T[] {
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
   }
   return shuffled
+}
+
+function weightedShuffle<T extends { matchScore?: number }>(array: T[]): T[] {
+  return [...array]
+    .map((item) => ({
+      item,
+      weight: (item.matchScore ?? 0) + Math.random(),
+    }))
+    .sort((a, b) => b.weight - a.weight)
+    .map((entry) => entry.item)
 }
 
 // Load saved workout preferences from user settings
@@ -1184,22 +1385,34 @@ export function AIWorkoutGenerator() {
 
     const poolToSearch =
       exercisePool.length > 0 ? exercisePool : buildFallbackExercisePool(preferences.equipment)
-    if (poolToSearch.length === 0) {
-      toast.error('No additional exercises are available to swap in right now.')
-      return
-    }
+  if (poolToSearch.length === 0) {
+    toast.error('No additional exercises are available to swap in right now.')
+    return
+  }
 
-    const availableCandidates = poolToSearch.filter(
-      (exercise) => !usedIds.has(getExerciseId(exercise)) && getExerciseId(exercise) !== exerciseId
-    )
+  const availableCandidates = poolToSearch.filter(
+    (exercise) => !usedIds.has(getExerciseId(exercise)) && getExerciseId(exercise) !== exerciseId
+  )
 
-    const candidatePool = availableCandidates.length > 0 ? availableCandidates : poolToSearch
-    const replacementDb = shuffleArray(candidatePool)[0]
+  const candidatePool = availableCandidates.length > 0 ? availableCandidates : poolToSearch
 
-    if (!replacementDb) {
-      toast.error('No additional exercises are available to swap in right now.')
-      return
-    }
+  const targetBodyParts = preferences.targetBodyParts || []
+  const prioritizedByCriteria = filterExercises(
+    candidatePool,
+    preferences.workoutType,
+    preferences.targetMuscles,
+    targetBodyParts,
+    preferences.equipment
+  )
+
+  const prioritizedPool = prioritizedByCriteria.length > 0 ? prioritizedByCriteria : candidatePool
+  const weightedPool = weightedShuffle(prioritizedPool)
+  const replacementDb = weightedPool[0]
+
+  if (!replacementDb) {
+    toast.error('No additional exercises are available to swap in right now.')
+    return
+  }
 
     const replacementExercise = convertToWorkoutExercise(replacementDb, currentConfig)
 
