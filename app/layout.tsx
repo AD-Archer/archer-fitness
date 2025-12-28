@@ -10,6 +10,7 @@ import "./globals.css";
 import { NotificationInitializer } from "@/components/notification-initializer";
 import { PrivacyCheck } from "@/components/privacy-check";
 import { Footer } from "@/components/footer";
+import { PlausibleAnalytics } from "@/components/plausible-analytics";
 
 const baseUrl = process.env.NEXTAUTH_URL || "https://fitness.adarcher.app";
 
@@ -204,6 +205,7 @@ export default function RootLayout({
       </head>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <AuthProvider>
+          <PlausibleAnalytics />
           <NotificationInitializer />
           <PrivacyCheck />
           {children}
