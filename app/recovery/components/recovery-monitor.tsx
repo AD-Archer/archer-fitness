@@ -78,8 +78,7 @@ export function RecoveryMonitor() {
             bodyParts.map((bp: { name: string }) => bp.name).sort()
           );
         }
-      } catch (error) {
-        console.error("Failed to fetch body parts:", error);
+      } catch {
         // Fallback to some common body parts
         setBodyPartOptions([
           "Chest",
