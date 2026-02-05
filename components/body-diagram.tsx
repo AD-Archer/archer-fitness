@@ -23,6 +23,7 @@ interface BodyDiagramProps {
   gender?: "male" | "female";
   view?: "front" | "back";
   dualView?: boolean; // Show both front and back side by side
+  legendLabels?: string[]; // Custom legend labels [light, moderate, heavy]
 }
 
 const getIntensityColor = (
@@ -53,6 +54,7 @@ export function BodyDiagram({
   gender = "male",
   view = "front",
   dualView = false,
+  legendLabels,
 }: BodyDiagramProps) {
   const [mobileView, setMobileView] = useState<"front" | "back">("front");
 
@@ -64,53 +66,64 @@ export function BodyDiagram({
 
   const config = sizeConfig[size];
 
-  // Normalize slugs to valid library values
-  const slugNormalization: Record<string, string> = {
-    back: "upper-back",
-    "lower back": "lower-back",
-    "lower-back": "lower-back",
-    "upper back": "upper-back",
-    "upper-back": "upper-back",
-    shoulders: "deltoids",
-    shoulder: "deltoids",
-    "shoulder-deltoids": "deltoids",
-    "front deltoids": "front-deltoids",
-    "front-deltoids": "front-deltoids",
-    "back deltoids": "back-deltoids",
-    "back-deltoids": "back-deltoids",
-    legs: "quadriceps",
-    leg: "quadriceps",
-    quads: "quadriceps",
-    hamstring: "hamstring",
-    hamstrings: "hamstring",
-    glutes: "gluteal",
-    gluteal: "gluteal",
-    glute: "gluteal",
-    calves: "calf",
-    calf: "calf",
-    forearm: "forearms",
-    forearms: "forearms",
-  };
+  // Memoize slug normalization to avoid recreating on every render
+  const slugNormalization = useMemo<Record<string, string>>(
+    () => ({
+      back: "upper-back",
+      "lower back": "lower-back",
+      "lower-back": "lower-back",
+      "upper back": "upper-back",
+      "upper-back": "upper-back",
+      shoulders: "deltoids",
+      shoulder: "deltoids",
+      "shoulder-deltoids": "deltoids",
+      "front deltoids": "front-deltoids",
+      "front-deltoids": "front-deltoids",
+      "back deltoids": "back-deltoids",
+      "back-deltoids": "back-deltoids",
+      legs: "quadriceps",
+      leg: "quadriceps",
+      quads: "quadriceps",
+      hamstring: "hamstring",
+      hamstrings: "hamstring",
+      glutes: "gluteal",
+      gluteal: "gluteal",
+      glute: "gluteal",
+      calves: "calf",
+      calf: "calf",
+      forearm: "forearms",
+      forearms: "forearms",
+    }),
+    [],
+  );
 
-  // Define which slugs belong to front vs back
-  const backOnlySlugs = new Set([
-    "upper-back",
-    "lower-back",
-    "lats",
-    "back-deltoids",
-    "trapezius",
-    "triceps", // Can be on back, but library may treat it differently
-  ]);
+  // Memoize slug sets to avoid recreating on every render
+  const backOnlySlugs = useMemo(
+    () =>
+      new Set([
+        "upper-back",
+        "lower-back",
+        "lats",
+        "back-deltoids",
+        "trapezius",
+        "triceps", // Can be on back, but library may treat it differently
+      ]),
+    [],
+  );
 
-  const frontOnlySlugs = new Set([
-    "chest",
-    "front-deltoids",
-    "biceps",
-    "forearms",
-    "abs",
-    "quadriceps",
-    "quads",
-  ]);
+  const frontOnlySlugs = useMemo(
+    () =>
+      new Set([
+        "chest",
+        "front-deltoids",
+        "biceps",
+        "forearms",
+        "abs",
+        "quadriceps",
+        "quads",
+      ]),
+    [],
+  );
 
   // Map body parts to the library's ExtendedBodyPart format
   const highlightedParts = useMemo(() => {
@@ -238,21 +251,27 @@ export function BodyDiagram({
               className="w-3 h-3 rounded-full shadow-sm"
               style={{ backgroundColor: colors[2] || "#ef4444" }}
             ></div>
-            <span className="text-muted-foreground font-medium">Heavy</span>
+            <span className="text-muted-foreground font-medium">
+              {legendLabels?.[2] || "Heavy"}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <div
               className="w-3 h-3 rounded-full shadow-sm"
               style={{ backgroundColor: colors[1] || "#f97316" }}
             ></div>
-            <span className="text-muted-foreground font-medium">Moderate</span>
+            <span className="text-muted-foreground font-medium">
+              {legendLabels?.[1] || "Moderate"}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <div
               className="w-3 h-3 rounded-full shadow-sm"
               style={{ backgroundColor: colors[0] || "#eab308" }}
             ></div>
-            <span className="text-muted-foreground font-medium">Light</span>
+            <span className="text-muted-foreground font-medium">
+              {legendLabels?.[0] || "Light"}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <div
@@ -290,21 +309,27 @@ export function BodyDiagram({
             className="w-3 h-3 rounded-full shadow-sm"
             style={{ backgroundColor: colors[2] || "#ef4444" }}
           ></div>
-          <span className="text-muted-foreground font-medium">Heavy</span>
+          <span className="text-muted-foreground font-medium">
+            {legendLabels?.[2] || "Heavy"}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <div
             className="w-3 h-3 rounded-full shadow-sm"
             style={{ backgroundColor: colors[1] || "#f97316" }}
           ></div>
-          <span className="text-muted-foreground font-medium">Moderate</span>
+          <span className="text-muted-foreground font-medium">
+            {legendLabels?.[1] || "Moderate"}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <div
             className="w-3 h-3 rounded-full shadow-sm"
             style={{ backgroundColor: colors[0] || "#eab308" }}
           ></div>
-          <span className="text-muted-foreground font-medium">Light</span>
+          <span className="text-muted-foreground font-medium">
+            {legendLabels?.[0] || "Light"}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <div

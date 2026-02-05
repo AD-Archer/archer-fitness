@@ -342,57 +342,13 @@ export function RecoveryMonitor({ selectedDate }: RecoveryMonitorProps) {
         )}
       </div>
 
-      {/* Body Status Grid - Compact View - Only show for today */}
-      {isViewingToday() && (
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>All Body Parts</CardTitle>
-              <CardDescription>Status overview at a glance</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {allBodyPartsStatus.map((bodyPart) => {
-                const config = statusConfig[bodyPart.status];
-                const Icon = config.icon;
-
-                return (
-                  <div
-                    key={bodyPart.name}
-                    className={cn(
-                      "flex flex-col items-center gap-2 rounded-lg border p-3 text-center transition-colors hover:opacity-80",
-                      config.bg,
-                      config.border,
-                    )}
-                  >
-                    <Icon
-                      className={`size-5 text-${config.color}-600 dark:text-${config.color}-400`}
-                    />
-                    <p className="text-xs font-medium">{bodyPart.name}</p>
-                    <Badge variant="secondary" className="text-xs">
-                      {config.label}
-                    </Badge>
-                    {bodyPart.hoursUntilReady &&
-                      bodyPart.hoursUntilReady > 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          {Math.round(bodyPart.hoursUntilReady)}h
-                        </p>
-                      )}
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Visual Body Diagram */}
       <RecoveryBodyDiagram
         key={refreshKey}
         timeRange="7days"
         onRefresh={refresh}
         selectedDate={selectedDate}
+        recoveryStatus={allBodyPartsStatus}
       />
     </div>
   );

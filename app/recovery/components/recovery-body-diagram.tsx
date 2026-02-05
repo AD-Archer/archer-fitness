@@ -16,6 +16,11 @@ import {
   CheckCircle2,
   Activity,
   AlertTriangle,
+  Heart,
+  Dumbbell,
+  TrendingUp,
+  Calendar,
+  Zap,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -42,40 +47,96 @@ interface BodyPartCheck {
   createdAt?: string;
 }
 
+interface BodyPartRecoveryStatus {
+  name: string;
+  status: "ready" | "caution" | "rest" | "worked-recently";
+  lastWorked?: string | null;
+  hoursUntilReady?: number;
+  recommendedRest?: number;
+  sets?: number;
+}
+
+interface RecentSession {
+  id: string;
+  name: string;
+  performedAt: string;
+  bodyParts: string[];
+  durationMinutes: number | null;
+}
+
 interface RecoveryBodyDiagramProps {
   userId?: string;
   timeRange?: "7days" | "30days";
   onRefresh?: () => void;
   selectedDate?: Date;
+  recoveryStatus?: BodyPartRecoveryStatus[];
 }
 
 export function RecoveryBodyDiagram({
   timeRange = "7days",
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onRefresh,
   selectedDate,
+  recoveryStatus = [],
 }: RecoveryBodyDiagramProps) {
   const [bodyParts, setBodyParts] = useState<WorkoutBodyPart[]>([]);
   const [painFeedback, setPainFeedback] = useState<PainFeedback[]>([]);
   const [sorenessData, setSorenessData] = useState<BodyPartCheck[]>([]);
+  const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load saved view from localStorage
-  const [activeView, setActiveView] = useState<"workout" | "soreness">(() => {
+  // Always default to recovery tab, no localStorage persistence
+  const [activeView, setActiveView] = useState<
+    "workout" | "soreness" | "recovery"
+  >("recovery");
+
+  // Load saved insights tab from localStorage
+  const [insightsTab, setInsightsTab] = useState<
+    "recent" | "planning" | "readiness"
+  >(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("recovery-body-view");
-      return saved === "workout" || saved === "soreness" ? saved : "workout";
+      const saved = localStorage.getItem("recovery-insights-tab");
+      return saved === "recent" || saved === "planning" || saved === "readiness"
+        ? saved
+        : "recent";
     }
-    return "workout";
+    return "recent";
   });
 
   const { toast } = useToast();
 
-  // Save view to localStorage when it changes
-  const handleViewChange = (view: "workout" | "soreness") => {
+  // Check if viewing today
+  const isViewingToday = React.useMemo(() => {
+    if (!selectedDate) return true;
+    const today = new Date();
+    const selected = new Date(selectedDate);
+    return (
+      today.getDate() === selected.getDate() &&
+      today.getMonth() === selected.getMonth() &&
+      today.getFullYear() === selected.getFullYear()
+    );
+  }, [selectedDate]);
+
+  // Auto-switch to workout tab when viewing historical dates
+  useEffect(() => {
+    if (!isViewingToday && activeView === "recovery") {
+      setActiveView("workout");
+    }
+  }, [isViewingToday, activeView]);
+
+  // Handle view change without localStorage persistence
+  const handleViewChange = (view: "workout" | "soreness" | "recovery") => {
     setActiveView(view);
+  };
+
+  // Save insights tab to localStorage when it changes
+  const handleInsightsTabChange = (
+    tab: "recent" | "planning" | "readiness",
+  ) => {
+    setInsightsTab(tab);
     if (typeof window !== "undefined") {
-      localStorage.setItem("recovery-body-view", view);
+      localStorage.setItem("recovery-insights-tab", tab);
     }
   };
 
@@ -127,6 +188,14 @@ export function RecoveryBodyDiagram({
         }
       }
 
+      // Fetch recent sessions from recovery API
+      const recoveryResponse = await fetch("/api/recovery");
+      let sessionsData: RecentSession[] = [];
+      if (recoveryResponse.ok) {
+        const recoveryData = await recoveryResponse.json();
+        sessionsData = recoveryData.recentSessions || [];
+      }
+
       // Map body parts to include slug - keep workout and pain separate
       const mappedParts = (workoutData.bodyParts || []).map(
         (part: WorkoutBodyPart) => {
@@ -143,6 +212,7 @@ export function RecoveryBodyDiagram({
       setBodyParts(mappedParts);
       setPainFeedback(painData);
       setSorenessData(sorenessCheckData);
+      setRecentSessions(sessionsData);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load workout data",
@@ -241,6 +311,7 @@ export function RecoveryBodyDiagram({
         filteredBodyParts: bodyParts,
         filteredPainFeedback: painFeedback,
         filteredSoreness: sorenessData,
+        filteredSessions: recentSessions,
       };
     }
 
@@ -271,12 +342,35 @@ export function RecoveryBodyDiagram({
       return sorenessDate === selectedDateString;
     });
 
+    // Filter recent sessions by date
+    const filteredSessions = recentSessions.filter((session) => {
+      if (!session.performedAt) return false;
+      const sessionDate = new Date(session.performedAt)
+        .toISOString()
+        .split("T")[0];
+      return sessionDate === selectedDateString;
+    });
+
     return {
       filteredBodyParts: filteredParts,
       filteredPainFeedback: filteredPain,
       filteredSoreness: filteredSoreness,
+      filteredSessions: filteredSessions,
     };
-  }, [bodyParts, painFeedback, sorenessData, selectedDate]);
+  }, [bodyParts, painFeedback, sorenessData, recentSessions, selectedDate]);
+
+  // Get sessions to display (all for today, filtered for historical dates)
+  const displaySessions = React.useMemo(() => {
+    if (!selectedDate || isViewingToday) {
+      return recentSessions;
+    }
+    return filteredData.filteredSessions;
+  }, [
+    selectedDate,
+    isViewingToday,
+    recentSessions,
+    filteredData.filteredSessions,
+  ]);
 
   if (loading) {
     return (
@@ -348,6 +442,60 @@ export function RecoveryBodyDiagram({
       };
     });
 
+  // Create recovery body parts for visualization from recovery status
+  const recoveryBodyParts: WorkoutBodyPart[] = recoveryStatus.map((status) => {
+    // Normalize the body part name to match the diagram slugs
+    const normalizedName = status.name.toLowerCase().trim();
+    let slug = normalizedName.replace(/\s+/g, "-");
+
+    // Map common variations to diagram slugs
+    const slugMapping: Record<string, string> = {
+      chest: "chest",
+      back: "upper-back",
+      "lower-back": "lower-back",
+      "upper-back": "upper-back",
+      shoulders: "deltoids",
+      shoulder: "deltoids",
+      biceps: "biceps",
+      triceps: "triceps",
+      arms: "biceps",
+      forearms: "forearms",
+      core: "abs",
+      abs: "abs",
+      legs: "quadriceps",
+      quads: "quadriceps",
+      quadriceps: "quadriceps",
+      hamstrings: "hamstring",
+      glutes: "gluteal",
+      glute: "gluteal",
+      butt: "gluteal",
+      calves: "calf",
+    };
+
+    slug = slugMapping[slug] || slug;
+
+    // Map recovery status to intensity (for color mapping)
+    // Green = ready (light), Yellow = caution (moderate), Red = rest/worked-recently (heavy)
+    let intensity: "none" | "light" | "moderate" | "heavy" = "none";
+    if (status.status === "ready") {
+      intensity = "light"; // Will map to colors[0] = green
+    } else if (status.status === "caution") {
+      intensity = "moderate"; // Will map to colors[1] = yellow
+    } else if (
+      status.status === "rest" ||
+      status.status === "worked-recently"
+    ) {
+      intensity = "heavy"; // Will map to colors[2] = red
+    }
+
+    return {
+      name: status.name,
+      slug,
+      intensity,
+      sets: status.sets,
+    };
+  });
+
   return (
     <Card>
       <CardHeader>
@@ -370,22 +518,38 @@ export function RecoveryBodyDiagram({
             </CardDescription>
           </div>
           <Tabs
-            value={activeView}
-            onValueChange={(v) => handleViewChange(v as "workout" | "soreness")}
+            value={
+              isViewingToday
+                ? activeView
+                : activeView === "recovery"
+                  ? "workout"
+                  : activeView
+            }
+            onValueChange={(v) =>
+              handleViewChange(v as "workout" | "soreness" | "recovery")
+            }
             className="w-auto"
           >
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="workout" className="text-xs gap-1.5">
-                <Activity className="size-3.5" />
+            <TabsList
+              className={`grid w-full ${isViewingToday ? "grid-cols-3" : "grid-cols-2"}`}
+            >
+              {isViewingToday && (
+                <TabsTrigger value="recovery" className="text-xs gap-1 px-2">
+                  <Heart className="size-3 hidden sm:block" />
+                  Recovery
+                </TabsTrigger>
+              )}
+              <TabsTrigger value="workout" className="text-xs gap-1 px-2">
+                <Activity className="size-3 hidden sm:block" />
                 Workout
               </TabsTrigger>
-              <TabsTrigger value="soreness" className="text-xs gap-1.5">
-                <AlertTriangle className="size-3.5" />
+              <TabsTrigger value="soreness" className="text-xs gap-1 px-2">
+                <AlertTriangle className="size-3 hidden sm:block" />
                 Soreness
                 {filteredData.filteredSoreness.length > 0 && (
                   <Badge
                     variant="secondary"
-                    className="ml-1 h-4 px-1 text-[10px]"
+                    className="ml-1 h-4 px-1 text-[10px] hidden sm:inline-flex"
                   >
                     {filteredData.filteredSoreness.length}
                   </Badge>
@@ -420,15 +584,31 @@ export function RecoveryBodyDiagram({
 
         <div className="flex items-center justify-center overflow-auto">
           <BodyDiagram
+            key={`body-diagram-${selectedDate?.toISOString() || "today"}-${activeView}`}
             bodyParts={
               activeView === "workout"
                 ? filteredData.filteredBodyParts
-                : sorenessBodyParts
+                : activeView === "recovery"
+                  ? recoveryBodyParts
+                  : sorenessBodyParts
             }
             size="lg"
-            colors={["#0984e3", "#74b9ff", "#ef4444"]}
+            colors={
+              activeView === "recovery"
+                ? ["#22c55e", "#eab308", "#ef4444"] // Green, Yellow, Red for recovery
+                : activeView === "soreness"
+                  ? ["#fca5a5", "#f87171", "#dc2626"] // Light red, medium red, dark red for soreness
+                  : ["#0984e3", "#74b9ff", "#ef4444"] // Blue shades for workout
+            }
             interactive={false}
             dualView={true}
+            legendLabels={
+              activeView === "recovery"
+                ? ["Ready", "Caution", "Needs Rest"]
+                : activeView === "soreness"
+                  ? ["Mild (1-3)", "Moderate (4-6)", "Severe (7-10)"]
+                  : undefined
+            }
           />
         </div>
 
@@ -444,7 +624,305 @@ export function RecoveryBodyDiagram({
               </p>
             </div>
           )}
+
+        {activeView === "recovery" && recoveryStatus.length === 0 && (
+          <div className="text-center py-6">
+            <CheckCircle2 className="size-10 mx-auto text-emerald-500 mb-2" />
+            <p className="text-sm font-medium text-muted-foreground">
+              All muscle groups ready
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Complete a workout to track your recovery
+            </p>
+          </div>
+        )}
+      </CardContent>
+
+      {/* Insights Section with Tabs */}
+      <CardContent className="border-t pt-6">
+        <Tabs
+          value={isViewingToday ? insightsTab : "recent"}
+          onValueChange={(v) =>
+            handleInsightsTabChange(v as "recent" | "planning" | "readiness")
+          }
+          className="w-full"
+        >
+          <TabsList
+            className={`grid w-full mb-4 ${isViewingToday ? "grid-cols-3" : "grid-cols-1"}`}
+          >
+            <TabsTrigger value="recent" className="text-xs gap-1 px-2">
+              <Calendar className="size-3 hidden sm:block" />
+              Recent Sessions
+            </TabsTrigger>
+            {isViewingToday && (
+              <>
+                <TabsTrigger value="planning" className="text-xs gap-1 px-2">
+                  <TrendingUp className="size-3 hidden sm:block" />
+                  Planning Insights
+                </TabsTrigger>
+                <TabsTrigger value="readiness" className="text-xs gap-1 px-2">
+                  <Dumbbell className="size-3 hidden sm:block" />
+                  Body Readiness
+                </TabsTrigger>
+              </>
+            )}
+          </TabsList>
+
+          {/* Recent Sessions Tab */}
+          {(insightsTab === "recent" || !isViewingToday) && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {isViewingToday
+                  ? "Most recent workouts and the areas they targeted."
+                  : `Workouts on ${selectedDate?.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}`}
+              </p>
+              {displaySessions.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="size-10 mx-auto text-muted-foreground/50 mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    {isViewingToday
+                      ? "No recent workouts found"
+                      : "No workouts on this date"}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {displaySessions.map((session) => (
+                    <div
+                      key={session.id}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-full bg-primary/10">
+                          <Dumbbell className="size-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{session.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatRelativeTime(session.performedAt)}
+                            {session.durationMinutes && (
+                              <span className="ml-2">
+                                • {session.durationMinutes} min
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1 justify-end max-w-[150px]">
+                        {session.bodyParts.slice(0, 3).map((part) => (
+                          <Badge
+                            key={part}
+                            variant="secondary"
+                            className="text-[10px] px-1.5 py-0"
+                          >
+                            {part}
+                          </Badge>
+                        ))}
+                        {session.bodyParts.length > 3 && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-1.5 py-0"
+                          >
+                            +{session.bodyParts.length - 3}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Planning Insights Tab */}
+          {insightsTab === "planning" && isViewingToday && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Plan your next workout around areas with the highest readiness
+                score.
+              </p>
+
+              {/* Recommended Focus */}
+              <div className="p-4 rounded-lg border bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/50">
+                <div className="flex items-center gap-2 mb-3">
+                  <Zap className="size-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                    Recommended Focus
+                  </span>
+                </div>
+                {recoveryStatus.filter((s) => s.status === "ready").length >
+                0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {recoveryStatus
+                      .filter((s) => s.status === "ready")
+                      .slice(0, 5)
+                      .map((part) => (
+                        <Badge
+                          key={part.name}
+                          className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-200"
+                        >
+                          {part.name}
+                        </Badge>
+                      ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No areas ready yet—check again soon.
+                  </p>
+                )}
+              </div>
+
+              {/* Next Up After Rest */}
+              {recoveryStatus.filter(
+                (s) => s.status === "rest" || s.status === "caution",
+              ).length > 0 && (
+                <div className="p-4 rounded-lg border">
+                  <p className="text-sm font-medium mb-3">
+                    Next up after rest:
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {recoveryStatus
+                      .filter(
+                        (s) => s.status === "rest" || s.status === "caution",
+                      )
+                      .sort(
+                        (a, b) =>
+                          (a.hoursUntilReady || 0) - (b.hoursUntilReady || 0),
+                      )
+                      .slice(0, 4)
+                      .map((part) => (
+                        <div
+                          key={part.name}
+                          className="flex items-center justify-between p-2 rounded bg-muted/50"
+                        >
+                          <span className="text-sm">{part.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {part.hoursUntilReady?.toFixed(1)}h
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Body Readiness Tab */}
+          {insightsTab === "readiness" && isViewingToday && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Detailed recovery status for each muscle group.
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {recoveryStatus.map((part) => {
+                  const statusColors = {
+                    ready: {
+                      bg: "bg-emerald-50 dark:bg-emerald-950/20",
+                      border: "border-emerald-200 dark:border-emerald-900/50",
+                      text: "text-emerald-600 dark:text-emerald-400",
+                      badge:
+                        "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-200",
+                    },
+                    caution: {
+                      bg: "bg-amber-50 dark:bg-amber-950/20",
+                      border: "border-amber-200 dark:border-amber-900/50",
+                      text: "text-amber-600 dark:text-amber-400",
+                      badge:
+                        "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-200",
+                    },
+                    rest: {
+                      bg: "bg-rose-50 dark:bg-rose-950/20",
+                      border: "border-rose-200 dark:border-rose-900/50",
+                      text: "text-rose-600 dark:text-rose-400",
+                      badge:
+                        "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-200",
+                    },
+                    "worked-recently": {
+                      bg: "bg-blue-50 dark:bg-blue-950/20",
+                      border: "border-blue-200 dark:border-blue-900/50",
+                      text: "text-blue-600 dark:text-blue-400",
+                      badge:
+                        "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-200",
+                    },
+                  };
+                  const colors = statusColors[part.status];
+                  const statusLabel = {
+                    ready: "Ready",
+                    caution: "Caution",
+                    rest: "Rest",
+                    "worked-recently": "Recent",
+                  };
+
+                  return (
+                    <div
+                      key={part.name}
+                      className={`p-3 rounded-lg border ${colors.bg} ${colors.border}`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-sm">{part.name}</span>
+                        <Badge className={colors.badge}>
+                          {statusLabel[part.status]}
+                        </Badge>
+                      </div>
+                      {part.status !== "ready" && (
+                        <div className="space-y-1 text-xs text-muted-foreground">
+                          {part.lastWorked && (
+                            <p>
+                              Last trained {formatRelativeTime(part.lastWorked)}
+                            </p>
+                          )}
+                          {part.sets && <p>Avg. {part.sets} sets</p>}
+                          {part.recommendedRest && (
+                            <p>Recommended rest: {part.recommendedRest}h</p>
+                          )}
+                          {part.hoursUntilReady && part.hoursUntilReady > 0 && (
+                            <p className={colors.text}>
+                              Ready in {part.hoursUntilReady.toFixed(1)}h
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {part.status === "ready" && (
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <CheckCircle2 className="size-3" />
+                          Good to train
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </Tabs>
       </CardContent>
     </Card>
   );
+}
+
+// Helper function to format relative time
+function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffHours < 1) {
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    return `about ${diffMinutes} minute${diffMinutes !== 1 ? "s" : ""} ago`;
+  } else if (diffHours < 24) {
+    return `about ${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`;
+  } else if (diffDays < 7) {
+    return `about ${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
+  } else {
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+  }
 }

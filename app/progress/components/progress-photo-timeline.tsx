@@ -170,7 +170,7 @@ export function ProgressPhotoTimeline({
         <CardDescription>Your fitness journey timeline</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {currentViewMode === "timeline" ? (
+        {viewMode === "timeline" ? (
           <>
             {/* Main Photo Display */}
             <div className="relative bg-muted rounded-lg overflow-hidden h-96">

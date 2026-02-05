@@ -45,6 +45,9 @@ prisma-studio:
 scrape:
     infisical run pnpm run scrape
 
+prebuild:
+    infisical run pnpm run lint
+    infisical run pnpm run typecheck
 # Update Docker containers
 update-docker:
     pnpm run update:docker
