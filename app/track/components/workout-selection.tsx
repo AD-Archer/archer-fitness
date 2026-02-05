@@ -1,39 +1,65 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { useState, useMemo } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Dumbbell, Play, Plus, Trash2, Zap, User, Settings, ListPlus } from "lucide-react"
-import { CustomWorkoutForm } from "./custom-workout-form"
-import type { WorkoutTemplate } from "../types/workout"
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dumbbell, Plus, ListPlus, Zap } from "lucide-react";
+import { CustomWorkoutForm } from "./custom-workout-form";
+import {
+  WorkoutTemplateSelector,
+  type WorkoutTemplate as SelectorTemplate,
+} from "@/components/workout-template-selector";
+import type { WorkoutTemplate } from "../types/workout";
 
 interface WorkoutSelectionProps {
-  availableWorkouts: WorkoutTemplate[]
-  onStartWorkout: (workout: WorkoutTemplate) => void
-  onDeleteWorkout: (workoutId: string) => void
-  onSaveCustomWorkout: (workout: WorkoutTemplate) => void
-  onEditCustomWorkout?: (workout: WorkoutTemplate) => void
+  availableWorkouts: WorkoutTemplate[];
+  onStartWorkout: (workout: WorkoutTemplate) => void;
+  onSaveCustomWorkout: (workout: WorkoutTemplate) => void;
+  onEditCustomWorkout?: (workout: WorkoutTemplate) => void;
 }
 
 export function WorkoutSelection({
   availableWorkouts,
   onStartWorkout,
-  onDeleteWorkout,
   onSaveCustomWorkout,
   onEditCustomWorkout,
 }: WorkoutSelectionProps) {
-  const [showCustomWorkoutDialog, setShowCustomWorkoutDialog] = useState(false)
-  const [editingWorkout, setEditingWorkout] = useState<WorkoutTemplate | null>(null)
-  
-  // Filter out premade workouts, only show AI-generated and custom workouts
-  const filteredWorkouts = availableWorkouts.filter(workout => 
-    workout.isAIGenerated || workout.isCustom || workout.name.toLowerCase().includes('ai-generated')
-  )
+  const [showCustomWorkoutDialog, setShowCustomWorkoutDialog] = useState(false);
+  const [editingWorkout, setEditingWorkout] = useState<WorkoutTemplate | null>(
+    null,
+  );
+
+  // Filter workouts for the template selector - AI-generated and custom workouts
+  const selectorWorkouts = useMemo<SelectorTemplate[]>(() => {
+    return availableWorkouts
+      .filter(
+        (workout) =>
+          workout.isAIGenerated ||
+          workout.isCustom ||
+          workout.name.toLowerCase().includes("ai-generated"),
+      )
+      .map((workout) => ({
+        id: workout.id,
+        name: workout.name,
+        description: workout.description,
+        category: workout.category,
+        difficulty: workout.difficulty,
+        estimatedDuration: workout.estimatedDuration,
+        exerciseCount: workout.exercises?.length || 0,
+        usageCount: 0,
+        isPredefined:
+          workout.isAIGenerated ||
+          workout.name.toLowerCase().includes("ai-generated"),
+        isPublic: false,
+      }));
+  }, [availableWorkouts]);
 
   const startBlankWorkout = () => {
     const blankWorkout: WorkoutTemplate = {
@@ -44,191 +70,151 @@ export function WorkoutSelection({
       exercises: [],
       isCustom: true,
       isAIGenerated: false,
+    };
+    onStartWorkout(blankWorkout);
+  };
+
+  const handleTemplateSelect = (template: SelectorTemplate) => {
+    const workout = availableWorkouts.find((w) => w.id === template.id);
+    if (workout) {
+      onStartWorkout(workout);
     }
-    onStartWorkout(blankWorkout)
-  }
-  
-  const getWorkoutTypeInfo = (workout: WorkoutTemplate) => {
-    if (workout.isAIGenerated || workout.name.toLowerCase().includes('ai-generated')) {
-      return {
-        icon: Zap,
-        bgColor: 'bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30',
-        borderColor: 'border-purple-200 dark:border-purple-800',
-        iconColor: 'text-purple-600',
-        badgeVariant: 'secondary' as const
-      }
-    } else if (workout.isCustom) {
-      return {
-        icon: User,
-        bgColor: 'bg-gradient-to-br from-red-50 to-coral-50 dark:from-red-950/30 dark:to-coral-950/30',
-        borderColor: 'border-red-200 dark:border-green-800',
-        iconColor: 'text-red-600',
-        badgeVariant: 'secondary' as const
-      }
-    } else {
-      return {
-        icon: Settings,
-        label: 'Premade',
-        bgColor: 'bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30',
-        borderColor: 'border-blue-200 dark:border-blue-800',
-        iconColor: 'text-blue-600',
-        badgeVariant: 'outline' as const
-      }
-    }
-  }
+  };
 
   return (
-  <div className="space-y-6 xl:space-y-8">
-      <Card>
-        <CardHeader className="text-center">
-          <CardTitle className="flex items-center justify-center gap-2">
-        <Dumbbell className="w-6 h-6 text-blue-600" />
-        Choose Your Workout
-          </CardTitle>
-          <CardDescription>Create a custom workout or <a href="/generate" className="text-blue-500 hover:underline">generate one with AI</a></CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredWorkouts.map((workout) => {
-              const typeInfo = getWorkoutTypeInfo(workout)
-              const Icon = typeInfo.icon
-              
-              return (
-                <Card 
-                  key={workout.id} 
-                  className={`cursor-pointer hover:shadow-md transition-all hover:scale-[1.02] ${typeInfo.bgColor} ${typeInfo.borderColor} border-2`}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Icon className={`w-4 h-4 ${typeInfo.iconColor}`} />
-                        </div>
-                        <CardTitle className="text-base flex items-center">
-                          {workout.name}
-                          {workout.isCustom && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                if (confirm("Are you sure you want to delete this workout?")) {
-                                  onDeleteWorkout(workout.id)
-                                }
-                              }}
-                              className="ml-2 h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                              title="Delete workout"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          )}
-                        </CardTitle>
-                        <CardDescription className="text-sm">{workout.description}</CardDescription>
-                      </div>
-                      {workout.isCustom && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setEditingWorkout(workout)
-                            setShowCustomWorkoutDialog(true)
-                          }}
-                          className="h-7 px-2 text-xs"
-                        >
-                          Edit
-                        </Button>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="space-y-2 mb-4">
-                      <div className="flex justify-between text-sm">
-                        <span>Exercises:</span>
-                        <span>{workout.exercises.length}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Duration:</span>
-                        <span>~{workout.estimatedDuration} min</span>
-                      </div>
-                    </div>
-                    <Button
-                      onClick={() => onStartWorkout(workout)}
-                      className={`w-full ${
-                        workout.isAIGenerated || workout.name.toLowerCase().includes('ai-generated')
-                          ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700'
-                          : workout.isCustom
-                          ? 'bg-gradient-to-r from-black-600 to-black-600 hover:from-black-700 hover:to-black-700'
-                          : 'bg-gradient-to-r from-black-600 to-red-600 hover:from-black-700 hover:to-black-700'
-                      }`}
-                    >
-                      <Play className="w-4 h-4 mr-2" />
-                      Start Workout
-                    </Button>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
+    <div className="space-y-8 md:space-y-12">
+      {/* Header Section */}
+      <div className="text-center space-y-3 pt-4">
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <Dumbbell className="w-8 h-8 text-primary" />
+          <h1 className="text-4xl font-bold tracking-tight">Your Workouts</h1>
+        </div>
+        <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+          Select a saved workout or{" "}
+          <a
+            href="/generate"
+            className="text-primary hover:underline font-semibold"
+          >
+            generate one with AI
+          </a>
+        </p>
+      </div>
 
-          <div className="flex flex-col sm:flex-row justify-center gap-3 pt-4">
-            <Button 
-              onClick={startBlankWorkout}
-              variant="default"
-              className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
-            >
-              <ListPlus className="w-4 h-4 mr-2" />
-              Start Blank Workout
-            </Button>
-
-            <Dialog open={showCustomWorkoutDialog} onOpenChange={(open) => { if (!open) { setEditingWorkout(null) } setShowCustomWorkoutDialog(open) }}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="bg-transparent">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Custom Workout
-                </Button>
-              </DialogTrigger>
-              <DialogContent
-                className="w-[98vw] sm:w-[98vw] md:w-[96vw] lg:w-[95vw] xl:w-[92vw] 2xl:w-[1600px]
-                           h-[96vh]
-                           max-w-none sm:max-w-[98vw] md:max-w-[96vw] lg:max-w-[95vw] xl:max-w-[92vw] 2xl:max-w-[1600px]
-                           overflow-y-auto p-0 rounded-xl"
+      <div className="space-y-8">
+        {/* Quick Actions */}
+        <Card className="bg-gradient-to-r from-primary/5 to-purple-500/5 border-primary/20">
+          <CardHeader>
+            <CardTitle className="text-lg">Get Started</CardTitle>
+            <CardDescription>Choose how you want to begin</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row gap-3 w-full">
+              <Button
+                onClick={startBlankWorkout}
+                size="lg"
+                className="flex-1 bg-primary hover:bg-primary/90 rounded-lg"
               >
+                <ListPlus className="w-4 h-4 mr-2" />
+                Start Blank Workout
+              </Button>
 
-                <CustomWorkoutForm
-                  initialWorkout={
-                    editingWorkout
-                      ? {
-                          ...editingWorkout,
-                          exercises: editingWorkout.exercises.map((ex) => ({
-                            id: ex.id,
-                            exerciseId: ex.id, // Map id to exerciseId for the form
-                            name: ex.name,
-                            targetSets: ex.targetSets,
-                            targetReps: ex.targetReps,
-                            targetType: ex.targetType ?? "reps", // default to "reps" if undefined
-                            instructions: ex.instructions,
-                            exercise: ex.exercise,
-                          })),
-                        }
-                      : undefined
+              <Dialog
+                open={showCustomWorkoutDialog}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setEditingWorkout(null);
                   }
-                  onSave={(workout) => {
-                    if (editingWorkout) {
-                      onEditCustomWorkout?.(workout)
-                    } else {
-                      onSaveCustomWorkout(workout)
+                  setShowCustomWorkoutDialog(open);
+                }}
+              >
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="flex-1 rounded-lg"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Custom Template
+                  </Button>
+                </DialogTrigger>
+                <DialogContent
+                  className="w-[98vw] sm:w-[98vw] md:w-[96vw] lg:w-[95vw] xl:w-[92vw] 2xl:w-[1600px]
+                             h-[96vh]
+                             max-w-none sm:max-w-[98vw] md:max-w-[96vw] lg:max-w-[95vw] xl:max-w-[92vw] 2xl:max-w-[1600px]
+                             overflow-y-auto p-0 rounded-xl"
+                >
+                  <CustomWorkoutForm
+                    initialWorkout={
+                      editingWorkout
+                        ? {
+                            ...editingWorkout,
+                            exercises: editingWorkout.exercises.map((ex) => ({
+                              id: ex.id,
+                              exerciseId: ex.id,
+                              name: ex.name,
+                              targetSets: ex.targetSets,
+                              targetReps: ex.targetReps,
+                              targetType: ex.targetType ?? "reps",
+                              instructions: ex.instructions,
+                              exercise: ex.exercise,
+                            })),
+                          }
+                        : undefined
                     }
-                    setShowCustomWorkoutDialog(false)
-                    setEditingWorkout(null)
-                  }}
-                  onCancel={() => setShowCustomWorkoutDialog(false)}
-                />
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardContent>
-      </Card>
+                    onSave={(workout) => {
+                      if (editingWorkout) {
+                        onEditCustomWorkout?.(workout);
+                      } else {
+                        onSaveCustomWorkout(workout);
+                      }
+                      setShowCustomWorkoutDialog(false);
+                      setEditingWorkout(null);
+                    }}
+                    onCancel={() => setShowCustomWorkoutDialog(false)}
+                  />
+                </DialogContent>
+              </Dialog>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Saved Workouts */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-purple-600" />
+              <div>
+                <CardTitle>Your Saved Workouts</CardTitle>
+                <CardDescription>
+                  Browse and start your templates
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <WorkoutTemplateSelector
+              templates={selectorWorkouts}
+              onSelect={handleTemplateSelect}
+              placeholder="Search workouts by name..."
+              showCategories={true}
+              showDifficulty={true}
+              maxHeight="500px"
+            />
+            {selectorWorkouts.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Dumbbell className="w-12 h-12 text-muted-foreground/30 mb-4" />
+                <p className="text-muted-foreground font-medium">
+                  No saved workouts yet
+                </p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Create a custom template or generate one with AI to get
+                  started
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
-  )
+  );
 }

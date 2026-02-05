@@ -1001,7 +1001,7 @@ export function AddPastWorkoutDialog({
           open={showExerciseSelector}
           onOpenChange={setShowExerciseSelector}
         >
-          <DialogContent className="w-[96vw] sm:w-[90vw] lg:w-[75vw] xl:w-[70vw] max-w-6xl p-0 overflow-y-auto rounded-2xl max-h-[95vh]">
+          <DialogContent className="w-[96vw] sm:w-[90vw] lg:w-[80vw] xl:w-[75vw] max-w-6xl sm:max-w-6xl p-0 gap-0 rounded-2xl h-[90vh] flex flex-col overflow-hidden">
             <ExerciseSelector
               onSelect={handleAddExercise}
               onClose={() => setShowExerciseSelector(false)}

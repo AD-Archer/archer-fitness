@@ -201,8 +201,7 @@ export function WorkoutSession({
             <div className="flex flex-col sm:flex-row gap-2">
               <Button
                 onClick={onPauseWorkout}
-                variant="outline"
-                className="bg-transparent flex-1 sm:flex-none"
+                className="flex-1 sm:flex-none bg-black hover:bg-gray-900 text-white dark:bg-white dark:text-black dark:hover:bg-gray-100"
               >
                 {isTimerRunning ? (
                   <Pause className="w-4 h-4 mr-1" />
