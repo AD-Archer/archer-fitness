@@ -5,12 +5,15 @@ import { prisma } from "@/lib/prisma";
 import { unlink } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import { deleteProgressPhotoFromAppwrite } from "@/lib/appwrite";
+import { logger } from "@/lib/logger";
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.email) {
@@ -28,7 +31,7 @@ export async function DELETE(
 
     // Find the progress photo
     const photo = await prisma.progressPhoto.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!photo) {
@@ -42,17 +45,21 @@ export async function DELETE(
 
     // Delete the file from storage
     try {
-      const filename = photo.imageUrl.split("/").pop();
-      const filepath = join(
-        process.cwd(),
-        "public",
-        "uploads",
-        "progress-photos",
-        filename || "",
-      );
+      if (photo.storageProvider === "appwrite") {
+        await deleteProgressPhotoFromAppwrite(photo.storageFileId || undefined);
+      } else {
+        const filename = photo.imageUrl.split("/").pop();
+        const filepath = join(
+          process.cwd(),
+          "public",
+          "uploads",
+          "progress-photos",
+          filename || "",
+        );
 
-      if (existsSync(filepath)) {
-        await unlink(filepath);
+        if (existsSync(filepath)) {
+          await unlink(filepath);
+        }
       }
     } catch {
       // Continue with database deletion even if file deletion fails
@@ -60,11 +67,12 @@ export async function DELETE(
 
     // Delete from database
     await prisma.progressPhoto.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ success: true }, { status: 200 });
-  } catch {
+  } catch (error) {
+    logger.error("Failed to delete progress photo", error);
     return NextResponse.json(
       { error: "Failed to delete photo" },
       { status: 500 },

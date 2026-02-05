@@ -27,7 +27,10 @@ export async function GET() {
       select: {
         id: true,
         imageUrl: true,
+        storageProvider: true,
+        storageFileId: true,
         notes: true,
+        bodyParts: true,
         uploadDate: true,
         createdAt: true,
       },
@@ -38,8 +41,12 @@ export async function GET() {
         success: true,
         photos: photos.map((photo) => ({
           id: photo.id,
-          url: photo.imageUrl,
+          url:
+            photo.storageProvider === "appwrite" && photo.storageFileId
+              ? `/api/progress/photos/${photo.id}/view`
+              : photo.imageUrl,
           notes: photo.notes,
+          bodyParts: photo.bodyParts,
           uploadDate: photo.uploadDate,
           createdAt: photo.createdAt,
         })),

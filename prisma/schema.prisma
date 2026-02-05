@@ -830,7 +830,10 @@ model ProgressPhoto {
   id         String   @id @default(cuid())
   userId     String   @map("user_id")
   imageUrl   String   @map("image_url") // URL to the stored image (S3 or local storage)
+  storageProvider String @default("local") @map("storage_provider") // "local" | "appwrite"
+  storageFileId String? @map("storage_file_id")
   notes      String? // User's notes about this photo
+  bodyParts  String[] @default([]) @map("body_parts")
   uploadDate DateTime @map("upload_date") // When the photo was taken/marked
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")

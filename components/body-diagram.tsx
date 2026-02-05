@@ -24,6 +24,7 @@ interface BodyDiagramProps {
   view?: "front" | "back";
   dualView?: boolean; // Show both front and back side by side
   legendLabels?: string[]; // Custom legend labels [light, moderate, heavy]
+  showLegend?: boolean;
 }
 
 const getIntensityColor = (
@@ -55,6 +56,7 @@ export function BodyDiagram({
   view = "front",
   dualView = false,
   legendLabels,
+  showLegend = true,
 }: BodyDiagramProps) {
   const [mobileView, setMobileView] = useState<"front" | "back">("front");
 
@@ -160,9 +162,15 @@ export function BodyDiagram({
   }, [highlightedParts, frontOnlySlugs]);
 
   const handleBodyPartClick = (part: any) => {
-    const matchedPart = bodyParts.find(
-      (bp) => bp.slug?.toLowerCase() === part.slug?.toLowerCase(),
-    );
+    const normalizedSlug =
+      slugNormalization[String(part.slug).toLowerCase()] ||
+      String(part.slug).toLowerCase();
+    const matchedPart = bodyParts.find((bp) => {
+      const bpSlug =
+        slugNormalization[String(bp.slug).toLowerCase()] ||
+        String(bp.slug).toLowerCase();
+      return bpSlug === normalizedSlug;
+    });
     if (matchedPart && interactive) {
       onBodyPartClick?.(matchedPart);
     }
@@ -245,6 +253,67 @@ export function BodyDiagram({
         </div>
 
         {/* Legend */}
+        {showLegend && (
+          <div className="flex flex-wrap justify-center gap-4 text-xs sm:text-sm">
+            <div className="flex items-center gap-2">
+              <div
+                className="w-3 h-3 rounded-full shadow-sm"
+                style={{ backgroundColor: colors[2] || "#ef4444" }}
+              ></div>
+              <span className="text-muted-foreground font-medium">
+                {legendLabels?.[2] || "Heavy"}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div
+                className="w-3 h-3 rounded-full shadow-sm"
+                style={{ backgroundColor: colors[1] || "#f97316" }}
+              ></div>
+              <span className="text-muted-foreground font-medium">
+                {legendLabels?.[1] || "Moderate"}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div
+                className="w-3 h-3 rounded-full shadow-sm"
+                style={{ backgroundColor: colors[0] || "#eab308" }}
+              ></div>
+              <span className="text-muted-foreground font-medium">
+                {legendLabels?.[0] || "Light"}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div
+                className="w-3 h-3 rounded-full shadow-sm"
+                style={{ backgroundColor: defaultFill }}
+              ></div>
+              <span className="text-muted-foreground font-medium">
+                Not Worked
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Single view mode
+  return (
+    <div className="flex flex-col items-center justify-center gap-6 w-full">
+      <div className="bg-gradient-to-b from-slate-900/20 to-slate-900/10 rounded-xl border border-border/40 p-4 flex justify-center">
+        <BodyHighlighter
+          gender={gender}
+          side={view}
+          scale={config.scale}
+          data={view === "front" ? frontParts : backParts}
+          colors={colors}
+          onBodyPartClick={interactive ? handleBodyPartClick : undefined}
+          border="none"
+        />
+      </div>
+
+      {/* Legend */}
+      {showLegend && (
         <div className="flex flex-wrap justify-center gap-4 text-xs sm:text-sm">
           <div className="flex items-center gap-2">
             <div
@@ -278,67 +347,10 @@ export function BodyDiagram({
               className="w-3 h-3 rounded-full shadow-sm"
               style={{ backgroundColor: defaultFill }}
             ></div>
-            <span className="text-muted-foreground font-medium">
-              Not Worked
-            </span>
+            <span className="text-muted-foreground font-medium">Not Worked</span>
           </div>
         </div>
-      </div>
-    );
-  }
-
-  // Single view mode
-  return (
-    <div className="flex flex-col items-center justify-center gap-6 w-full">
-      <div className="bg-gradient-to-b from-slate-900/20 to-slate-900/10 rounded-xl border border-border/40 p-4 flex justify-center">
-        <BodyHighlighter
-          gender={gender}
-          side={view}
-          scale={config.scale}
-          data={view === "front" ? frontParts : backParts}
-          colors={colors}
-          onBodyPartClick={interactive ? handleBodyPartClick : undefined}
-          border="none"
-        />
-      </div>
-
-      {/* Legend */}
-      <div className="flex flex-wrap justify-center gap-4 text-xs sm:text-sm">
-        <div className="flex items-center gap-2">
-          <div
-            className="w-3 h-3 rounded-full shadow-sm"
-            style={{ backgroundColor: colors[2] || "#ef4444" }}
-          ></div>
-          <span className="text-muted-foreground font-medium">
-            {legendLabels?.[2] || "Heavy"}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div
-            className="w-3 h-3 rounded-full shadow-sm"
-            style={{ backgroundColor: colors[1] || "#f97316" }}
-          ></div>
-          <span className="text-muted-foreground font-medium">
-            {legendLabels?.[1] || "Moderate"}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div
-            className="w-3 h-3 rounded-full shadow-sm"
-            style={{ backgroundColor: colors[0] || "#eab308" }}
-          ></div>
-          <span className="text-muted-foreground font-medium">
-            {legendLabels?.[0] || "Light"}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div
-            className="w-3 h-3 rounded-full shadow-sm"
-            style={{ backgroundColor: defaultFill }}
-          ></div>
-          <span className="text-muted-foreground font-medium">Not Worked</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

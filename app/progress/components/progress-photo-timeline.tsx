@@ -1,8 +1,16 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { formatDistanceToNow, format } from "date-fns";
-import { ChevronLeft, ChevronRight, Trash2, Calendar } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Trash2,
+  Calendar,
+  Film,
+  Pause,
+  Play,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -13,6 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,11 +31,27 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ProgressPhoto {
   id: string;
   url: string;
   notes?: string;
+  bodyParts?: string[];
   uploadDate: string;
   createdAt: string;
 }
@@ -34,16 +59,25 @@ interface ProgressPhoto {
 interface ProgressPhotoTimelineProps {
   onPhotoDeleted?: (photoId: string) => void;
   viewMode?: "grid" | "timeline";
+  refreshKey?: number;
 }
 
 export function ProgressPhotoTimeline({
   onPhotoDeleted,
   viewMode = "timeline",
+  refreshKey,
 }: ProgressPhotoTimelineProps) {
+  const isDev = process.env.NODE_ENV !== "production";
   const [photos, setPhotos] = useState<ProgressPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
+  const [timelapseOpen, setTimelapseOpen] = useState(false);
+  const [timelapseIndex, setTimelapseIndex] = useState(0);
+  const [timelapsePlaying, setTimelapsePlaying] = useState(true);
+  const [timelapseSpeed, setTimelapseSpeed] = useState("1000");
+  const [imageLoadError, setImageLoadError] = useState<string | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -72,7 +106,48 @@ export function ProgressPhotoTimeline({
     };
 
     fetchPhotos();
-  }, []);
+  }, [refreshKey]);
+
+  useEffect(() => {
+    setSelectedPhotoIndex((prev) =>
+      photos.length === 0 ? 0 : Math.min(prev, photos.length - 1),
+    );
+  }, [photos.length]);
+
+  const timelapsePhotos = useMemo(
+    () =>
+      [...photos].sort(
+        (a, b) =>
+          new Date(a.uploadDate).getTime() - new Date(b.uploadDate).getTime(),
+      ),
+    [photos],
+  );
+
+  useEffect(() => {
+    if (!timelapseOpen) {
+      setTimelapsePlaying(false);
+      return;
+    }
+
+    setTimelapseIndex(0);
+    setTimelapsePlaying(true);
+  }, [timelapseOpen, timelapsePhotos.length]);
+
+  useEffect(() => {
+    if (!timelapseOpen || !timelapsePlaying || timelapsePhotos.length === 0) {
+      return;
+    }
+
+    const speed = Number(timelapseSpeed);
+    const interval = Number.isFinite(speed) ? speed : 1000;
+    const timer = window.setInterval(() => {
+      setTimelapseIndex((prev) =>
+        prev + 1 >= timelapsePhotos.length ? 0 : prev + 1,
+      );
+    }, interval);
+
+    return () => window.clearInterval(timer);
+  }, [timelapseOpen, timelapsePlaying, timelapseSpeed, timelapsePhotos.length]);
 
   const handleDeletePhoto = async (photoId: string) => {
     try {
@@ -113,6 +188,17 @@ export function ProgressPhotoTimeline({
     setSelectedPhotoIndex(Math.min(photos.length - 1, selectedPhotoIndex + 1));
   };
 
+  const currentPhoto = useMemo(
+    () => photos[selectedPhotoIndex],
+    [photos, selectedPhotoIndex],
+  );
+  const timelapsePhoto = timelapsePhotos[timelapseIndex];
+
+  useEffect(() => {
+    setImageLoadError(null);
+    setImageLoaded(false);
+  }, [currentPhoto?.id]);
+
   if (loading) {
     return (
       <Card>
@@ -143,7 +229,7 @@ export function ProgressPhotoTimeline({
     );
   }
 
-  if (photos.length === 0) {
+  if (photos.length === 0 || !currentPhoto) {
     return (
       <Card>
         <CardHeader>
@@ -161,7 +247,40 @@ export function ProgressPhotoTimeline({
     );
   }
 
-  const currentPhoto = photos[selectedPhotoIndex];
+  if (!currentPhoto) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Progress Photos</CardTitle>
+          <CardDescription>Your fitness journey timeline</CardDescription>
+        </CardHeader>
+        <CardContent className="text-center py-8">
+          <Calendar className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+          <p className="text-muted-foreground">No progress photos yet</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Upload your first photo to start tracking your progress
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const handleCopyViewLink = async (photoId: string) => {
+    const url = `${window.location.origin}/api/progress/photos/${photoId}/view`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({
+        title: "Link copied",
+        description: "View link copied to clipboard.",
+      });
+    } catch {
+      toast({
+        title: "Copy failed",
+        description: "Unable to copy the link. Try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <Card>
@@ -170,15 +289,162 @@ export function ProgressPhotoTimeline({
         <CardDescription>Your fitness journey timeline</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="text-xs text-muted-foreground">
+            {photos.length} photo{photos.length === 1 ? "" : "s"} uploaded
+          </div>
+          <Dialog open={timelapseOpen} onOpenChange={setTimelapseOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Film className="h-4 w-4 mr-2" />
+                Play timelapse
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Progress Timelapse</DialogTitle>
+                <DialogDescription>
+                  Watch your progress evolve from oldest to newest.
+                </DialogDescription>
+              </DialogHeader>
+
+              {timelapsePhotos.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                  Add more progress photos to generate a timelapse.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="relative bg-muted rounded-lg overflow-hidden aspect-[4/5]">
+                    {timelapsePhoto?.url ? (
+                      <img
+                        src={timelapsePhoto.url}
+                        alt="Timelapse frame"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                        Image unavailable
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-4">
+                      <p className="text-white text-sm font-medium">
+                        {timelapsePhoto
+                          ? format(
+                              new Date(timelapsePhoto.uploadDate),
+                              "MMMM d, yyyy",
+                            )
+                          : ""}
+                      </p>
+                      <p className="text-white/80 text-xs">
+                        Frame {timelapseIndex + 1} of{" "}
+                        {timelapsePhotos.length}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setTimelapsePlaying((prev) => !prev)}
+                      >
+                        {timelapsePlaying ? (
+                          <>
+                            <Pause className="h-4 w-4 mr-2" /> Pause
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-4 w-4 mr-2" /> Play
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          setTimelapseIndex((prev) =>
+                            prev === 0 ? timelapsePhotos.length - 1 : prev - 1,
+                          )
+                        }
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          setTimelapseIndex((prev) =>
+                            prev + 1 >= timelapsePhotos.length ? 0 : prev + 1,
+                          )
+                        }
+                      >
+                        Next
+                      </Button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        Speed
+                      </span>
+                      <Select
+                        value={timelapseSpeed}
+                        onValueChange={setTimelapseSpeed}
+                      >
+                        <SelectTrigger size="sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="500">0.5s</SelectItem>
+                          <SelectItem value="1000">1s</SelectItem>
+                          <SelectItem value="1500">1.5s</SelectItem>
+                          <SelectItem value="2000">2s</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+        </div>
         {viewMode === "timeline" ? (
           <>
             {/* Main Photo Display */}
             <div className="relative bg-muted rounded-lg overflow-hidden h-96">
-              <img
-                src={currentPhoto.url}
-                alt="Progress photo"
-                className="w-full h-full object-cover"
-              />
+              {currentPhoto.url ? (
+                <img
+                  src={currentPhoto.url}
+                  alt="Progress photo"
+                  className="w-full h-full object-cover"
+                  onLoad={() => {
+                    setImageLoaded(true);
+                    if (isDev) {
+                      console.info("Progress image loaded", {
+                        id: currentPhoto.id,
+                        url: currentPhoto.url,
+                      });
+                    }
+                  }}
+                  onError={(event) => {
+                    if (isDev) {
+                      const target = event.currentTarget;
+                      console.error("Progress image failed to load", {
+                        id: currentPhoto.id,
+                        url: currentPhoto.url,
+                        currentSrc: target.currentSrc,
+                        naturalWidth: target.naturalWidth,
+                        naturalHeight: target.naturalHeight,
+                      });
+                    }
+                    setImageLoadError("Unable to load this image in-page.");
+                  }}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  Image unavailable
+                </div>
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-4">
                 <p className="text-white text-sm font-medium">
                   {format(new Date(currentPhoto.uploadDate), "MMMM d, yyyy")}
@@ -199,6 +465,47 @@ export function ProgressPhotoTimeline({
                   {currentPhoto.notes}
                 </p>
               </div>
+            )}
+
+            {currentPhoto.bodyParts?.length ? (
+              <div className="bg-muted/50 rounded-lg p-3 border border-border">
+                <p className="text-sm font-medium mb-2">
+                  Worked body parts
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {currentPhoto.bodyParts.map((part) => (
+                    <Badge key={part} variant="secondary">
+                      {part.replace(/-/g, " ")}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {imageLoadError && (
+              <p className="text-xs text-muted-foreground">
+                {imageLoadError}
+              </p>
+            )}
+            {isDev && currentPhoto.url && (
+              <p className="text-xs text-muted-foreground">
+                {imageLoaded ? "Image loaded in-page" : "Image not loaded yet"}
+              </p>
+            )}
+
+            {isDev && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleCopyViewLink(currentPhoto.id)}
+              >
+                Copy view link
+              </Button>
+            )}
+            {isDev && currentPhoto.url && (
+              <p className="text-xs text-muted-foreground break-all">
+                {currentPhoto.url}
+              </p>
             )}
 
             {/* Navigation */}
@@ -238,11 +545,17 @@ export function ProgressPhotoTimeline({
                       : "border-border hover:border-muted-foreground"
                   }`}
                 >
-                  <img
-                    src={photo.url}
-                    alt={`Progress photo ${index + 1}`}
-                    className="w-16 h-20 object-cover"
-                  />
+                  {photo.url ? (
+                    <img
+                      src={photo.url}
+                      alt={`Progress photo ${index + 1}`}
+                      className="w-16 h-20 object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-20 w-16 items-center justify-center bg-muted text-[10px] text-muted-foreground">
+                      N/A
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -275,15 +588,21 @@ export function ProgressPhotoTimeline({
           </>
         ) : (
           // Grid View
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {photos.map((photo) => (
-              <div key={photo.id} className="relative group">
-                <div className="aspect-square rounded-lg overflow-hidden bg-muted">
-                  <img
-                    src={photo.url}
-                    alt="Progress photo"
-                    className="w-full h-full object-cover"
-                  />
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {photos.map((photo) => (
+                <div key={photo.id} className="relative group">
+                  <div className="aspect-square rounded-lg overflow-hidden bg-muted">
+                  {photo.url ? (
+                    <img
+                      src={photo.url}
+                      alt="Progress photo"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                      Image unavailable
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       variant="ghost"
@@ -298,6 +617,15 @@ export function ProgressPhotoTimeline({
                 <p className="text-xs text-muted-foreground mt-1">
                   {format(new Date(photo.uploadDate), "MMM d, yyyy")}
                 </p>
+                {isDev && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleCopyViewLink(photo.id)}
+                  >
+                    Copy view link
+                  </Button>
+                )}
               </div>
             ))}
           </div>

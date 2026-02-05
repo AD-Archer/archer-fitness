@@ -30,7 +30,7 @@ generate:
     infisical run npx prisma generate
 
 db-push:
-    infisical run npx prisma db push
+    infisical run npx prisma generate && infisical run npx prisma db push
 
 # Run Prisma migrations
 migrate:
