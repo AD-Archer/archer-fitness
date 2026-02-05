@@ -6,7 +6,6 @@ import { TodaysFocus } from "@/components/dashboard/todays-focus"
 import { WeightTracker } from "@/components/dashboard/weight-tracker"
 import { ScheduleOverview } from "@/components/dashboard/schedule-overview"
 import { RecoveryQuickLink } from "@/components/dashboard/recovery-quick-link"
-import { QuickStartWorkoutCard } from "@/components/dashboard/quick-start-workout-card"
 import { ProgressionNextNodeCard } from "@/components/dashboard/progression-next-node-card"
 import { ProgressionLeaderboardCard } from "@/components/dashboard/progression-leaderboard-card"
 
@@ -36,7 +35,6 @@ export function DashboardMainContent() {
           <TodaysFocus />
           <WeightTracker />
           <RecoveryQuickLink />
-          <QuickStartWorkoutCard />
         </div>
       </div>
     </>

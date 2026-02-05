@@ -64,7 +64,7 @@ export function ProgressionLeaderboardCard() {
     );
   }
 
-  const topPlayers = state.data.players.slice(0, 3);
+  const topPlayers = state.data.players.slice(0, 10); // Show up to 10 players with scroll
 
   return (
     <Card className="space-y-3 rounded-3xl border bg-card/70 p-4">
@@ -86,7 +86,7 @@ export function ProgressionLeaderboardCard() {
           Be the first to log XP and take the top spot.
         </p>
       ) : (
-        <div className="space-y-2">
+        <div className="max-h-48 overflow-y-auto space-y-2">
           {topPlayers.map((player) => (
             <div
               key={player.rank}
@@ -121,7 +121,7 @@ export function ProgressionLeaderboardCard() {
       )}
 
       <Button asChild variant="outline" className="w-full">
-        <Link href="/progression">
+        <Link href="/tree">
           <ArrowRight className="mr-2 h-4 w-4" /> View full tree
         </Link>
       </Button>
