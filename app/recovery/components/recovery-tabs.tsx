@@ -22,9 +22,10 @@ interface RecoveryTabsProps {
   recentSessions: RecentSession[]
   value?: string
   onValueChange?: (value: string) => void
+  onResolve?: () => void
 }
 
-export function RecoveryTabs({ bodyParts, trendData, summary, recentSessions, value, onValueChange }: RecoveryTabsProps) {
+export function RecoveryTabs({ bodyParts, trendData, summary, recentSessions, value, onValueChange, onResolve }: RecoveryTabsProps) {
   return (
     <Tabs value={value} onValueChange={onValueChange} defaultValue={value ? undefined : "status"} className="space-y-4">
       <TabsList className="w-full justify-start overflow-x-auto">
@@ -36,7 +37,7 @@ export function RecoveryTabs({ bodyParts, trendData, summary, recentSessions, va
       <TabsContent value="status" className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {bodyParts.map((part) => (
-            <BodyStatusCard key={part.bodyPart} part={part} />
+            <BodyStatusCard key={part.bodyPart} part={part} onResolve={onResolve} />
           ))}
           {bodyParts.length === 0 && (
             <div className="col-span-full">

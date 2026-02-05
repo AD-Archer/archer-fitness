@@ -90,10 +90,12 @@ model User {
   pushSubscriptions       PushSubscription[]
   completedDays           CompletedDay[]
   recoveryFeedbacks       RecoveryFeedback[]
+  dailyCheckIns           DailyCheckIn[]
   passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
   progressionNodes        ProgressionNodeProgress[]
   progressionProfile      ProgressionProfile?
+  progressPhotos          ProgressPhoto[]
 
   @@map("users")
 }
@@ -388,6 +390,37 @@ model RecoveryFeedback {
   @@index([userId])
   @@index([bodyPart])
   @@map("recovery_feedback")
+}
+
+model DailyCheckIn {
+  id          String              @id @default(cuid())
+  userId      String              @map("user_id")
+  date        DateTime
+  energyLevel Int                 @map("energy_level")
+  notes       String?
+  createdAt   DateTime            @default(now()) @map("created_at")
+  bodyPartChecks BodyPartCheck[]
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+  @@map("daily_check_in")
+}
+
+model BodyPartCheck {
+  id            String   @id @default(cuid())
+  checkInId     String   @map("check_in_id")
+  bodyPart      String   @map("body_part")
+  sorenessLevel Int      @map("soreness_level")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  checkIn DailyCheckIn @relation(fields: [checkInId], references: [id], onDelete: Cascade)
+
+  @@index([checkInId])
+  @@index([bodyPart])
+  @@map("body_part_check")
 }
 
 // Model to save workout progress when user exits mid-workout
@@ -696,4 +729,21 @@ model CompletedDay {
   @@unique([userId, date])
   @@index([userId, date])
   @@map("completed_days")
+}
+
+// Progress photos for tracking visual transformation
+model ProgressPhoto {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  imageUrl   String   @map("image_url") // URL to the stored image (S3 or local storage)
+  notes      String? // User's notes about this photo
+  uploadDate DateTime @map("upload_date") // When the photo was taken/marked
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, uploadDate(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("progress_photos")
 }

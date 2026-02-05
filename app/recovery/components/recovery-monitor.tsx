@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { AlertOctagon, RefreshCcw } from "lucide-react";
-import { parseISO } from "date-fns";
+import { parseISO, format } from "date-fns";
 
 import { useRecoveryData } from "@/hooks/use-recovery-data";
 import {
@@ -19,6 +19,10 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { RecoverySummary } from "./recovery-summary";
 import { SorenessDialog } from "./soreness-dialog";
 import { RecoveryTabs } from "./recovery-tabs";
+import { RecoveryBodyDiagram } from "./recovery-body-diagram";
+import { RecoveryCalendar } from "./recovery-calendar";
+import { DailyCheckIn } from "./daily-check-in";
+import { AllBodyPartsView } from "./all-body-parts-view";
 
 function getTrendData(parts: any[]) {
   const map = new Map<string, number>();
@@ -57,6 +61,7 @@ export function RecoveryMonitor() {
   } = useRecoveryData();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [bodyPartOptions, setBodyPartOptions] = useState<string[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -66,6 +71,60 @@ export function RecoveryMonitor() {
     () => (data ? getTrendData(data.bodyParts) : []),
     [data]
   );
+
+  // Calculate status for all body parts
+  const allBodyPartsStatus = useMemo(() => {
+    if (!data) return []
+    
+    const allBodyParts = [
+      "Chest", "Back", "Shoulders", "Biceps", "Triceps",
+      "Forearms", "Abs", "Quadriceps", "Hamstrings", "Glutes", "Calves"
+    ]
+
+    return allBodyParts.map(bodyPartName => {
+      const bodyPartData = data.bodyParts.find(
+        bp => bp.bodyPart.toLowerCase() === bodyPartName.toLowerCase()
+      )
+
+      if (!bodyPartData) {
+        return {
+          name: bodyPartName,
+          status: "ready" as const,
+        }
+      }
+
+      const hoursUntilReady = bodyPartData.hoursUntilNextEligible || 0
+      const recommendedRest = bodyPartData.recommendedRestHours || 48
+
+      let status: "ready" | "caution" | "rest" | "worked-recently"
+      
+      if (hoursUntilReady <= 0) {
+        status = "ready"
+      } else if (hoursUntilReady < 24) {
+        const lastWorkedDate = bodyPartData.lastWorkedDate ? new Date(bodyPartData.lastWorkedDate) : null
+        const hoursSinceWorked = lastWorkedDate 
+          ? Math.floor((Date.now() - lastWorkedDate.getTime()) / (1000 * 60 * 60))
+          : 999
+        
+        if (hoursSinceWorked < 12) {
+          status = "worked-recently"
+        } else {
+          status = "caution"
+        }
+      } else {
+        status = "rest"
+      }
+
+      return {
+        name: bodyPartName,
+        status,
+        lastWorked: bodyPartData.lastWorkedDate,
+        hoursUntilReady,
+        recommendedRest,
+        sets: bodyPartData.totalSets,
+      }
+    })
+  }, [data])
 
   // Fetch body part options for soreness dialog
   useEffect(() => {
@@ -97,29 +156,41 @@ export function RecoveryMonitor() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-32 w-full rounded-xl" />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Skeleton className="h-64 w-full rounded-xl" />
-          <Skeleton className="h-64 w-full rounded-xl" />
-          <Skeleton className="h-64 w-full rounded-xl" />
-        </div>
+      <div className="space-y-6 animate-pulse">
+        <Card>
+          <CardHeader>
+            <div className="h-6 w-48 bg-muted rounded" />
+            <div className="h-4 w-64 bg-muted rounded mt-2" />
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="h-20 bg-muted/50 rounded-lg" />
+            <div className="h-16 bg-muted/50 rounded-lg" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <div className="h-6 w-56 bg-muted rounded" />
+          </CardHeader>
+          <CardContent>
+            <div className="h-[500px] bg-muted/30 rounded-lg" />
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <Card className="border-destructive/40 bg-destructive/5">
+      <Card className="border-muted">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-destructive">
-            <AlertOctagon className="size-5" /> Unable to load recovery insights
+          <CardTitle className="flex items-center gap-2 text-muted-foreground">
+            <AlertOctagon className="size-5" /> Recovery data unavailable
           </CardTitle>
-          <CardDescription>{error ?? "Please try again"}</CardDescription>
+          <CardDescription>Check back after completing a workout session</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={refresh} variant="outline" className="mt-2">
-            <RefreshCcw className="mr-2 size-4" /> Retry
+          <Button onClick={refresh} variant="outline">
+            <RefreshCcw className="mr-2 size-4" /> Refresh
           </Button>
         </CardContent>
       </Card>
@@ -153,11 +224,34 @@ export function RecoveryMonitor() {
         </Card>
       )}
 
-      <RecoverySummary
-        summary={data.summary}
-        refreshing={refreshing}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <RecoverySummary
+            summary={data.summary}
+            refreshing={refreshing}
+            onRefresh={refresh}
+            onOpenDialog={() => setIsDialogOpen(true)}
+          />
+        </div>
+        <DailyCheckIn onComplete={refresh} />
+      </div>
+
+      <AllBodyPartsView bodyPartsStatus={allBodyPartsStatus} />
+
+      <RecoveryCalendar 
+        bodyParts={Array.from(new Set(data.bodyParts.map(bp => bp.bodyPart)))}
+        workoutHistory={data.recentSessions.map(session => ({
+          date: new Date(session.performedAt).toISOString().split('T')[0],
+          bodyParts: session.bodyParts
+        }))}
+        selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
+      />
+
+      <RecoveryBodyDiagram 
+        timeRange="7days" 
         onRefresh={refresh}
-        onOpenDialog={() => setIsDialogOpen(true)}
+        selectedDate={selectedDate}
       />
 
       <SorenessDialog
@@ -182,6 +276,7 @@ export function RecoveryMonitor() {
           params.set("tab", value);
           router.replace(`?${params.toString()}`, { scroll: false });
         }}
+        onResolve={refresh}
       />
     </div>
   );

@@ -1,4 +1,6 @@
 import { ProgressAnalytics } from "@/app/progress/components/progress-analytics"
+import { ProgressPhotoUpload } from "@/app/progress/components/progress-photo-upload"
+import { ProgressPhotoTimeline } from "@/app/progress/components/progress-photo-timeline"
 import { Sidebar } from "@/components/sidebar"
 
 export default function ProgressPage() {
@@ -15,7 +17,16 @@ export default function ProgressPage() {
             </p>
           </div>
 
-          <ProgressAnalytics />
+          <div className="space-y-8">
+            {/* Photo Upload and Timeline Section */}
+            <div className="grid gap-6 lg:grid-cols-2">
+              <ProgressPhotoUpload />
+              <ProgressPhotoTimeline />
+            </div>
+
+            {/* Analytics Section */}
+            <ProgressAnalytics />
+          </div>
         </div>
       </main>
     </div>

@@ -11,6 +11,7 @@ interface MuscleGroupData {
   value: number
   color: string
   totalSets: number
+  [key: string]: any
 }
 
 interface WorkoutSession {
