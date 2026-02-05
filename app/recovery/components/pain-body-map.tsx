@@ -95,7 +95,7 @@ export function PainBodyMap() {
       });
 
       setBodyParts(mapped);
-    } catch (err) {
+    } catch {
       toast({
         title: "Error loading pain data",
         description: "Unable to fetch your recovery feedback",
@@ -133,8 +133,7 @@ export function PainBodyMap() {
 
       // Refresh the data
       await fetchPainData();
-    } catch (err) {
-      console.error("Error resolving pain:", err);
+    } catch {
       toast({
         title: "Error",
         description: "Failed to resolve pain entry",

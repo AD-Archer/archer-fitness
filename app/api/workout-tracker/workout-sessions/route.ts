@@ -162,7 +162,18 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { workoutTemplateId, name, description, exercises } = body
+    const {
+      workoutTemplateId,
+      name,
+      description,
+      exercises,
+      startTime,
+      endTime,
+      duration,
+      status,
+      notes,
+      isArchived,
+    } = body
 
     if (!name) {
       return NextResponse.json(
@@ -178,6 +189,13 @@ export async function POST(request: NextRequest) {
       targetReps: string
       targetType: string
       notes?: string | null
+      sets?: Array<{
+        reps?: number | null
+        weight?: number | null
+        duration?: number | null
+        restTime?: number | null
+        notes?: string | null
+      }>
     }> = []
     const seenExerciseIds = new Set<string>()
 
@@ -242,8 +260,12 @@ export async function POST(request: NextRequest) {
         targetReps: ex.targetReps || "8-12",
         targetType: ex.targetType || "reps",
         notes: ex.notes ?? null,
+        sets: Array.isArray(ex.sets) ? ex.sets : undefined,
       })
     }
+
+    const parsedStartTime = startTime ? new Date(startTime) : new Date()
+    const parsedEndTime = endTime ? new Date(endTime) : undefined
 
     // Create the workout session
     const workoutSession = await prisma.workoutSession.create({
@@ -252,7 +274,12 @@ export async function POST(request: NextRequest) {
         workoutTemplateId,
         name,
         description,
-        startTime: new Date(), // Explicitly set startTime to current time
+        startTime: parsedStartTime,
+        endTime: parsedEndTime,
+        duration: typeof duration === "number" ? duration : undefined,
+        status: status || "active",
+        notes: notes || undefined,
+        isArchived: typeof isArchived === "boolean" ? isArchived : undefined,
         exercises: {
           create: resolvedExercises.map((ex, index) => ({
             exerciseId: ex.exerciseId,
@@ -261,6 +288,19 @@ export async function POST(request: NextRequest) {
             targetReps: ex.targetReps,
             targetType: ex.targetType,
             notes: ex.notes || undefined,
+            sets: ex.sets
+              ? {
+                  create: ex.sets.map((set: any, setIndex: number) => ({
+                    setNumber: setIndex + 1,
+                    reps: set.reps ?? null,
+                    weight: set.weight ?? null,
+                    duration: set.duration ?? null,
+                    restTime: set.restTime ?? null,
+                    completed: true,
+                    notes: set.notes ?? null,
+                  })),
+                }
+              : undefined,
           })),
         },
       },

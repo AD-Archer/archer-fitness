@@ -16,7 +16,7 @@ export async function POST(
     }
 
     const body = await request.json()
-  const { reps, weight, duration, notes } = body
+  const { reps, weight, duration, notes, restTime } = body
 
     if (!reps && !duration) {
       return NextResponse.json(
@@ -53,6 +53,7 @@ export async function POST(
     weight: weight === undefined || weight === "" ? null : weight,
         duration: duration ?? null,
         completed: true,
+        restTime: restTime ?? null,
         notes: notes ?? null,
       },
     })

@@ -96,6 +96,10 @@ model User {
   progressionNodes        ProgressionNodeProgress[]
   progressionProfile      ProgressionProfile?
   progressPhotos          ProgressPhoto[]
+  // New schedule system relations
+  dailyTemplates          DailyTemplate[]
+  weeklyTemplates         WeeklyTemplate[]
+  activeSchedules         ActiveSchedule[]
 
   @@map("users")
 }
@@ -197,6 +201,7 @@ model WorkoutTemplate {
   user            User?                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   exercises       WorkoutTemplateExercise[]
   workoutSessions WorkoutSession[]
+  dailyTemplates  DailyTemplate[]
 
   @@map("workout_templates")
 }
@@ -612,7 +617,96 @@ model WeightEntry {
   @@map("weight_entries")
 }
 
-// Schedule models
+// ============================================
+// NEW SCHEDULE SYSTEM - Simplified & Intuitive
+// ============================================
+
+// Daily Template: A single workout for one day (e.g., "Upper Body", "Leg Day", "Cardio")
+// Links to an existing WorkoutTemplate
+model DailyTemplate {
+  id                String   @id @default(cuid())
+  userId            String   @map("user_id")
+  name              String // e.g., "Upper Body Day", "Leg Day", "Rest Day"
+  workoutTemplateId String?  @map("workout_template_id") // null for rest days
+  cardioType        String?  @map("cardio_type") // "bike", "walk", "run", "jump_rope"
+  startTime         String   @default("09:00") // Preferred time HH:MM
+  duration          Int      @default(60) // Duration in minutes
+  color             String?  @default("#3b82f6") // Color for calendar display
+  isRestDay         Boolean  @default(false) @map("is_rest_day")
+  notes             String?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user            User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutTemplate WorkoutTemplate?        @relation(fields: [workoutTemplateId], references: [id], onDelete: SetNull)
+  weeklyDays      WeeklyTemplateDay[]
+
+  @@index([userId])
+  @@map("daily_templates")
+}
+
+// Weekly Template: 7 days made up of daily templates
+// e.g., "Push Pull Legs" = Mon: Push, Tue: Pull, Wed: Legs, Thu: Push, Fri: Pull, Sat: Legs, Sun: Rest
+model WeeklyTemplate {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  name        String // e.g., "Push Pull Legs", "Upper Lower Split"
+  description String?
+  isDefault   Boolean  @default(false)
+  isPublic    Boolean  @default(false)
+  usageCount  Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  days            WeeklyTemplateDay[]
+  activeSchedules ActiveSchedule[]
+
+  @@index([userId])
+  @@map("weekly_templates")
+}
+
+// Junction table: Which daily template is assigned to which day of the week
+model WeeklyTemplateDay {
+  id               String   @id @default(cuid())
+  weeklyTemplateId String   @map("weekly_template_id")
+  dailyTemplateId  String?  @map("daily_template_id") // null for unassigned/rest
+  dayOfWeek        Int // 0 = Sunday, 1 = Monday, ... 6 = Saturday
+  overrideTime     String? // Override the daily template's start time for this specific day
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  weeklyTemplate WeeklyTemplate @relation(fields: [weeklyTemplateId], references: [id], onDelete: Cascade)
+  dailyTemplate  DailyTemplate? @relation(fields: [dailyTemplateId], references: [id], onDelete: SetNull)
+
+  @@unique([weeklyTemplateId, dayOfWeek])
+  @@map("weekly_template_days")
+}
+
+// Active Schedule: A weekly template applied with start/end dates
+// This is what actually schedules workouts on the calendar
+model ActiveSchedule {
+  id               String    @id @default(cuid())
+  userId           String    @map("user_id")
+  weeklyTemplateId String    @map("weekly_template_id")
+  name             String? // Optional name override
+  startDate        DateTime // When this schedule starts
+  endDate          DateTime? // null = repeats forever until manually stopped
+  isActive         Boolean   @default(true) @map("is_active")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weeklyTemplate WeeklyTemplate @relation(fields: [weeklyTemplateId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isActive])
+  @@index([userId, startDate])
+  @@map("active_schedules")
+}
+
+// ============================================
+// LEGACY SCHEDULE MODELS (kept for migration)
+// ============================================
+
 model Schedule {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
