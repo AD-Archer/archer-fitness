@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatDistanceToNow, format } from "date-fns";
+import { logger } from "@/lib/logger";
 import {
   ChevronLeft,
   ChevronRight,
@@ -336,8 +337,7 @@ export function ProgressPhotoTimeline({
                           : ""}
                       </p>
                       <p className="text-white/80 text-xs">
-                        Frame {timelapseIndex + 1} of{" "}
-                        {timelapsePhotos.length}
+                        Frame {timelapseIndex + 1} of {timelapsePhotos.length}
                       </p>
                     </div>
                   </div>
@@ -420,7 +420,7 @@ export function ProgressPhotoTimeline({
                   onLoad={() => {
                     setImageLoaded(true);
                     if (isDev) {
-                      console.info("Progress image loaded", {
+                      logger.info("Progress image loaded", {
                         id: currentPhoto.id,
                         url: currentPhoto.url,
                       });
@@ -429,7 +429,7 @@ export function ProgressPhotoTimeline({
                   onError={(event) => {
                     if (isDev) {
                       const target = event.currentTarget;
-                      console.error("Progress image failed to load", {
+                      logger.error("Progress image failed to load", {
                         id: currentPhoto.id,
                         url: currentPhoto.url,
                         currentSrc: target.currentSrc,
@@ -469,9 +469,7 @@ export function ProgressPhotoTimeline({
 
             {currentPhoto.bodyParts?.length ? (
               <div className="bg-muted/50 rounded-lg p-3 border border-border">
-                <p className="text-sm font-medium mb-2">
-                  Worked body parts
-                </p>
+                <p className="text-sm font-medium mb-2">Worked body parts</p>
                 <div className="flex flex-wrap gap-2">
                   {currentPhoto.bodyParts.map((part) => (
                     <Badge key={part} variant="secondary">
@@ -483,9 +481,7 @@ export function ProgressPhotoTimeline({
             ) : null}
 
             {imageLoadError && (
-              <p className="text-xs text-muted-foreground">
-                {imageLoadError}
-              </p>
+              <p className="text-xs text-muted-foreground">{imageLoadError}</p>
             )}
             {isDev && currentPhoto.url && (
               <p className="text-xs text-muted-foreground">
@@ -578,7 +574,7 @@ export function ProgressPhotoTimeline({
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={() => handleDeletePhoto(currentPhoto.id)}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    className="bg-destructive text-white hover:bg-destructive/90"
                   >
                     Delete
                   </AlertDialogAction>
@@ -588,10 +584,10 @@ export function ProgressPhotoTimeline({
           </>
         ) : (
           // Grid View
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {photos.map((photo) => (
-                <div key={photo.id} className="relative group">
-                  <div className="aspect-square rounded-lg overflow-hidden bg-muted">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {photos.map((photo) => (
+              <div key={photo.id} className="relative group">
+                <div className="aspect-square rounded-lg overflow-hidden bg-muted">
                   {photo.url ? (
                     <img
                       src={photo.url}

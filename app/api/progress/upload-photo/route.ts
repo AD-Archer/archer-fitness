@@ -5,7 +5,10 @@ import { prisma } from "@/lib/prisma";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
-import { isAppwriteConfigured, uploadProgressPhotoToAppwrite } from "@/lib/appwrite";
+import {
+  isAppwriteConfigured,
+  uploadProgressPhotoToAppwrite,
+} from "@/lib/appwrite";
 import { logger } from "@/lib/logger";
 import heicConvert from "heic-convert";
 import { encryptPhotoBuffer } from "@/lib/photo-encryption";
@@ -156,7 +159,20 @@ export async function POST(request: NextRequest) {
         fileIv,
         fileMimeType,
         encryptionVersion: 1,
-        uploadDate: uploadDate ? new Date(uploadDate) : new Date(),
+        uploadDate: uploadDate
+          ? (() => {
+              // If the value is a bare date like "2026-02-05" or "2026-02-05T12:00:00" (no Z/offset),
+              // parse it as local server time so the calendar day is preserved.
+              const isPlainDate =
+                /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?$/.test(uploadDate);
+              if (isPlainDate) {
+                const [datePart] = uploadDate.split("T");
+                const [y, m, d] = datePart.split("-").map(Number);
+                return new Date(y, m - 1, d, 12, 0, 0, 0);
+              }
+              return new Date(uploadDate);
+            })()
+          : new Date(),
       },
     });
 

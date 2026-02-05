@@ -30,6 +30,7 @@ interface BodyDiagramProps {
 const getIntensityColor = (
   intensity: "none" | "light" | "moderate" | "heavy",
   colors?: string[],
+  defaultFill?: string,
 ) => {
   const defaultColors = colors || ["#eab308", "#f97316", "#ef4444"];
 
@@ -41,7 +42,7 @@ const getIntensityColor = (
     case "light":
       return defaultColors[0];
     case "none":
-      return "#6b7280";
+      return defaultFill || "#6b7280";
   }
 };
 
@@ -69,6 +70,11 @@ export function BodyDiagram({
   const config = sizeConfig[size];
 
   // Memoize slug normalization to avoid recreating on every render
+  // Maps our internal slugs to the library's actual Slug type values:
+  // "abs" | "adductors" | "ankles" | "biceps" | "calves" | "chest" |
+  // "deltoids" | "feet" | "forearm" | "gluteal" | "hamstring" | "hands" |
+  // "head" | "knees" | "lower-back" | "neck" | "obliques" | "quadriceps" |
+  // "tibialis" | "trapezius" | "triceps" | "upper-back"
   const slugNormalization = useMemo<Record<string, string>>(
     () => ({
       back: "upper-back",
@@ -79,10 +85,10 @@ export function BodyDiagram({
       shoulders: "deltoids",
       shoulder: "deltoids",
       "shoulder-deltoids": "deltoids",
-      "front deltoids": "front-deltoids",
-      "front-deltoids": "front-deltoids",
-      "back deltoids": "back-deltoids",
-      "back-deltoids": "back-deltoids",
+      "front deltoids": "deltoids",
+      "front-deltoids": "deltoids",
+      "back deltoids": "deltoids",
+      "back-deltoids": "deltoids",
       legs: "quadriceps",
       leg: "quadriceps",
       quads: "quadriceps",
@@ -91,25 +97,25 @@ export function BodyDiagram({
       glutes: "gluteal",
       gluteal: "gluteal",
       glute: "gluteal",
-      calves: "calf",
-      calf: "calf",
-      forearm: "forearms",
-      forearms: "forearms",
+      calves: "calves",
+      calf: "calves",
+      // Library uses singular "forearm"
+      forearms: "forearm",
+      forearm: "forearm",
+      wrist: "forearm",
+      wrists: "forearm",
+      neck: "neck",
+      ankles: "ankles",
+      ankle: "ankles",
+      lats: "upper-back",
+      latissimus: "upper-back",
     }),
     [],
   );
 
   // Memoize slug sets to avoid recreating on every render
   const backOnlySlugs = useMemo(
-    () =>
-      new Set([
-        "upper-back",
-        "lower-back",
-        "lats",
-        "back-deltoids",
-        "trapezius",
-        "triceps", // Can be on back, but library may treat it differently
-      ]),
+    () => new Set(["upper-back", "lower-back", "trapezius"]),
     [],
   );
 
@@ -117,36 +123,40 @@ export function BodyDiagram({
     () =>
       new Set([
         "chest",
-        "front-deltoids",
         "biceps",
-        "forearms",
+        "forearm",
         "abs",
         "quadriceps",
-        "quads",
+        "neck",
+        "obliques",
       ]),
     [],
   );
 
   // Map body parts to the library's ExtendedBodyPart format
+  // Only include parts that are actually worked (intensity > none)
+  // so the library renders unworked parts in its default gray
   const highlightedParts = useMemo(() => {
-    return bodyParts.map((part) => {
-      const normalizedSlug =
-        slugNormalization[String(part.slug).toLowerCase()] ||
-        String(part.slug).toLowerCase();
-      return {
-        slug: normalizedSlug as any,
-        intensity:
-          part.intensity === "heavy"
-            ? 3
-            : part.intensity === "moderate"
-              ? 2
-              : part.intensity === "light"
-                ? 1
-                : 0,
-        color: getIntensityColor(part.intensity, colors),
-      };
-    });
-  }, [bodyParts, colors, slugNormalization]);
+    return bodyParts
+      .filter((part) => part.intensity !== "none")
+      .map((part) => {
+        const normalizedSlug =
+          slugNormalization[String(part.slug).toLowerCase()] ||
+          String(part.slug).toLowerCase();
+        return {
+          slug: normalizedSlug as any,
+          intensity:
+            part.intensity === "heavy"
+              ? 3
+              : part.intensity === "moderate"
+                ? 2
+                : part.intensity === "light"
+                  ? 1
+                  : 0,
+          color: getIntensityColor(part.intensity, colors, defaultFill),
+        };
+      });
+  }, [bodyParts, colors, slugNormalization, defaultFill]);
 
   // Filter body parts based on view
   const frontParts = useMemo(() => {
@@ -347,7 +357,9 @@ export function BodyDiagram({
               className="w-3 h-3 rounded-full shadow-sm"
               style={{ backgroundColor: defaultFill }}
             ></div>
-            <span className="text-muted-foreground font-medium">Not Worked</span>
+            <span className="text-muted-foreground font-medium">
+              Not Worked
+            </span>
           </div>
         </div>
       )}

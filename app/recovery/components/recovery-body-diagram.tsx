@@ -23,6 +23,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getBodyPartSlug } from "../../progress/components/body-part-mappings";
 
 interface WorkoutBodyPart {
   name: string;
@@ -83,6 +84,10 @@ export function RecoveryBodyDiagram({
   const [painFeedback, setPainFeedback] = useState<PainFeedback[]>([]);
   const [sorenessData, setSorenessData] = useState<BodyPartCheck[]>([]);
   const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
+  const [detailedRecoveryStatus, setDetailedRecoveryStatus] = useState<
+    BodyPartRecoveryStatus[]
+  >([]);
+  const [mappedParts, setMappedParts] = useState<WorkoutBodyPart[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -144,9 +149,10 @@ export function RecoveryBodyDiagram({
     try {
       setLoading(true);
 
-      // Fetch workout data
+      // Fetch detailed workout session data (like the progress page does)
+      const daysBack = timeRange === "30days" ? 30 : 7;
       const workoutResponse = await fetch(
-        `/api/workout-tracker/body-part-summary?timeRange=${timeRange}`,
+        `/api/workout-tracker/workout-sessions?timeRange=${daysBack}days`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -155,10 +161,159 @@ export function RecoveryBodyDiagram({
       );
 
       if (!workoutResponse.ok) {
-        throw new Error("Failed to fetch body part workout data");
+        throw new Error("Failed to fetch workout session data");
       }
 
-      const workoutData = await workoutResponse.json();
+      const workoutSessions = await workoutResponse.json();
+      const sessionList = Array.isArray(workoutSessions) ? workoutSessions : [];
+
+      // Extract detailed muscle information from workout sessions
+      const muscleMap = new Map<
+        string,
+        {
+          name: string;
+          intensity: "none" | "light" | "moderate" | "heavy";
+          lastWorked?: string;
+          sets?: number;
+          sessionCount?: number;
+          slug?: string;
+        }
+      >();
+
+      for (const session of sessionList) {
+        for (const ex of session.exercises || []) {
+          // Use detailed muscle names like the progress page
+          for (const m of ex.exercise?.muscles || []) {
+            if (m.muscle?.name) {
+              const muscleName = m.muscle.name;
+
+              if (!muscleMap.has(muscleName)) {
+                muscleMap.set(muscleName, {
+                  name: muscleName,
+                  intensity: "none",
+                  sets: 0,
+                  sessionCount: 0,
+                });
+              }
+
+              const data = muscleMap.get(muscleName)!;
+              data.sets = (data.sets || 0) + (ex.completedSets || 0);
+              data.sessionCount = (data.sessionCount || 0) + 1;
+              data.lastWorked = session.startTime;
+
+              // Calculate intensity based on sets and frequency
+              const intensity =
+                (data.sets || 0) > 15
+                  ? "heavy"
+                  : (data.sets || 0) > 9
+                    ? "moderate"
+                    : "light";
+              data.intensity = intensity as "light" | "moderate" | "heavy";
+            }
+          }
+        }
+      }
+
+      const muscleData = Array.from(muscleMap.values());
+
+      // Calculate recovery status for detailed muscles
+      const allMuscleNames = [
+        "chest",
+        "pectorals",
+        "back",
+        "lats",
+        "shoulders",
+        "deltoids",
+        "biceps",
+        "triceps",
+        "forearms",
+        "abs",
+        "obliques",
+        "quadriceps",
+        "quads",
+        "hamstrings",
+        "glutes",
+        "calves",
+        "trapezius",
+        "rhomboids",
+      ];
+
+      const detailedRecoveryStatus = allMuscleNames.map((muscleName) => {
+        const muscleWorkoutData = muscleData.find(
+          (m) =>
+            m.name.toLowerCase().includes(muscleName) ||
+            muscleName.includes(m.name.toLowerCase()),
+        );
+
+        if (!muscleWorkoutData || !muscleWorkoutData.lastWorked) {
+          return {
+            name: muscleName,
+            status: "ready" as const,
+          };
+        }
+
+        const lastWorked = new Date(muscleWorkoutData.lastWorked);
+        const now = new Date();
+        const hoursSinceLast = Math.max(
+          0,
+          (now.getTime() - lastWorked.getTime()) / (1000 * 60 * 60),
+        );
+
+        // Get recommended rest based on muscle group size
+        const getRecommendedRest = (muscle: string): number => {
+          const muscleLower = muscle.toLowerCase();
+
+          // Large Muscle Groups: 48-72 hours
+          if (
+            muscleLower.includes("back") ||
+            muscleLower.includes("chest") ||
+            muscleLower.includes("pectorals") ||
+            muscleLower.includes("lats") ||
+            muscleLower.includes("quadriceps") ||
+            muscleLower.includes("quads") ||
+            muscleLower.includes("hamstrings") ||
+            muscleLower.includes("hamstring") ||
+            muscleLower.includes("glutes") ||
+            muscleLower.includes("gluteal")
+          ) {
+            return 60; // 48-72h range, use 60h as middle
+          }
+
+          // Core/Abs: 24-48 hours
+          if (
+            muscleLower.includes("abs") ||
+            muscleLower.includes("obliques") ||
+            muscleLower.includes("core")
+          ) {
+            return 36; // 24-48h range, use 36h as middle
+          }
+
+          // Small Muscle Groups: 24-48 hours
+          // (biceps, triceps, calves, shoulders, forearms)
+          return 36; // 24-48h range, use 36h as middle
+        };
+
+        const recommendedRest = getRecommendedRest(muscleName);
+        const hoursUntilReady = Math.max(0, recommendedRest - hoursSinceLast);
+
+        let status: "ready" | "caution" | "rest" | "worked-recently";
+        if (hoursUntilReady <= 0) {
+          status = "ready";
+        } else if (hoursUntilReady < 24) {
+          status = "caution";
+        } else {
+          status = "rest";
+        }
+
+        return {
+          name: muscleName,
+          status,
+          lastWorked: muscleWorkoutData.lastWorked,
+          hoursUntilReady,
+          recommendedRest,
+          sets: muscleWorkoutData.sets,
+        };
+      });
 
       // Fetch pain feedback
       const painResponse = await fetch("/api/recovery/feedback");
@@ -188,31 +343,46 @@ export function RecoveryBodyDiagram({
         }
       }
 
-      // Fetch recent sessions from recovery API
-      const recoveryResponse = await fetch("/api/recovery");
-      let sessionsData: RecentSession[] = [];
-      if (recoveryResponse.ok) {
-        const recoveryData = await recoveryResponse.json();
-        sessionsData = recoveryData.recentSessions || [];
-      }
+      // Use recent workout sessions from the detailed data we already fetched
+      const sessionsData: RecentSession[] = sessionList
+        .slice(0, 5) // Limit to 5 most recent
+        .map((session: any) => {
+          // Extract detailed muscle names for each session
+          const muscles = new Set<string>();
 
-      // Map body parts to include slug - keep workout and pain separate
-      const mappedParts = (workoutData.bodyParts || []).map(
-        (part: WorkoutBodyPart) => {
-          const slug =
-            part.slug || part.name.toLowerCase().replace(/\s+/g, "_");
+          for (const ex of session.exercises || []) {
+            for (const m of ex.exercise?.muscles || []) {
+              if (m.muscle?.name) {
+                muscles.add(m.muscle.name);
+              }
+            }
+          }
 
           return {
-            ...part,
-            slug,
+            id: session.id,
+            name: session.workoutTemplate?.name || "Workout",
+            performedAt: session.startTime,
+            durationMinutes: session.durationMinutes,
+            bodyParts: Array.from(muscles), // Use detailed muscle names
           };
-        },
-      );
+        });
 
-      setBodyParts(mappedParts);
+      // Map detailed muscle data to include slug for body diagram
+      const mappedPartsData = muscleData.map((muscle: any) => {
+        const slug = getBodyPartSlug(muscle.name);
+
+        return {
+          ...muscle,
+          slug,
+        };
+      });
+
+      setBodyParts(mappedPartsData);
+      setMappedParts(mappedPartsData);
       setPainFeedback(painData);
       setSorenessData(sorenessCheckData);
       setRecentSessions(sessionsData);
+      setDetailedRecoveryStatus(detailedRecoveryStatus);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load workout data",
@@ -309,6 +479,7 @@ export function RecoveryBodyDiagram({
     if (!selectedDate) {
       return {
         filteredBodyParts: bodyParts,
+        filteredMuscleData: mappedParts,
         filteredPainFeedback: painFeedback,
         filteredSoreness: sorenessData,
         filteredSessions: recentSessions,
@@ -321,6 +492,15 @@ export function RecoveryBodyDiagram({
     const filteredParts = bodyParts.filter((part) => {
       if (!part.lastWorked) return false;
       const lastWorkedDate = new Date(part.lastWorked)
+        .toISOString()
+        .split("T")[0];
+      return lastWorkedDate === selectedDateString;
+    });
+
+    // Filter muscle data by lastWorked date for workout view
+    const filteredMuscleData = mappedParts.filter((muscle) => {
+      if (!muscle.lastWorked) return false;
+      const lastWorkedDate = new Date(muscle.lastWorked)
         .toISOString()
         .split("T")[0];
       return lastWorkedDate === selectedDateString;
@@ -353,11 +533,19 @@ export function RecoveryBodyDiagram({
 
     return {
       filteredBodyParts: filteredParts,
+      filteredMuscleData: filteredMuscleData,
       filteredPainFeedback: filteredPain,
       filteredSoreness: filteredSoreness,
       filteredSessions: filteredSessions,
     };
-  }, [bodyParts, painFeedback, sorenessData, recentSessions, selectedDate]);
+  }, [
+    bodyParts,
+    painFeedback,
+    sorenessData,
+    recentSessions,
+    mappedParts,
+    selectedDate,
+  ]);
 
   // Get sessions to display (all for today, filtered for historical dates)
   const displaySessions = React.useMemo(() => {
@@ -443,58 +631,60 @@ export function RecoveryBodyDiagram({
     });
 
   // Create recovery body parts for visualization from recovery status
-  const recoveryBodyParts: WorkoutBodyPart[] = recoveryStatus.map((status) => {
-    // Normalize the body part name to match the diagram slugs
-    const normalizedName = status.name.toLowerCase().trim();
-    let slug = normalizedName.replace(/\s+/g, "-");
+  const recoveryBodyParts: WorkoutBodyPart[] = detailedRecoveryStatus.map(
+    (status) => {
+      // Normalize the body part name to match the diagram slugs
+      const normalizedName = status.name.toLowerCase().trim();
+      let slug = normalizedName.replace(/\s+/g, "-");
 
-    // Map common variations to diagram slugs
-    const slugMapping: Record<string, string> = {
-      chest: "chest",
-      back: "upper-back",
-      "lower-back": "lower-back",
-      "upper-back": "upper-back",
-      shoulders: "deltoids",
-      shoulder: "deltoids",
-      biceps: "biceps",
-      triceps: "triceps",
-      arms: "biceps",
-      forearms: "forearms",
-      core: "abs",
-      abs: "abs",
-      legs: "quadriceps",
-      quads: "quadriceps",
-      quadriceps: "quadriceps",
-      hamstrings: "hamstring",
-      glutes: "gluteal",
-      glute: "gluteal",
-      butt: "gluteal",
-      calves: "calf",
-    };
+      // Map common variations to diagram slugs
+      const slugMapping: Record<string, string> = {
+        chest: "chest",
+        back: "upper-back",
+        "lower-back": "lower-back",
+        "upper-back": "upper-back",
+        shoulders: "deltoids",
+        shoulder: "deltoids",
+        biceps: "biceps",
+        triceps: "triceps",
+        arms: "biceps",
+        forearms: "forearms",
+        core: "abs",
+        abs: "abs",
+        legs: "quadriceps",
+        quads: "quadriceps",
+        quadriceps: "quadriceps",
+        hamstrings: "hamstring",
+        glutes: "gluteal",
+        glute: "gluteal",
+        butt: "gluteal",
+        calves: "calf",
+      };
 
-    slug = slugMapping[slug] || slug;
+      slug = slugMapping[slug] || slug;
 
-    // Map recovery status to intensity (for color mapping)
-    // Green = ready (light), Yellow = caution (moderate), Red = rest/worked-recently (heavy)
-    let intensity: "none" | "light" | "moderate" | "heavy" = "none";
-    if (status.status === "ready") {
-      intensity = "light"; // Will map to colors[0] = green
-    } else if (status.status === "caution") {
-      intensity = "moderate"; // Will map to colors[1] = yellow
-    } else if (
-      status.status === "rest" ||
-      status.status === "worked-recently"
-    ) {
-      intensity = "heavy"; // Will map to colors[2] = red
-    }
+      // Map recovery status to intensity (for color mapping)
+      // Green = ready (light), Yellow = caution (moderate), Red = rest/worked-recently (heavy)
+      let intensity: "none" | "light" | "moderate" | "heavy" = "none";
+      if (status.status === "ready") {
+        intensity = "light"; // Will map to colors[0] = green
+      } else if (status.status === "caution") {
+        intensity = "moderate"; // Will map to colors[1] = yellow
+      } else if (
+        status.status === "rest" ||
+        status.status === "worked-recently"
+      ) {
+        intensity = "heavy"; // Will map to colors[2] = red
+      }
 
-    return {
-      name: status.name,
-      slug,
-      intensity,
-      sets: status.sets,
-    };
-  });
+      return {
+        name: status.name,
+        slug,
+        intensity,
+        sets: status.sets,
+      };
+    },
+  );
 
   return (
     <Card>
@@ -587,7 +777,7 @@ export function RecoveryBodyDiagram({
             key={`body-diagram-${selectedDate?.toISOString() || "today"}-${activeView}`}
             bodyParts={
               activeView === "workout"
-                ? filteredData.filteredBodyParts
+                ? filteredData.filteredMuscleData // Use filtered muscle data that updates with date
                 : activeView === "recovery"
                   ? recoveryBodyParts
                   : sorenessBodyParts
@@ -625,7 +815,7 @@ export function RecoveryBodyDiagram({
             </div>
           )}
 
-        {activeView === "recovery" && recoveryStatus.length === 0 && (
+        {activeView === "recovery" && detailedRecoveryStatus.length === 0 && (
           <div className="text-center py-6">
             <CheckCircle2 className="size-10 mx-auto text-emerald-500 mb-2" />
             <p className="text-sm font-medium text-muted-foreground">
@@ -754,10 +944,10 @@ export function RecoveryBodyDiagram({
                     Recommended Focus
                   </span>
                 </div>
-                {recoveryStatus.filter((s) => s.status === "ready").length >
-                0 ? (
+                {detailedRecoveryStatus.filter((s) => s.status === "ready")
+                  .length > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {recoveryStatus
+                    {detailedRecoveryStatus
                       .filter((s) => s.status === "ready")
                       .slice(0, 5)
                       .map((part) => (
@@ -777,7 +967,7 @@ export function RecoveryBodyDiagram({
               </div>
 
               {/* Next Up After Rest */}
-              {recoveryStatus.filter(
+              {detailedRecoveryStatus.filter(
                 (s) => s.status === "rest" || s.status === "caution",
               ).length > 0 && (
                 <div className="p-4 rounded-lg border">
@@ -785,7 +975,7 @@ export function RecoveryBodyDiagram({
                     Next up after rest:
                   </p>
                   <div className="grid gap-2 sm:grid-cols-2">
-                    {recoveryStatus
+                    {detailedRecoveryStatus
                       .filter(
                         (s) => s.status === "rest" || s.status === "caution",
                       )
@@ -818,7 +1008,7 @@ export function RecoveryBodyDiagram({
                 Detailed recovery status for each muscle group.
               </p>
               <div className="grid gap-2 sm:grid-cols-2">
-                {recoveryStatus.map((part) => {
+                {detailedRecoveryStatus.map((part) => {
                   const statusColors = {
                     ready: {
                       bg: "bg-emerald-50 dark:bg-emerald-950/20",
