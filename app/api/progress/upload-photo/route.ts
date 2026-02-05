@@ -8,6 +8,7 @@ import { existsSync } from "fs";
 import { isAppwriteConfigured, uploadProgressPhotoToAppwrite } from "@/lib/appwrite";
 import { logger } from "@/lib/logger";
 import heicConvert from "heic-convert";
+import { encryptPhotoBuffer } from "@/lib/photo-encryption";
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,6 +57,8 @@ export async function POST(request: NextRequest) {
     let publicUrl = "";
     let storageProvider: "local" | "appwrite" = "local";
     let storageFileId: string | null = null;
+    let fileIv: string | null = null;
+    let fileMimeType: string | null = file.type || null;
 
     const isHeic =
       file.type === "image/heic" ||
@@ -73,6 +76,7 @@ export async function POST(request: NextRequest) {
         });
         uploadBuffer = Buffer.from(converted);
         filename = filename.replace(/\.(heic|heif)$/i, ".jpg");
+        fileMimeType = "image/jpeg";
       } catch (error) {
         logger.error("Failed to convert HEIC image", error);
         return NextResponse.json(
@@ -81,6 +85,10 @@ export async function POST(request: NextRequest) {
         );
       }
     }
+
+    const encrypted = await encryptPhotoBuffer(uploadBuffer, user.id);
+    uploadBuffer = encrypted.ciphertext;
+    fileIv = encrypted.iv;
 
     if (isAppwriteConfigured()) {
       logger.info("Uploading progress photo to Appwrite", {
@@ -145,6 +153,9 @@ export async function POST(request: NextRequest) {
         storageFileId,
         notes: notes || null,
         bodyParts: Array.isArray(bodyParts) ? bodyParts : [],
+        fileIv,
+        fileMimeType,
+        encryptionVersion: 1,
         uploadDate: uploadDate ? new Date(uploadDate) : new Date(),
       },
     });
@@ -155,8 +166,9 @@ export async function POST(request: NextRequest) {
         success: true,
         photo: {
           id: progressPhoto.id,
-          url:
-            progressPhoto.storageProvider === "appwrite"
+          url: progressPhoto.fileIv
+            ? `/api/progress/photos/${progressPhoto.id}/view`
+            : progressPhoto.storageProvider === "appwrite"
               ? `/api/progress/photos/${progressPhoto.id}/view`
               : progressPhoto.imageUrl,
           notes: progressPhoto.notes,

@@ -41,8 +41,9 @@ export async function GET() {
         success: true,
         photos: photos.map((photo) => ({
           id: photo.id,
-          url:
-            photo.storageProvider === "appwrite" && photo.storageFileId
+          url: photo.fileIv
+            ? `/api/progress/photos/${photo.id}/view`
+            : photo.storageProvider === "appwrite" && photo.storageFileId
               ? `/api/progress/photos/${photo.id}/view`
               : photo.imageUrl,
           notes: photo.notes,

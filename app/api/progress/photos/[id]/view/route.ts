@@ -4,6 +4,10 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getAppwriteFileView } from "@/lib/appwrite"
 import { logger } from "@/lib/logger"
+import { decryptPhotoBuffer } from "@/lib/photo-encryption"
+import { existsSync } from "fs"
+import { join } from "path"
+import { readFile } from "fs/promises"
 
 export async function GET(
   request: NextRequest,
@@ -38,21 +42,56 @@ export async function GET(
     }
 
     if (photo.storageProvider !== "appwrite" || !photo.storageFileId) {
-      return NextResponse.json(
-        { error: "Unsupported storage provider" },
-        { status: 400 },
+      if (photo.storageProvider !== "local") {
+        return NextResponse.json(
+          { error: "Unsupported storage provider" },
+          { status: 400 },
+        )
+      }
+    }
+
+    let fileBuffer: Buffer | null = null
+    let mimeType = photo.fileMimeType || "application/octet-stream"
+
+    if (photo.storageProvider === "appwrite" && photo.storageFileId) {
+      const file = await getAppwriteFileView(photo.storageFileId)
+      if (!file) {
+        return NextResponse.json(
+          { error: "Failed to fetch file" },
+          { status: 500 },
+        )
+      }
+      fileBuffer = file.buffer
+      mimeType = file.mimeType || mimeType
+    }
+
+    if (photo.storageProvider === "local") {
+      const filename = photo.imageUrl.split("/").pop()
+      const filepath = join(
+        process.cwd(),
+        "public",
+        "uploads",
+        "progress-photos",
+        filename || "",
       )
+      if (!filename || !existsSync(filepath)) {
+        return NextResponse.json({ error: "File not found" }, { status: 404 })
+      }
+      fileBuffer = await readFile(filepath)
     }
 
-    const file = await getAppwriteFileView(photo.storageFileId)
-    if (!file) {
-      return NextResponse.json({ error: "Failed to fetch file" }, { status: 500 })
+    if (!fileBuffer) {
+      return NextResponse.json({ error: "Failed to load file" }, { status: 500 })
     }
 
-    return new NextResponse(file.buffer, {
+    if (photo.fileIv) {
+      fileBuffer = await decryptPhotoBuffer(fileBuffer, photo.fileIv, user.id)
+    }
+
+    return new NextResponse(fileBuffer, {
       status: 200,
       headers: {
-        "Content-Type": file.mimeType,
+        "Content-Type": mimeType,
         "Cache-Control": "private, max-age=60",
       },
     })

@@ -59,6 +59,11 @@ model User {
   termsAccepted   Boolean   @default(false) @map("terms_accepted")
   termsAcceptedAt DateTime? @map("terms_accepted_at")
 
+  // Progress photo encryption key (server-wrapped)
+  progressPhotoKeyEnc String? @map("progress_photo_key_enc")
+  progressPhotoKeyIv  String? @map("progress_photo_key_iv")
+  progressPhotoKeyVersion Int? @default(1) @map("progress_photo_key_version")
+
   // Two-factor authentication
   twoFactorEnabled     Boolean  @default(false) @map("two_factor_enabled")
   twoFactorSecret      String?  @map("two_factor_secret")
@@ -834,6 +839,9 @@ model ProgressPhoto {
   storageFileId String? @map("storage_file_id")
   notes      String? // User's notes about this photo
   bodyParts  String[] @default([]) @map("body_parts")
+  fileIv     String?  @map("file_iv")
+  fileMimeType String? @map("file_mime_type")
+  encryptionVersion Int? @default(1) @map("encryption_version")
   uploadDate DateTime @map("upload_date") // When the photo was taken/marked
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
