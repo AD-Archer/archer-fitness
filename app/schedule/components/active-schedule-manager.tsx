@@ -10,6 +10,8 @@ import {
   CalendarCheck,
   Infinity,
   Clock,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -77,6 +79,7 @@ export function ActiveScheduleManager() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [scheduleToDelete, setScheduleToDelete] =
     useState<ActiveSchedule | null>(null);
+  const [showInactive, setShowInactive] = useState(true);
   const [formData, setFormData] = useState({
     weeklyTemplateId: "",
     name: "",
@@ -87,29 +90,20 @@ export function ActiveScheduleManager() {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    fetchActiveSchedules();
+    fetchActiveSchedules(false);
     fetchWeeklyTemplates();
   }, [fetchActiveSchedules, fetchWeeklyTemplates]);
 
   const openCreateDialog = () => {
-    const nextMonday = getNextMonday();
+    const today = new Date();
     setFormData({
       weeklyTemplateId: weeklyTemplates[0]?.id || "",
       name: "",
-      startDate: formatDateForAPI(nextMonday),
+      startDate: formatDateForAPI(today),
       hasEndDate: false,
       endDate: "",
     });
     setIsDialogOpen(true);
-  };
-
-  const getNextMonday = (): Date => {
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7 || 7;
-    const nextMonday = new Date(today);
-    nextMonday.setDate(today.getDate() + daysUntilMonday);
-    return nextMonday;
   };
 
   const handleSave = async () => {
@@ -171,18 +165,37 @@ export function ActiveScheduleManager() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Active Schedules</h2>
+          <h2 className="text-2xl font-bold">Schedules</h2>
           <p className="text-muted-foreground">
-            Activate your weekly templates to schedule workouts on your calendar
+            Manage your workout schedules and templates
           </p>
         </div>
-        <Button
-          onClick={openCreateDialog}
-          disabled={weeklyTemplates.length === 0}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Activate Schedule
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowInactive(!showInactive)}
+          >
+            {showInactive ? (
+              <>
+                <EyeOff className="h-4 w-4 mr-2" />
+                Hide Inactive
+              </>
+            ) : (
+              <>
+                <Eye className="h-4 w-4 mr-2" />
+                Show Inactive
+              </>
+            )}
+          </Button>
+          <Button
+            onClick={openCreateDialog}
+            disabled={weeklyTemplates.length === 0}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Activate Schedule
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -201,14 +214,19 @@ export function ActiveScheduleManager() {
       )}
 
       {/* Active Schedules List */}
-      {activeSchedules.length === 0 ? (
+      {activeSchedules.filter((schedule) => showInactive || schedule.isActive)
+        .length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <CalendarCheck className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No active schedules</h3>
-            
+            <h3 className="text-lg font-medium mb-2">
+              {showInactive ? "No schedules" : "No active schedules"}
+            </h3>
+
             <p className="text-muted-foreground text-center mb-4">
-              Activate a weekly template to start scheduling your workouts.
+              {showInactive
+                ? "Create and activate weekly templates to schedule your workouts."
+                : "Activate a weekly template to start scheduling your workouts."}
               <br />
               Your workouts will automatically appear on your calendar.
             </p>
@@ -222,122 +240,131 @@ export function ActiveScheduleManager() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {activeSchedules.map((schedule) => (
-            <Card
-              key={schedule.id}
-              className={schedule.isActive ? "" : "opacity-60"}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`p-2 rounded-lg ${
-                        schedule.isActive
-                          ? "bg-green-100 dark:bg-green-900/30"
-                          : "bg-muted"
-                      }`}
-                    >
-                      {schedule.isActive ? (
-                        <Play className="h-5 w-5 text-green-600" />
-                      ) : (
-                        <Pause className="h-5 w-5 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        {schedule.name || schedule.weeklyTemplate.name}
-                        {schedule.isActive && (
-                          <Badge className="bg-green-500">Active</Badge>
-                        )}
-                      </CardTitle>
-                      <CardDescription className="mt-1">
-                        {schedule.weeklyTemplate.name}
-                        {schedule.weeklyTemplate.description &&
-                          ` • ${schedule.weeklyTemplate.description}`}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleActive(schedule)}
-                    >
-                      {schedule.isActive ? (
-                        <>
-                          <Pause className="h-4 w-4 mr-1" />
-                          Pause
-                        </>
-                      ) : (
-                        <>
-                          <Play className="h-4 w-4 mr-1" />
-                          Resume
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => confirmDelete(schedule)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap items-center gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span>Starts: {formatDate(schedule.startDate)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {schedule.endDate ? (
-                      <>
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span>Ends: {formatDate(schedule.endDate)}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Infinity className="h-4 w-4 text-muted-foreground" />
-                        <span>Repeats indefinitely</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-                {/* Mini Week Preview */}
-                <div className="mt-4 grid grid-cols-7 gap-1">
-                  {schedule.weeklyTemplate.days.map((day) => {
-                    const dt = day.dailyTemplate;
-                    const isRest = dt?.isRestDay ?? true;
-                    return (
+          {activeSchedules
+            .filter((schedule) => showInactive || schedule.isActive)
+            .map((schedule) => (
+              <Card
+                key={schedule.id}
+                className={schedule.isActive ? "" : "opacity-60"}
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
                       <div
-                        key={day.dayOfWeek}
-                        className={`p-1 rounded text-center text-xs ${
-                          isRest ? "bg-muted/50" : ""
+                        className={`p-2 rounded-lg ${
+                          schedule.isActive
+                            ? "bg-green-100 dark:bg-green-900/30"
+                            : "bg-muted"
                         }`}
-                        style={{
-                          backgroundColor:
-                            !isRest && dt?.color ? `${dt.color}20` : undefined,
-                        }}
                       >
-                        <div className="font-medium text-muted-foreground">
-                          {DAY_NAMES_SHORT[day.dayOfWeek]}
-                        </div>
-                        <div
-                          className="truncate"
-                          style={{ color: !isRest ? dt?.color : undefined }}
-                        >
-                          {isRest ? "Rest" : dt?.name?.split(" ")[0]}
-                        </div>
+                        {schedule.isActive ? (
+                          <Play className="h-5 w-5 text-green-600" />
+                        ) : (
+                          <Pause className="h-5 w-5 text-muted-foreground" />
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          {schedule.name || schedule.weeklyTemplate.name}
+                          {schedule.isActive && (
+                            <Badge className="bg-green-500">Active</Badge>
+                          )}
+                        </CardTitle>
+                        <CardDescription className="mt-1">
+                          {schedule.weeklyTemplate.name}
+                          {schedule.weeklyTemplate.description &&
+                            ` • ${schedule.weeklyTemplate.description}`}
+                        </CardDescription>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={schedule.isActive ? "outline" : "default"}
+                        size="sm"
+                        onClick={() => handleToggleActive(schedule)}
+                        className={
+                          schedule.isActive
+                            ? ""
+                            : "bg-blue-600 hover:bg-blue-700 text-white"
+                        }
+                      >
+                        {schedule.isActive ? (
+                          <>
+                            <Pause className="h-4 w-4 mr-1" />
+                            Pause
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-4 w-4 mr-1" />
+                            Resume
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => confirmDelete(schedule)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap items-center gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span>Starts: {formatDate(schedule.startDate)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {schedule.endDate ? (
+                        <>
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <span>Ends: {formatDate(schedule.endDate)}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Infinity className="h-4 w-4 text-muted-foreground" />
+                          <span>Repeats indefinitely</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {/* Mini Week Preview */}
+                  <div className="mt-4 grid grid-cols-7 gap-1">
+                    {schedule.weeklyTemplate.days.map((day) => {
+                      const dt = day.dailyTemplate;
+                      const isRest = dt?.isRestDay ?? true;
+                      return (
+                        <div
+                          key={day.dayOfWeek}
+                          className={`p-1 rounded text-center text-xs ${
+                            isRest ? "bg-muted/50" : ""
+                          }`}
+                          style={{
+                            backgroundColor:
+                              !isRest && dt?.color
+                                ? `${dt.color}20`
+                                : undefined,
+                          }}
+                        >
+                          <div className="font-medium text-muted-foreground">
+                            {DAY_NAMES_SHORT[day.dayOfWeek]}
+                          </div>
+                          <div
+                            className="truncate"
+                            style={{ color: !isRest ? dt?.color : undefined }}
+                          >
+                            {isRest ? "Rest" : dt?.name?.split(" ")[0]}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
         </div>
       )}
 

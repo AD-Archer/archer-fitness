@@ -230,21 +230,27 @@ export function WeeklyTemplateBuilder() {
 
       {/* Templates Grid */}
       {weeklyTemplates.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">
-              No weekly templates yet
-            </h3>
-            <p className="text-muted-foreground text-center mb-4">
+        <Card className="border-dashed border-2">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <div className="bg-muted/50 p-4 rounded-full mb-6">
+              <Calendar className="h-12 w-12 text-muted-foreground" />
+            </div>
+            <h3 className="text-xl font-bold mb-2">No weekly templates yet</h3>
+            <p className="text-muted-foreground text-center mb-6 max-w-sm">
               Create a weekly template to organize your daily workouts into a
               repeatable schedule.
               <br />
-              Examples: &quot;Push Pull Legs&quot;, &quot;Upper Lower
-              Split&quot;, &quot;5-Day Bro Split&quot;
+              <span className="text-sm">
+                Examples: &quot;Push Pull Legs&quot;, &quot;Upper Lower
+                Split&quot;, &quot;5-Day Bro Split&quot;
+              </span>
             </p>
             {dailyTemplates.length > 0 && (
-              <Button onClick={openCreateDialog}>
+              <Button
+                onClick={openCreateDialog}
+                size="lg"
+                className="bg-red-600 hover:bg-red-700"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Create Your First Weekly Template
               </Button>
@@ -254,40 +260,50 @@ export function WeeklyTemplateBuilder() {
       ) : (
         <div className="space-y-4">
           {weeklyTemplates.map((template) => (
-            <Card key={template.id}>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Calendar className="h-5 w-5" />
-                      {template.name}
-                    </CardTitle>
-                    {template.description && (
-                      <CardDescription className="mt-1">
-                        {template.description}
-                      </CardDescription>
-                    )}
+            <Card
+              key={template.id}
+              className="overflow-hidden hover:shadow-lg transition-shadow duration-200 group"
+            >
+              <CardHeader className="pb-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="p-2.5 rounded-lg bg-red-50">
+                      <Calendar className="h-5 w-5 text-red-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        {template.name}
+                      </CardTitle>
+                      {template.description && (
+                        <CardDescription className="mt-1">
+                          {template.description}
+                        </CardDescription>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Badge className="bg-red-100 text-red-900 border-red-200">
+                      <Dumbbell className="h-3 w-3 mr-1" />
                       {getWorkoutDaysCount(template)} workout days
                     </Badge>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => openEditDialog(template)}
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => confirmDelete(template)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => openEditDialog(template)}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => confirmDelete(template)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardHeader>
@@ -299,33 +315,62 @@ export function WeeklyTemplateBuilder() {
                     return (
                       <div
                         key={day.dayOfWeek}
-                        className={`p-2 rounded-lg border text-center ${
-                          isRest ? "bg-muted/50" : ""
+                        className={`p-3 rounded-lg border-2 text-center transition-all hover:shadow-md ${
+                          isRest
+                            ? "bg-muted/40 border-muted-foreground/20"
+                            : "border-2 hover:shadow-lg"
                         }`}
                         style={{
-                          borderColor: dt?.color || "#e5e7eb",
-                          borderWidth: dt && !isRest ? 2 : 1,
+                          borderColor: !isRest
+                            ? dt?.color || "#ef4444"
+                            : undefined,
+                          backgroundColor:
+                            !isRest && dt?.color ? `${dt.color}08` : undefined,
                         }}
                       >
-                        <div className="text-xs font-medium text-muted-foreground mb-1">
+                        <div className="text-xs font-bold text-muted-foreground mb-2 tracking-wide uppercase">
                           {DAY_NAMES_SHORT[day.dayOfWeek]}
                         </div>
                         {dt ? (
-                          <div className="flex flex-col items-center gap-1">
-                            {isRest ? (
-                              <Moon className="h-4 w-4 text-muted-foreground" />
-                            ) : (
-                              <Dumbbell
-                                className="h-4 w-4"
-                                style={{ color: dt.color }}
-                              />
-                            )}
-                            <span className="text-xs font-medium truncate w-full">
-                              {dt.name}
-                            </span>
+                          <div className="flex flex-col items-center gap-2">
+                            <div
+                              className={`p-2 rounded-lg ${
+                                isRest ? "bg-amber-100" : ""
+                              }`}
+                              style={{
+                                backgroundColor:
+                                  !isRest && dt?.color
+                                    ? `${dt.color}20`
+                                    : undefined,
+                              }}
+                            >
+                              {isRest ? (
+                                <Moon className="h-5 w-5 text-amber-600" />
+                              ) : (
+                                <Dumbbell
+                                  className="h-5 w-5"
+                                  style={{ color: dt.color }}
+                                />
+                              )}
+                            </div>
+                            <div className="w-full">
+                              <div
+                                className="text-xs font-bold truncate leading-tight"
+                                style={{
+                                  color: !isRest ? dt?.color : "#6b7280",
+                                }}
+                              >
+                                {dt.name}
+                              </div>
+                              {!isRest && (
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  {dt.duration}min
+                                </div>
+                              )}
+                            </div>
                           </div>
                         ) : (
-                          <div className="text-xs text-muted-foreground italic">
+                          <div className="text-xs text-muted-foreground italic py-1">
                             Rest
                           </div>
                         )}

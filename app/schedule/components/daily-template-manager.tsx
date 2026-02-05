@@ -89,7 +89,7 @@ export function DailyTemplateManager() {
     workoutTemplateId: null,
     startTime: "09:00",
     duration: 60,
-    color: "#3b82f6",
+    color: "#ef4444",
     isRestDay: false,
     notes: null,
   });
@@ -197,45 +197,98 @@ export function DailyTemplateManager() {
 
       {/* Templates Grid */}
       {dailyTemplates.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Dumbbell className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No daily templates yet</h3>
-            <p className="text-muted-foreground text-center mb-4">
+        <Card className="border-dashed border-2">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <div className="bg-muted/50 p-4 rounded-full mb-6">
+              <Dumbbell className="h-12 w-12 text-muted-foreground" />
+            </div>
+            <h3 className="text-xl font-bold mb-2">No daily templates yet</h3>
+            <p className="text-muted-foreground text-center mb-6 max-w-sm">
               Create your first daily template to start building your weekly
               schedule.
               <br />
-              Examples: &quot;Upper Body Day&quot;, &quot;Leg Day&quot;,
-              &quot;Cardio Session&quot;
+              <span className="text-sm">
+                Examples: &quot;Upper Body Day&quot;, &quot;Leg Day&quot;,
+                &quot;Cardio Session&quot;
+              </span>
             </p>
-            <Button onClick={openCreateDialog}>
+            <Button
+              onClick={openCreateDialog}
+              size="lg"
+              className="bg-red-600 hover:bg-red-700"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Create Your First Template
             </Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {dailyTemplates.map((template) => (
             <Card
               key={template.id}
-              className="relative overflow-hidden"
-              style={{ borderLeftColor: template.color, borderLeftWidth: 4 }}
+              className="relative overflow-hidden hover:shadow-lg transition-shadow duration-200 group"
+              style={{
+                borderTop: `4px solid ${template.color}`,
+                borderLeftWidth: 0,
+              }}
             >
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    {template.isRestDay ? (
-                      <Moon className="h-5 w-5 text-muted-foreground" />
-                    ) : (
-                      <Dumbbell
-                        className="h-5 w-5"
-                        style={{ color: template.color }}
-                      />
-                    )}
-                    <CardTitle className="text-lg">{template.name}</CardTitle>
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-3 flex-1">
+                    <div
+                      className="p-2.5 rounded-lg flex-shrink-0"
+                      style={{ backgroundColor: `${template.color}15` }}
+                    >
+                      {template.isRestDay ? (
+                        <Moon className="h-5 w-5 text-amber-600" />
+                      ) : (
+                        <Dumbbell
+                          className="h-5 w-5"
+                          style={{ color: template.color }}
+                        />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-lg leading-tight">
+                        {template.name}
+                      </CardTitle>
+                      {template.workoutTemplate && (
+                        <CardDescription className="mt-1 text-sm font-medium">
+                          {template.workoutTemplate.name}
+                        </CardDescription>
+                      )}
+                      {template.cardioType && (
+                        <CardDescription className="mt-1 flex items-center gap-1">
+                          {template.cardioType === "bike" && (
+                            <>
+                              <Bike className="h-3.5 w-3.5" />
+                              <span>Bike</span>
+                            </>
+                          )}
+                          {template.cardioType === "walk" && (
+                            <>
+                              <Footprints className="h-3.5 w-3.5" />
+                              <span>Walking</span>
+                            </>
+                          )}
+                          {template.cardioType === "run" && (
+                            <>
+                              <Wind className="h-3.5 w-3.5" />
+                              <span>Running</span>
+                            </>
+                          )}
+                          {template.cardioType === "jump_rope" && (
+                            <>
+                              <Flame className="h-3.5 w-3.5" />
+                              <span>Jump Rope</span>
+                            </>
+                          )}
+                        </CardDescription>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       variant="ghost"
                       size="icon"
@@ -247,59 +300,53 @@ export function DailyTemplateManager() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                       onClick={() => confirmDelete(template)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
-                {template.workoutTemplate && (
-                  <CardDescription className="mt-1">
-                    {template.workoutTemplate.name}
-                  </CardDescription>
-                )}
-                {template.cardioType && (
-                  <CardDescription className="mt-1 flex items-center gap-2">
-                    {template.cardioType === "bike" && (
-                      <>
-                        <Bike className="h-4 w-4" />
-                        Bike Ride
-                      </>
-                    )}
-                    {template.cardioType === "walk" && (
-                      <>
-                        <Footprints className="h-4 w-4" />
-                        Walking
-                      </>
-                    )}
-                    {template.cardioType === "run" && (
-                      <>
-                        <Wind className="h-4 w-4" />
-                        Running
-                      </>
-                    )}
-                    {template.cardioType === "jump_rope" && (
-                      <>
-                        <Flame className="h-4 w-4" />
-                        Jump Rope
-                      </>
-                    )}
-                  </CardDescription>
-                )}
               </CardHeader>
               <CardContent>
-                <div className="flex flex-wrap gap-2 text-sm">
+                <div className="flex flex-wrap gap-2">
                   {template.isRestDay ? (
-                    <Badge variant="secondary">Rest Day</Badge>
+                    <Badge
+                      variant="secondary"
+                      className="bg-amber-100 text-amber-900"
+                    >
+                      Rest Day
+                    </Badge>
                   ) : (
                     <>
-                      <Badge variant="outline">
+                      <Badge
+                        variant="outline"
+                        style={{
+                          borderColor: template.color,
+                          color: template.color,
+                          backgroundColor: `${template.color}10`,
+                        }}
+                      >
                         {formatTime(template.startTime)}
                       </Badge>
-                      <Badge variant="outline">{template.duration} min</Badge>
+                      <Badge
+                        variant="outline"
+                        style={{
+                          borderColor: template.color,
+                          color: template.color,
+                          backgroundColor: `${template.color}10`,
+                        }}
+                      >
+                        {template.duration} min
+                      </Badge>
                       {template.cardioType ? (
-                        <Badge variant="secondary">
+                        <Badge
+                          variant="secondary"
+                          style={{
+                            backgroundColor: `${template.color}25`,
+                            color: template.color,
+                          }}
+                        >
                           {template.cardioType === "bike" && "Bike"}
                           {template.cardioType === "walk" && "Walking"}
                           {template.cardioType === "run" && "Running"}
@@ -308,12 +355,25 @@ export function DailyTemplateManager() {
                       ) : (
                         <>
                           {template.workoutTemplate?.category && (
-                            <Badge variant="secondary">
+                            <Badge
+                              variant="secondary"
+                              style={{
+                                backgroundColor: `${template.color}25`,
+                                color: template.color,
+                              }}
+                            >
                               {template.workoutTemplate.category}
                             </Badge>
                           )}
                           {template.workoutTemplate?.difficulty && (
-                            <Badge variant="secondary">
+                            <Badge
+                              variant="outline"
+                              style={{
+                                borderColor: template.color,
+                                color: template.color,
+                                backgroundColor: `${template.color}10`,
+                              }}
+                            >
                               {template.workoutTemplate.difficulty}
                             </Badge>
                           )}
@@ -323,8 +383,8 @@ export function DailyTemplateManager() {
                   )}
                 </div>
                 {template.notes && (
-                  <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
-                    {template.notes}
+                  <p className="mt-3 text-sm text-muted-foreground line-clamp-2 bg-muted/30 p-2 rounded">
+                    💡 {template.notes}
                   </p>
                 )}
               </CardContent>

@@ -8,10 +8,21 @@ import {
   Moon,
   Check,
   Play,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useCalendar } from "../hooks/use-schedule";
 import {
   CalendarWorkout,
@@ -38,6 +49,10 @@ export function ScheduleCalendar() {
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(
     getWeekStartDate(new Date()),
   );
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [pickedDate, setPickedDate] = useState<string>(
+    formatDateForAPI(currentWeekStart),
+  );
 
   const loadWeek = useCallback(
     async (weekStart: Date) => {
@@ -62,6 +77,18 @@ export function ScheduleCalendar() {
 
   const goToToday = () => {
     setCurrentWeekStart(getWeekStartDate(new Date()));
+  };
+
+  const handleDatePickerOpen = () => {
+    setPickedDate(formatDateForAPI(currentWeekStart));
+    setIsDatePickerOpen(true);
+  };
+
+  const handleDatePickerConfirm = () => {
+    const selectedDate = new Date(pickedDate);
+    const weekStart = getWeekStartDate(selectedDate);
+    setCurrentWeekStart(weekStart);
+    setIsDatePickerOpen(false);
   };
 
   const buildWeekDays = (): DayCell[] => {
@@ -148,9 +175,15 @@ export function ScheduleCalendar() {
                 <Button variant="ghost" size="icon" onClick={goToPreviousWeek}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <span className="text-center font-medium min-w-[200px] px-2 text-sm sm:text-base">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDatePickerOpen}
+                  className="gap-2"
+                >
+                  <CalendarIcon className="h-4 w-4" />
                   {formatWeekRange()}
-                </span>
+                </Button>
                 <Button variant="ghost" size="icon" onClick={goToNextWeek}>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -233,6 +266,38 @@ export function ScheduleCalendar() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       )}
+
+      {/* Date Picker Dialog */}
+      <Dialog open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Jump to a week</DialogTitle>
+            <DialogDescription>
+              Select any date to view that week
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="datePicker">Select a date</Label>
+              <Input
+                id="datePicker"
+                type="date"
+                value={pickedDate}
+                onChange={(e) => setPickedDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDatePickerOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleDatePickerConfirm}>Go to Week</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
