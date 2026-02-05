@@ -1,8 +1,14 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
-import { AlertOctagon, RefreshCcw } from "lucide-react";
-import { parseISO, format } from "date-fns";
+import { useMemo, useEffect, useState } from "react";
+import {
+  AlertOctagon,
+  RefreshCcw,
+  Zap,
+  TrendingDown,
+  Activity,
+  Clock,
+} from "lucide-react";
 
 import { useRecoveryData } from "@/hooks/use-recovery-data";
 import {
@@ -13,146 +19,138 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { useSearchParams, useRouter } from "next/navigation";
-import { RecoverySummary } from "./recovery-summary";
-import { SorenessDialog } from "./soreness-dialog";
-import { RecoveryTabs } from "./recovery-tabs";
 import { RecoveryBodyDiagram } from "./recovery-body-diagram";
-import { RecoveryCalendar } from "./recovery-calendar";
 import { DailyCheckIn } from "./daily-check-in";
-import { AllBodyPartsView } from "./all-body-parts-view";
+import { cn } from "@/lib/utils";
 
-function getTrendData(parts: any[]) {
-  const map = new Map<string, number>();
-  for (const part of parts) {
-    for (const point of part.trend) {
-      const date = point.date.includes("T")
-        ? point.date
-        : `${point.date}T00:00:00`;
-      const key = parseISO(date).toISOString();
-      map.set(key, (map.get(key) ?? 0) + point.volume);
-    }
-  }
+// Status configuration for styling
+const statusConfig = {
+  ready: {
+    icon: Zap,
+    label: "Ready",
+    color: "emerald",
+    bg: "bg-emerald-50 dark:bg-emerald-950/20",
+    border: "border-emerald-200 dark:border-emerald-900/50",
+    badge:
+      "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-200",
+  },
+  caution: {
+    icon: Clock,
+    label: "Caution",
+    color: "amber",
+    bg: "bg-amber-50 dark:bg-amber-950/20",
+    border: "border-amber-200 dark:border-amber-900/50",
+    badge:
+      "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-200",
+  },
+  rest: {
+    icon: TrendingDown,
+    label: "Rest",
+    color: "rose",
+    bg: "bg-rose-50 dark:bg-rose-950/20",
+    border: "border-rose-200 dark:border-rose-900/50",
+    badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-200",
+  },
+  "worked-recently": {
+    icon: Activity,
+    label: "Recent",
+    color: "blue",
+    bg: "bg-blue-50 dark:bg-blue-950/20",
+    border: "border-blue-200 dark:border-blue-900/50",
+    badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-200",
+  },
+};
 
-  return Array.from(map.entries())
-    .sort(([a], [b]) => (a < b ? -1 : 1))
-    .slice(-10)
-    .map(([iso, volume]) => ({
-      iso,
-      label: new Date(iso).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
-      volume,
-    }));
+interface RecoveryMonitorProps {
+  selectedDate?: Date;
 }
 
-export function RecoveryMonitor() {
-  const {
-    data,
-    loading,
-    error,
-    refreshing,
-    refresh,
-    submitFeedback,
-    submitting,
-  } = useRecoveryData();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [bodyPartOptions, setBodyPartOptions] = useState<string[]>([]);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+export function RecoveryMonitor({ selectedDate }: RecoveryMonitorProps) {
+  const { data, loading, error, refreshing, refresh } = useRecoveryData();
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const activeTab = searchParams.get("tab") || "status";
-
-  const trendData = useMemo(
-    () => (data ? getTrendData(data.bodyParts) : []),
-    [data]
-  );
-
-  // Calculate status for all body parts
-  const allBodyPartsStatus = useMemo(() => {
-    if (!data) return []
-    
-    const allBodyParts = [
-      "Chest", "Back", "Shoulders", "Biceps", "Triceps",
-      "Forearms", "Abs", "Quadriceps", "Hamstrings", "Glutes", "Calves"
-    ]
-
-    return allBodyParts.map(bodyPartName => {
-      const bodyPartData = data.bodyParts.find(
-        bp => bp.bodyPart.toLowerCase() === bodyPartName.toLowerCase()
-      )
-
-      if (!bodyPartData) {
-        return {
-          name: bodyPartName,
-          status: "ready" as const,
-        }
-      }
-
-      const hoursUntilReady = bodyPartData.hoursUntilNextEligible || 0
-      const recommendedRest = bodyPartData.recommendedRestHours || 48
-
-      let status: "ready" | "caution" | "rest" | "worked-recently"
-      
-      if (hoursUntilReady <= 0) {
-        status = "ready"
-      } else if (hoursUntilReady < 24) {
-        const lastWorkedDate = bodyPartData.lastWorkedDate ? new Date(bodyPartData.lastWorkedDate) : null
-        const hoursSinceWorked = lastWorkedDate 
-          ? Math.floor((Date.now() - lastWorkedDate.getTime()) / (1000 * 60 * 60))
-          : 999
-        
-        if (hoursSinceWorked < 12) {
-          status = "worked-recently"
-        } else {
-          status = "caution"
-        }
-      } else {
-        status = "rest"
-      }
-
-      return {
-        name: bodyPartName,
-        status,
-        lastWorked: bodyPartData.lastWorkedDate,
-        hoursUntilReady,
-        recommendedRest,
-        sets: bodyPartData.totalSets,
-      }
-    })
-  }, [data])
+  // Check if viewing today
+  const isViewingToday = () => {
+    if (!selectedDate) return true;
+    const today = new Date();
+    const selected = new Date(selectedDate);
+    return (
+      today.getDate() === selected.getDate() &&
+      today.getMonth() === selected.getMonth() &&
+      today.getFullYear() === selected.getFullYear()
+    );
+  };
 
   // Fetch body part options for soreness dialog
   useEffect(() => {
     const fetchBodyParts = async () => {
       try {
-        const response = await fetch("/api/workout-tracker/body-parts");
-        if (response.ok) {
-          const bodyParts = await response.json();
-          setBodyPartOptions(
-            bodyParts.map((bp: { name: string }) => bp.name).sort()
-          );
-        }
-      } catch (error) {
-        console.error("Failed to fetch body parts:", error);
+        await fetch("/api/workout-tracker/body-parts");
+        // Fallback to some common body parts if needed
+      } catch {
         // Fallback to some common body parts
-        setBodyPartOptions([
-          "Chest",
-          "Back",
-          "Shoulders",
-          "Arms",
-          "Legs",
-          "Core",
-          "Waist",
-        ]);
       }
     };
     fetchBodyParts();
   }, []);
+  const allBodyPartsStatus = useMemo(() => {
+    if (!data) return [];
+
+    const allBodyParts = [
+      "Chest",
+      "Back",
+      "Shoulders",
+      "Biceps",
+      "Triceps",
+      "Forearms",
+      "Abs",
+      "Quadriceps",
+      "Hamstrings",
+      "Glutes",
+      "Calves",
+    ];
+
+    return allBodyParts.map((bodyPartName) => {
+      const bodyPartData = data.bodyParts.find(
+        (bp) => bp.bodyPart.toLowerCase() === bodyPartName.toLowerCase(),
+      );
+
+      if (!bodyPartData) {
+        return {
+          name: bodyPartName,
+          status: "ready" as const,
+        };
+      }
+
+      const hoursSinceLast = bodyPartData.hoursSinceLast || 0;
+      const recommendedRest = bodyPartData.recommendedRestHours || 48;
+      const hoursUntilReady = Math.max(0, recommendedRest - hoursSinceLast);
+
+      let status: "ready" | "caution" | "rest" | "worked-recently";
+
+      if (hoursUntilReady <= 0) {
+        status = "ready";
+      } else if (hoursUntilReady < 24) {
+        if (hoursSinceLast < 12) {
+          status = "worked-recently";
+        } else {
+          status = "caution";
+        }
+      } else {
+        status = "rest";
+      }
+
+      return {
+        name: bodyPartName,
+        status,
+        lastWorked: bodyPartData.lastWorkout,
+        hoursUntilReady,
+        recommendedRest,
+        sets: bodyPartData.averageSets,
+      };
+    });
+  }, [data]);
 
   if (loading) {
     return (
@@ -186,7 +184,9 @@ export function RecoveryMonitor() {
           <CardTitle className="flex items-center gap-2 text-muted-foreground">
             <AlertOctagon className="size-5" /> Recovery data unavailable
           </CardTitle>
-          <CardDescription>Check back after completing a workout session</CardDescription>
+          <CardDescription>
+            Check back after completing a workout session
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Button onClick={refresh} variant="outline">
@@ -199,24 +199,22 @@ export function RecoveryMonitor() {
 
   return (
     <div className="space-y-6">
-      {data.summary.painAlerts.length > 0 && (
-        <Card className="border-rose-200 dark:border-rose-900/50">
+      {/* Pain Alerts - High Priority - Only show for today */}
+      {isViewingToday() && data.summary.painAlerts.length > 0 && (
+        <Card className="border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/20">
           <CardHeader className="pb-3">
-            <CardTitle className="flex flex-wrap items-center gap-2 text-rose-600 dark:text-rose-300">
-              <AlertOctagon className="size-5" /> Pain alerts
+            <CardTitle className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+              <AlertOctagon className="size-5" />
+              {data.summary.painAlerts.length} Pain Alert
+              {data.summary.painAlerts.length !== 1 ? "s" : ""}
             </CardTitle>
-            <CardDescription>
-              You flagged {data.summary.painAlerts.length} area
-              {data.summary.painAlerts.length > 1 ? "s" : ""}. Consider active
-              recovery or consulting a coach.
+            <CardDescription className="text-rose-700 dark:text-rose-300">
+              Consider active recovery or rest these areas
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             {data.summary.painAlerts.map((alert) => (
-              <Badge
-                key={alert}
-                className="bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-200"
-              >
+              <Badge key={alert} className={statusConfig.rest.badge}>
                 {alert}
               </Badge>
             ))}
@@ -224,59 +222,177 @@ export function RecoveryMonitor() {
         </Card>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <RecoverySummary
-            summary={data.summary}
-            refreshing={refreshing}
-            onRefresh={refresh}
-            onOpenDialog={() => setIsDialogOpen(true)}
-          />
-        </div>
-        <DailyCheckIn onComplete={refresh} />
+      {/* Main Quick View - Summary + Check-in */}
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* Key Metrics - Only show for today */}
+        {isViewingToday() && (
+          <div className="md:col-span-2">
+            <Card>
+              <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+                <div>
+                  <CardTitle>Recovery Status</CardTitle>
+                  <CardDescription>
+                    Your body's readiness to train
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={refresh}
+                  disabled={refreshing}
+                  className="h-8 w-8 p-0"
+                >
+                  <RefreshCcw
+                    className={cn("size-4", refreshing && "animate-spin")}
+                  />
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {/* Ready */}
+                  <div
+                    className={cn(
+                      "rounded-lg border p-4",
+                      statusConfig.ready.bg,
+                      statusConfig.ready.border,
+                    )}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Ready to Train
+                      </p>
+                      <Zap className="size-4 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                      {data.summary.readyCount}
+                    </p>
+                    {data.summary.suggestedFocus.length > 0 && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Target:{" "}
+                        {data.summary.suggestedFocus.slice(0, 1).join(", ")}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Caution */}
+                  <div
+                    className={cn(
+                      "rounded-lg border p-4",
+                      statusConfig.caution.bg,
+                      statusConfig.caution.border,
+                    )}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Proceed with Caution
+                      </p>
+                      <Clock className="size-4 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                      {data.summary.cautionCount}
+                    </p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Recovering...
+                    </p>
+                  </div>
+
+                  {/* Rest Needed */}
+                  <div
+                    className={cn(
+                      "rounded-lg border p-4",
+                      statusConfig.rest.bg,
+                      statusConfig.rest.border,
+                    )}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Needs Rest
+                      </p>
+                      <TrendingDown className="size-4 text-rose-600 dark:text-rose-400" />
+                    </div>
+                    <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">
+                      {data.summary.restCount}
+                    </p>
+                    {data.summary.nextEligibleInHours[0] && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Ready in{" "}
+                        {data.summary.nextEligibleInHours[0].remainingHours.toFixed(
+                          1,
+                        )}
+                        h
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Daily Check-in Card - Only show for today */}
+        {isViewingToday() && (
+          <div className="md:col-span-1">
+            <DailyCheckIn
+              onComplete={() => {
+                refresh();
+                setRefreshKey((prev) => prev + 1);
+              }}
+            />
+          </div>
+        )}
       </div>
 
-      <AllBodyPartsView bodyPartsStatus={allBodyPartsStatus} />
+      {/* Body Status Grid - Compact View - Only show for today */}
+      {isViewingToday() && (
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>All Body Parts</CardTitle>
+              <CardDescription>Status overview at a glance</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {allBodyPartsStatus.map((bodyPart) => {
+                const config = statusConfig[bodyPart.status];
+                const Icon = config.icon;
 
-      <RecoveryCalendar 
-        bodyParts={Array.from(new Set(data.bodyParts.map(bp => bp.bodyPart)))}
-        workoutHistory={data.recentSessions.map(session => ({
-          date: new Date(session.performedAt).toISOString().split('T')[0],
-          bodyParts: session.bodyParts
-        }))}
-        selectedDate={selectedDate}
-        onDateChange={setSelectedDate}
-      />
+                return (
+                  <div
+                    key={bodyPart.name}
+                    className={cn(
+                      "flex flex-col items-center gap-2 rounded-lg border p-3 text-center transition-colors hover:opacity-80",
+                      config.bg,
+                      config.border,
+                    )}
+                  >
+                    <Icon
+                      className={`size-5 text-${config.color}-600 dark:text-${config.color}-400`}
+                    />
+                    <p className="text-xs font-medium">{bodyPart.name}</p>
+                    <Badge variant="secondary" className="text-xs">
+                      {config.label}
+                    </Badge>
+                    {bodyPart.hoursUntilReady &&
+                      bodyPart.hoursUntilReady > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          {Math.round(bodyPart.hoursUntilReady)}h
+                        </p>
+                      )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-      <RecoveryBodyDiagram 
-        timeRange="7days" 
+      {/* Visual Body Diagram */}
+      <RecoveryBodyDiagram
+        key={refreshKey}
+        timeRange="7days"
         onRefresh={refresh}
         selectedDate={selectedDate}
-      />
-
-      <SorenessDialog
-        isOpen={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        bodyPartOptions={bodyPartOptions}
-        onSubmit={submitFeedback}
-        submitting={submitting}
-      />
-
-      <RecoveryTabs
-        bodyParts={data.bodyParts}
-        trendData={trendData}
-        summary={data.summary}
-        recentSessions={data.recentSessions.map((session) => ({
-          ...session,
-          durationMinutes: session.durationMinutes ?? undefined,
-        }))}
-        value={activeTab}
-        onValueChange={(value) => {
-          const params = new URLSearchParams(searchParams);
-          params.set("tab", value);
-          router.replace(`?${params.toString()}`, { scroll: false });
-        }}
-        onResolve={refresh}
       />
     </div>
   );

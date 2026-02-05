@@ -1,98 +1,106 @@
-"use client"
+"use client";
 
-import { useEffect, useMemo, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Zap, RefreshCw } from "lucide-react"
-import { WorkoutPreferencesForm } from "./workout-preferences-form"
-import { WorkoutDisplay } from "./workout-display"
-import { logger } from "@/lib/logger"
-import type { Exercise, WorkoutPlan } from "@/lib/workout-utils"
-import { ExerciseSelectorDialog, ExerciseOption, CustomExerciseInput } from "./exercise-selector-dialog"
-import { toast } from "sonner"
+import { useEffect, useMemo, useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Zap, RefreshCw } from "lucide-react";
+import { WorkoutPreferencesForm } from "./workout-preferences-form";
+import { WorkoutDisplay } from "./workout-display";
+import { logger } from "@/lib/logger";
+import type { Exercise, WorkoutPlan } from "@/lib/workout-utils";
+import {
+  ExerciseSelectorDialog,
+  ExerciseOption,
+  CustomExerciseInput,
+} from "./exercise-selector-dialog";
+import { toast } from "sonner";
 
 interface SavedWorkoutPrefs {
-  defaultDuration: string
-  difficultyLevel: string
-  preferredTime: string
-  availableEquipment: string[]
-  restDayReminders: boolean
+  defaultDuration: string;
+  difficultyLevel: string;
+  preferredTime: string;
+  availableEquipment: string[];
+  restDayReminders: boolean;
 }
 
 interface DatabaseExercise {
-  exerciseId: string
-  name: string
-  bodyParts: string[]
-  targetMuscles: string[]
-  equipments: string[]
-  instructions: string[]
-  secondaryMuscles: string[]
-  bodyPart: string
-  target: string
-  equipment: string
-  gifUrl: string
-  source?: string
-  matchScore?: number
+  exerciseId: string;
+  name: string;
+  bodyParts: string[];
+  targetMuscles: string[];
+  equipments: string[];
+  instructions: string[];
+  secondaryMuscles: string[];
+  bodyPart: string;
+  target: string;
+  equipment: string;
+  gifUrl: string;
+  source?: string;
+  matchScore?: number;
 }
 
 interface ApiMuscle {
   muscle: {
-    name: string
-  }
-  isPrimary: boolean
+    name: string;
+  };
+  isPrimary: boolean;
 }
 
 interface ApiEquipment {
   equipment: {
-    name: string
-  }
+    name: string;
+  };
 }
 
 interface ApiExercise {
-  id: string
-  name: string
-  instructions?: string
-  muscles?: ApiMuscle[]
-  equipments?: ApiEquipment[]
+  id: string;
+  name: string;
+  instructions?: string;
+  muscles?: ApiMuscle[];
+  equipments?: ApiEquipment[];
 }
 
 type WorkoutConfig = {
-  workoutType: string
-  sets: number
-  reps: string
-  rest: string
-  exerciseCount: number
-}
+  workoutType: string;
+  sets: number;
+  reps: string;
+  rest: string;
+  exerciseCount: number;
+};
 
 const slugify = (value: string): string =>
   value
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")
+    .replace(/(^-|-$)/g, "");
 
 const toTitleCase = (value: string): string =>
-  value
-    .replace(/[_-]/g, " ")
-    .replace(/\w/g, (char) => char.toUpperCase())
+  value.replace(/[_-]/g, " ").replace(/\w/g, (char) => char.toUpperCase());
 
 const normalizeEquipmentName = (value: string): string =>
-  value.toLowerCase().replace(/[^a-z0-9]/g, "")
+  value.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 const normalizeToken = (value: string): string => {
-  const cleaned = value.toLowerCase().replace(/[^a-z0-9]/g, "")
+  const cleaned = value.toLowerCase().replace(/[^a-z0-9]/g, "");
   if (cleaned.length > 3 && cleaned.endsWith("s")) {
-    return cleaned.slice(0, -1)
+    return cleaned.slice(0, -1);
   }
-  return cleaned
-}
+  return cleaned;
+};
 
 const tokenize = (value: string): string[] =>
   value
     .toLowerCase()
     .split(/[^a-z0-9]+/g)
     .map(normalizeToken)
-    .filter(Boolean)
+    .filter(Boolean);
 
 const TOKEN_SYNONYMS: Record<string, string[]> = {
   chest: ["pec", "pectoral", "pectoralis"],
@@ -111,7 +119,15 @@ const TOKEN_SYNONYMS: Record<string, string[]> = {
   deltoid: ["shoulders"],
   delt: ["shoulders"],
   delts: ["shoulders"],
-  legs: ["quad", "quadricep", "quadriceps", "hamstring", "calf", "lowerbody", "lower"],
+  legs: [
+    "quad",
+    "quadricep",
+    "quadriceps",
+    "hamstring",
+    "calf",
+    "lowerbody",
+    "lower",
+  ],
   quadricep: ["legs"],
   quadriceps: ["legs"],
   quad: ["legs"],
@@ -139,135 +155,141 @@ const TOKEN_SYNONYMS: Record<string, string[]> = {
   mobility: ["flexibility"],
   flexibility: ["mobility"],
   stretch: ["mobility", "flexibility"],
-}
+};
 
 const addSynonyms = (tokens: Set<string>): Set<string> => {
-  const expanded = new Set(tokens)
+  const expanded = new Set(tokens);
   tokens.forEach((token) => {
-    const synonyms = TOKEN_SYNONYMS[token]
+    const synonyms = TOKEN_SYNONYMS[token];
     if (synonyms) {
       synonyms.forEach((synonym) => {
-        expanded.add(normalizeToken(synonym))
-      })
+        expanded.add(normalizeToken(synonym));
+      });
     }
-  })
-  return expanded
-}
+  });
+  return expanded;
+};
 
 const buildExerciseTokenSet = (exercise: DatabaseExercise): Set<string> => {
-  const tokens = new Set<string>()
+  const tokens = new Set<string>();
 
   const addValue = (value: string | undefined) => {
-    if (!value) return
-    const normalized = normalizeToken(value)
+    if (!value) return;
+    const normalized = normalizeToken(value);
     if (normalized) {
-      tokens.add(normalized)
+      tokens.add(normalized);
     }
-    tokenize(value).forEach((token) => tokens.add(token))
-  }
+    tokenize(value).forEach((token) => tokens.add(token));
+  };
 
   const addValues = (values: string[]) => {
-    values.forEach(addValue)
-  }
+    values.forEach(addValue);
+  };
 
-  addValue(exercise.name)
-  addValue(exercise.bodyPart)
-  addValue(exercise.target)
-  addValues(exercise.bodyParts)
-  addValues(exercise.targetMuscles)
-  addValues(exercise.secondaryMuscles)
+  addValue(exercise.name);
+  addValue(exercise.bodyPart);
+  addValue(exercise.target);
+  addValues(exercise.bodyParts);
+  addValues(exercise.targetMuscles);
+  addValues(exercise.secondaryMuscles);
 
-  return addSynonyms(tokens)
-}
+  return addSynonyms(tokens);
+};
 
 const tokenMatches = (tokenSet: Set<string>, needle: string): boolean => {
-  const normalizedNeedle = normalizeToken(needle)
+  const normalizedNeedle = normalizeToken(needle);
   if (!normalizedNeedle) {
-    return false
+    return false;
   }
   if (tokenSet.has(normalizedNeedle)) {
-    return true
+    return true;
   }
 
-  const synonyms = TOKEN_SYNONYMS[normalizedNeedle] ?? []
+  const synonyms = TOKEN_SYNONYMS[normalizedNeedle] ?? [];
   for (const synonym of synonyms) {
-    const normalizedSynonym = normalizeToken(synonym)
+    const normalizedSynonym = normalizeToken(synonym);
     if (normalizedSynonym && tokenSet.has(normalizedSynonym)) {
-      return true
+      return true;
     }
   }
 
   for (const token of tokenSet) {
     if (token.includes(normalizedNeedle) || normalizedNeedle.includes(token)) {
-      return true
+      return true;
     }
   }
 
-  return false
-}
+  return false;
+};
 
 const formatLabel = (value: string): string => {
-  const trimmed = value.trim()
+  const trimmed = value.trim();
   if (!trimmed) {
-    return value
+    return value;
   }
 
-  const normalized = trimmed.toLowerCase()
+  const normalized = trimmed.toLowerCase();
   if (normalized === "hiit") {
-    return "HIIT"
+    return "HIIT";
   }
   if (normalized === "amrap") {
-    return "AMRAP"
+    return "AMRAP";
   }
 
-  return toTitleCase(trimmed)
-}
+  return toTitleCase(trimmed);
+};
 
 const uniqueDisplayStrings = (values: string[]): string[] => {
-  const seen = new Set<string>()
-  const result: string[] = []
+  const seen = new Set<string>();
+  const result: string[] = [];
 
   values.forEach((value) => {
     if (!value) {
-      return
+      return;
     }
-    const trimmed = value.trim()
+    const trimmed = value.trim();
     if (!trimmed) {
-      return
+      return;
     }
-    const normalized = trimmed.toLowerCase()
+    const normalized = trimmed.toLowerCase();
     if (seen.has(normalized)) {
-      return
+      return;
     }
-    seen.add(normalized)
-    result.push(formatLabel(trimmed))
-  })
+    seen.add(normalized);
+    result.push(formatLabel(trimmed));
+  });
 
-  return result
-}
+  return result;
+};
 
-const getExerciseId = (exercise: Pick<DatabaseExercise, "exerciseId" | "name">): string =>
-  exercise.exerciseId || slugify(exercise.name)
+const getExerciseId = (
+  exercise: Pick<DatabaseExercise, "exerciseId" | "name">,
+): string => exercise.exerciseId || slugify(exercise.name);
 
-const getWorkoutExerciseId = (exercise: Exercise): string => exercise.id ?? slugify(exercise.name)
+const getWorkoutExerciseId = (exercise: Exercise): string =>
+  exercise.id ?? slugify(exercise.name);
 
 const determineIsTimeBased = (config: WorkoutConfig): boolean =>
-  ["cardio", "hiit"].includes(config.workoutType) || /sec|min|hold|\bs\b/i.test(config.reps)
+  ["cardio", "hiit"].includes(config.workoutType) ||
+  /sec|min|hold|\bs\b/i.test(config.reps);
 
-const convertToWorkoutExercise = (dbExercise: DatabaseExercise, config: WorkoutConfig): Exercise => {
-  const instructions = dbExercise.instructions.join(" ").trim()
+const convertToWorkoutExercise = (
+  dbExercise: DatabaseExercise,
+  config: WorkoutConfig,
+): Exercise => {
+  const instructions = dbExercise.instructions.join(" ").trim();
   const targetMuscles = uniqueDisplayStrings([
     ...dbExercise.targetMuscles,
     ...dbExercise.secondaryMuscles,
     ...dbExercise.bodyParts,
     dbExercise.bodyPart,
     dbExercise.target,
-  ])
+  ]);
   const equipment = uniqueDisplayStrings(
     dbExercise.equipments.length > 0
       ? dbExercise.equipments
-      : [dbExercise.equipment || "bodyweight"]
-  )
+      : [dbExercise.equipment || "bodyweight"],
+  );
 
   return {
     id: getExerciseId(dbExercise),
@@ -275,22 +297,24 @@ const convertToWorkoutExercise = (dbExercise: DatabaseExercise, config: WorkoutC
     sets: config.sets,
     reps: config.reps,
     rest: config.rest,
-    instructions: instructions || "Focus on controlled tempo and keep great form throughout the movement.",
+    instructions:
+      instructions ||
+      "Focus on controlled tempo and keep great form throughout the movement.",
     targetMuscles: targetMuscles.length > 0 ? targetMuscles : ["Full Body"],
     equipment: equipment.length > 0 ? equipment : ["Bodyweight"],
     source: dbExercise.source ?? "database",
     isTimeBased: determineIsTimeBased(config),
     gifUrl: dbExercise.gifUrl,
-  }
-}
+  };
+};
 
 const uniqueById = (exercises: DatabaseExercise[]): DatabaseExercise[] => {
-  const map = new Map<string, DatabaseExercise>()
+  const map = new Map<string, DatabaseExercise>();
   exercises.forEach((exercise) => {
-    map.set(getExerciseId(exercise), exercise)
-  })
-  return Array.from(map.values())
-}
+    map.set(getExerciseId(exercise), exercise);
+  });
+  return Array.from(map.values());
+};
 
 const FALLBACK_DATABASE_EXERCISES: Record<string, () => DatabaseExercise[]> = {
   bodyweight: () => [
@@ -664,11 +688,13 @@ const FALLBACK_DATABASE_EXERCISES: Record<string, () => DatabaseExercise[]> = {
       source: "fallback",
     },
   ],
-}
+};
 
-const createGenericEquipmentFallback = (equipmentName: string): DatabaseExercise[] => {
-  const slug = normalizeEquipmentName(equipmentName) || "equipment"
-  const label = formatLabel(equipmentName || "Equipment")
+const createGenericEquipmentFallback = (
+  equipmentName: string,
+): DatabaseExercise[] => {
+  const slug = normalizeEquipmentName(equipmentName) || "equipment";
+  const label = formatLabel(equipmentName || "Equipment");
 
   return [
     {
@@ -705,37 +731,43 @@ const createGenericEquipmentFallback = (equipmentName: string): DatabaseExercise
       gifUrl: "",
       source: "fallback",
     },
-  ]
-}
+  ];
+};
 
 const buildFallbackExercisePool = (equipment: string[]): DatabaseExercise[] => {
-  const normalized = equipment.length > 0 ? equipment.map(normalizeEquipmentName) : ["bodyweight"]
-  const pool: DatabaseExercise[] = []
+  const normalized =
+    equipment.length > 0
+      ? equipment.map(normalizeEquipmentName)
+      : ["bodyweight"];
+  const pool: DatabaseExercise[] = [];
 
   normalized.forEach((key, index) => {
-    const generator = FALLBACK_DATABASE_EXERCISES[key]
+    const generator = FALLBACK_DATABASE_EXERCISES[key];
     if (generator) {
-      pool.push(...generator())
+      pool.push(...generator());
     } else if (equipment[index]) {
-      pool.push(...createGenericEquipmentFallback(equipment[index]))
+      pool.push(...createGenericEquipmentFallback(equipment[index]));
     }
-  })
+  });
 
   if (pool.length === 0) {
-    pool.push(...FALLBACK_DATABASE_EXERCISES.bodyweight())
+    pool.push(...FALLBACK_DATABASE_EXERCISES.bodyweight());
   }
 
-  return uniqueById(pool)
-}
+  return uniqueById(pool);
+};
 
-const selectVariedExercises = (exercises: DatabaseExercise[], count: number): DatabaseExercise[] => {
+const selectVariedExercises = (
+  exercises: DatabaseExercise[],
+  count: number,
+): DatabaseExercise[] => {
   if (exercises.length <= count) {
-    return weightedShuffle(exercises)
+    return weightedShuffle(exercises);
   }
 
-  const selected: DatabaseExercise[] = []
-  const selectedIds = new Set<string>()
-  const grouped = new Map<string, DatabaseExercise[]>()
+  const selected: DatabaseExercise[] = [];
+  const selectedIds = new Set<string>();
+  const grouped = new Map<string, DatabaseExercise[]>();
 
   exercises.forEach((exercise) => {
     const groupKey =
@@ -743,55 +775,61 @@ const selectVariedExercises = (exercises: DatabaseExercise[], count: number): Da
       exercise.bodyParts[0] ||
       exercise.target ||
       exercise.bodyPart ||
-      "general"
+      "general";
 
-    const existing = grouped.get(groupKey) ?? []
-    existing.push(exercise)
-    grouped.set(groupKey, existing)
-  })
+    const existing = grouped.get(groupKey) ?? [];
+    existing.push(exercise);
+    grouped.set(groupKey, existing);
+  });
 
   const rankedGroups = Array.from(grouped.entries())
     .map(([key, entries]) => {
-      const shuffled = weightedShuffle(entries)
-      const bestScore = Math.max(...shuffled.map((item) => item.matchScore ?? 0), 0)
-      return { key, entries: shuffled, score: bestScore }
+      const shuffled = weightedShuffle(entries);
+      const bestScore = Math.max(
+        ...shuffled.map((item) => item.matchScore ?? 0),
+        0,
+      );
+      return { key, entries: shuffled, score: bestScore };
     })
     .sort((a, b) => {
       if (b.score !== a.score) {
-        return b.score - a.score
+        return b.score - a.score;
       }
-      return Math.random() - 0.5
-    })
+      return Math.random() - 0.5;
+    });
 
-  const groupOrder = rankedGroups.map((entry) => entry.key)
-  const groupLookup = new Map(rankedGroups.map((entry) => [entry.key, entry.entries]))
-  let guard = 0
+  const groupOrder = rankedGroups.map((entry) => entry.key);
+  const groupLookup = new Map(
+    rankedGroups.map((entry) => [entry.key, entry.entries]),
+  );
+  let guard = 0;
 
   while (selected.length < count && guard < count * groupOrder.length * 2) {
-    const key = groupOrder[guard % groupOrder.length]
-    const bucket = groupLookup.get(key)
+    const key = groupOrder[guard % groupOrder.length];
+    const bucket = groupLookup.get(key);
     if (bucket && bucket.length > 0) {
-      const candidate = bucket.shift()!
-      const candidateId = getExerciseId(candidate)
+      const candidate = bucket.shift()!;
+      const candidateId = getExerciseId(candidate);
       if (!selectedIds.has(candidateId)) {
-        selected.push(candidate)
-        selectedIds.add(candidateId)
+        selected.push(candidate);
+        selectedIds.add(candidateId);
       }
     }
-    guard++
+    guard++;
   }
 
   if (selected.length < count) {
     const remaining = weightedShuffle(
-      exercises.filter((exercise) => !selectedIds.has(getExerciseId(exercise)))
-    )
-    selected.push(...remaining.slice(0, count - selected.length))
+      exercises.filter((exercise) => !selectedIds.has(getExerciseId(exercise))),
+    );
+    selected.push(...remaining.slice(0, count - selected.length));
   }
 
-  return selected.slice(0, count)
-}
+  return selected.slice(0, count);
+};
 
-const formatListForName = (values: string[]): string[] => values.map(formatLabel)
+const formatListForName = (values: string[]): string[] =>
+  values.map(formatLabel);
 
 const createWorkoutPlan = (
   workoutType: string,
@@ -799,15 +837,23 @@ const createWorkoutPlan = (
   equipment: string[],
   targetBodyParts: string[],
   targetMuscles: string[],
-  exercises: Exercise[]
+  exercises: Exercise[],
 ): WorkoutPlan => {
-  const formattedEquipment = equipment.length > 0 ? formatListForName(equipment) : []
-  const formattedBodyParts = targetBodyParts.length > 0 ? formatListForName(targetBodyParts) : []
-  const formattedMuscles = targetMuscles.length > 0 ? formatListForName(targetMuscles) : []
+  const formattedEquipment =
+    equipment.length > 0 ? formatListForName(equipment) : [];
+  const formattedBodyParts =
+    targetBodyParts.length > 0 ? formatListForName(targetBodyParts) : [];
+  const formattedMuscles =
+    targetMuscles.length > 0 ? formatListForName(targetMuscles) : [];
 
-  const equipmentText = formattedEquipment.length > 0 ? ` (${formattedEquipment.join(", ")})` : ""
-  const bodyPartText = formattedBodyParts.length > 0 ? ` - ${formattedBodyParts.join(", ")}` : ""
-  const muscleText = formattedMuscles.length > 0 && formattedBodyParts.length === 0 ? ` - ${formattedMuscles.join(", ")}` : ""
+  const equipmentText =
+    formattedEquipment.length > 0 ? ` (${formattedEquipment.join(", ")})` : "";
+  const bodyPartText =
+    formattedBodyParts.length > 0 ? ` - ${formattedBodyParts.join(", ")}` : "";
+  const muscleText =
+    formattedMuscles.length > 0 && formattedBodyParts.length === 0
+      ? ` - ${formattedMuscles.join(", ")}`
+      : "";
 
   return {
     name: `${formatLabel(workoutType)} Workout${equipmentText}${bodyPartText}${muscleText}`,
@@ -824,8 +870,8 @@ const createWorkoutPlan = (
       "Static stretching (hold 30 seconds each)",
       "Deep breathing and relaxation",
     ],
-  }
-}
+  };
+};
 
 const buildFallbackWorkout = (
   workoutType: string,
@@ -833,17 +879,17 @@ const buildFallbackWorkout = (
   targetMuscles: string[],
   targetBodyParts: string[],
   equipment: string[],
-  config: WorkoutConfig
+  config: WorkoutConfig,
 ): {
-  workout: WorkoutPlan
-  pool: DatabaseExercise[]
-  pinnedId: string
+  workout: WorkoutPlan;
+  pool: DatabaseExercise[];
+  pinnedId: string;
 } => {
-  const fallbackPool = buildFallbackExercisePool(equipment)
-  const varied = selectVariedExercises(fallbackPool, config.exerciseCount)
+  const fallbackPool = buildFallbackExercisePool(equipment);
+  const varied = selectVariedExercises(fallbackPool, config.exerciseCount);
   const exercises = varied
     .slice(0, config.exerciseCount)
-    .map((exercise) => convertToWorkoutExercise(exercise, config))
+    .map((exercise) => convertToWorkoutExercise(exercise, config));
 
   return {
     workout: createWorkoutPlan(
@@ -852,12 +898,12 @@ const buildFallbackWorkout = (
       equipment,
       targetBodyParts,
       targetMuscles,
-      exercises
+      exercises,
     ),
     pool: fallbackPool,
-    pinnedId: '',
-  }
-}
+    pinnedId: "",
+  };
+};
 
 // Load exercise database from API with filters
 const loadExerciseDatabase = async (
@@ -865,142 +911,220 @@ const loadExerciseDatabase = async (
   targetMuscles: string[],
   targetBodyParts: string[],
   equipment: string[],
-  exerciseCount: number
+  exerciseCount: number,
 ): Promise<DatabaseExercise[]> => {
   try {
     // Build query parameters - fetch more exercises to ensure better variety
-    const params = new URLSearchParams()
-    params.append('limit', Math.max(100, exerciseCount * 10).toString()) // Fetch significantly more exercises for better randomization
+    const params = new URLSearchParams();
+    params.append("limit", Math.max(100, exerciseCount * 10).toString()); // Fetch significantly more exercises for better randomization
 
-    const queryString = params.toString()
-    const url = `/api/workout-tracker/exercises${queryString ? `?${queryString}` : ''}`
+    const queryString = params.toString();
+    const url = `/api/workout-tracker/exercises${queryString ? `?${queryString}` : ""}`;
 
-    const response = await fetch(url)
+    const response = await fetch(url);
     if (!response.ok) {
-      throw new Error('Failed to fetch exercises')
+      throw new Error("Failed to fetch exercises");
     }
-    const data = await response.json()
+    const data = await response.json();
 
     // Combine user exercises and predefined exercises
     const allExercises: ApiExercise[] = [
       ...(data.userExercises || []),
-      ...(data.predefinedExercises || [])
-    ]
+      ...(data.predefinedExercises || []),
+    ];
 
     // Convert to our expected format
     const convertedExercises = allExercises.map((exercise: ApiExercise) => ({
       exerciseId: exercise.id,
       name: exercise.name,
-      bodyParts: exercise.muscles?.map((m: ApiMuscle) => m.muscle?.name?.toLowerCase()) || [],
-      targetMuscles: exercise.muscles?.filter((m: ApiMuscle) => m.isPrimary).map((m: ApiMuscle) => m.muscle?.name?.toLowerCase()) || [],
-      equipments: exercise.equipments?.map((e: ApiEquipment) => e.equipment?.name?.toLowerCase()) || [],
+      bodyParts:
+        exercise.muscles?.map((m: ApiMuscle) =>
+          m.muscle?.name?.toLowerCase(),
+        ) || [],
+      targetMuscles:
+        exercise.muscles
+          ?.filter((m: ApiMuscle) => m.isPrimary)
+          .map((m: ApiMuscle) => m.muscle?.name?.toLowerCase()) || [],
+      equipments:
+        exercise.equipments?.map((e: ApiEquipment) =>
+          e.equipment?.name?.toLowerCase(),
+        ) || [],
       instructions: exercise.instructions ? [exercise.instructions] : [],
-      secondaryMuscles: exercise.muscles?.filter((m: ApiMuscle) => !m.isPrimary).map((m: ApiMuscle) => m.muscle?.name?.toLowerCase()) || [],
-      bodyPart: exercise.muscles?.[0]?.muscle?.name?.toLowerCase() || '',
-      target: exercise.muscles?.find((m: ApiMuscle) => m.isPrimary)?.muscle?.name?.toLowerCase() || '',
-      equipment: exercise.equipments?.[0]?.equipment?.name?.toLowerCase() || '',
-      gifUrl: (exercise as any).gifUrl || '',
-      source: 'database'
-    }))
+      secondaryMuscles:
+        exercise.muscles
+          ?.filter((m: ApiMuscle) => !m.isPrimary)
+          .map((m: ApiMuscle) => m.muscle?.name?.toLowerCase()) || [],
+      bodyPart: exercise.muscles?.[0]?.muscle?.name?.toLowerCase() || "",
+      target:
+        exercise.muscles
+          ?.find((m: ApiMuscle) => m.isPrimary)
+          ?.muscle?.name?.toLowerCase() || "",
+      equipment: exercise.equipments?.[0]?.equipment?.name?.toLowerCase() || "",
+      gifUrl: (exercise as any).gifUrl || "",
+      source: "database",
+    }));
 
     // Apply frontend filtering
-    const filteredExercises = filterExercises(convertedExercises, workoutType, targetMuscles, targetBodyParts, equipment)
+    const filteredExercises = filterExercises(
+      convertedExercises,
+      workoutType,
+      targetMuscles,
+      targetBodyParts,
+      equipment,
+    );
 
     // Return only the filtered exercises (no need to slice here, we'll do it in generateWorkout)
-    return filteredExercises
+    return filteredExercises;
   } catch (error) {
-    logger.error('Failed to load exercise database:', error)
-    return []
+    logger.error("Failed to load exercise database:", error);
+    return [];
   }
-}
+};
 
 const isBodyweightEquipment = (value: string): boolean => {
-  const normalized = value.toLowerCase().replace(/[^a-z0-9]/g, "")
+  const normalized = value.toLowerCase().replace(/[^a-z0-9]/g, "");
   return (
     normalized.length === 0 ||
     normalized === "bodyweight" ||
     normalized === "body" ||
     normalized === "none" ||
     normalized === "noequipment"
-  )
-}
+  );
+};
 
 const buildEquipmentSet = (exercise: DatabaseExercise): Set<string> => {
-  const equipmentSet = new Set<string>()
+  const equipmentSet = new Set<string>();
 
   exercise.equipments.forEach((entry) => {
-    const normalized = normalizeEquipmentName(entry)
+    const normalized = normalizeEquipmentName(entry);
     if (normalized) {
-      equipmentSet.add(normalized)
+      equipmentSet.add(normalized);
     }
-  })
+  });
 
-  const primary = normalizeEquipmentName(exercise.equipment)
+  const primary = normalizeEquipmentName(exercise.equipment);
   if (primary) {
-    equipmentSet.add(primary)
+    equipmentSet.add(primary);
   }
 
-  equipmentSet.delete("")
-  return equipmentSet
-}
+  equipmentSet.delete("");
+  return equipmentSet;
+};
 
 const WORKOUT_TYPE_KEYWORDS: Record<string, string[]> = {
-  strength: ["strength", "power", "press", "row", "deadlift", "squat", "hinge", "pull", "push", "lift"],
-  cardio: ["cardio", "conditioning", "endurance", "run", "cycle", "bike", "jump", "burpee", "sprint", "interval"],
-  hiit: ["hiit", "interval", "plyometric", "tabata", "burpee", "sprint", "circuit"],
-  flexibility: ["flexibility", "mobility", "stretch", "yoga", "pilates", "recover"],
-}
+  strength: [
+    "strength",
+    "power",
+    "press",
+    "row",
+    "deadlift",
+    "squat",
+    "hinge",
+    "pull",
+    "push",
+    "lift",
+  ],
+  cardio: [
+    "cardio",
+    "conditioning",
+    "endurance",
+    "run",
+    "cycle",
+    "bike",
+    "jump",
+    "burpee",
+    "sprint",
+    "interval",
+  ],
+  hiit: [
+    "hiit",
+    "interval",
+    "plyometric",
+    "tabata",
+    "burpee",
+    "sprint",
+    "circuit",
+  ],
+  flexibility: [
+    "flexibility",
+    "mobility",
+    "stretch",
+    "yoga",
+    "pilates",
+    "recover",
+  ],
+};
 
 const computeWorkoutTypeScore = (
   exercise: DatabaseExercise,
   workoutType: string,
-  tokens: Set<string>
+  tokens: Set<string>,
 ): number => {
-  const normalizedType = normalizeToken(workoutType)
+  const normalizedType = normalizeToken(workoutType);
   if (!normalizedType) {
-    return 0
+    return 0;
   }
 
-  const keywords = WORKOUT_TYPE_KEYWORDS[normalizedType]
+  const keywords = WORKOUT_TYPE_KEYWORDS[normalizedType];
   if (!keywords || keywords.length === 0) {
-    return 0
+    return 0;
   }
 
-  let matches = 0
+  let matches = 0;
   keywords.forEach((keyword) => {
     if (tokenMatches(tokens, keyword)) {
-      matches += 1
+      matches += 1;
     }
-  })
+  });
 
-  const name = exercise.name.toLowerCase()
+  const name = exercise.name.toLowerCase();
   if (normalizedType === "cardio") {
-    if (name.includes("run") || name.includes("row") || name.includes("bike") || name.includes("jump")) {
-      matches += 1
+    if (
+      name.includes("run") ||
+      name.includes("row") ||
+      name.includes("bike") ||
+      name.includes("jump")
+    ) {
+      matches += 1;
     }
   }
 
   if (normalizedType === "strength") {
-    if (name.includes("press") || name.includes("row") || name.includes("deadlift") || name.includes("squat") || name.includes("pull") || name.includes("push")) {
-      matches += 1
+    if (
+      name.includes("press") ||
+      name.includes("row") ||
+      name.includes("deadlift") ||
+      name.includes("squat") ||
+      name.includes("pull") ||
+      name.includes("push")
+    ) {
+      matches += 1;
     }
   }
 
   if (normalizedType === "flexibility") {
-    if (name.includes("stretch") || name.includes("mobility") || name.includes("yoga")) {
-      matches += 1
+    if (
+      name.includes("stretch") ||
+      name.includes("mobility") ||
+      name.includes("yoga")
+    ) {
+      matches += 1;
     }
   }
 
   if (normalizedType === "hiit") {
-    if (name.includes("hiit") || name.includes("interval") || name.includes("circuit")) {
-      matches += 1
+    if (
+      name.includes("hiit") ||
+      name.includes("interval") ||
+      name.includes("circuit")
+    ) {
+      matches += 1;
     }
   }
 
-  const capped = Math.min(matches, 5)
-  return capped > 0 ? 1.5 + capped : 0
-}
+  const capped = Math.min(matches, 5);
+  return capped > 0 ? 1.5 + capped : 0;
+};
 
 // Filter exercises based on criteria and score them for smarter randomness
 const filterExercises = (
@@ -1008,13 +1132,15 @@ const filterExercises = (
   workoutType: string,
   targetMuscles: string[],
   targetBodyParts: string[],
-  equipment: string[]
+  equipment: string[],
 ): DatabaseExercise[] => {
-  const normalizedMuscles = targetMuscles.map(normalizeToken).filter(Boolean)
-  const normalizedBodyParts = targetBodyParts.map(normalizeToken).filter(Boolean)
+  const normalizedMuscles = targetMuscles.map(normalizeToken).filter(Boolean);
+  const normalizedBodyParts = targetBodyParts
+    .map(normalizeToken)
+    .filter(Boolean);
   const allowedEquipment = new Set(
-    equipment.map(normalizeEquipmentName).filter(Boolean)
-  )
+    equipment.map(normalizeEquipmentName).filter(Boolean),
+  );
 
   if (
     normalizedMuscles.length === 0 &&
@@ -1022,163 +1148,159 @@ const filterExercises = (
     allowedEquipment.size === 0 &&
     !workoutType
   ) {
-    return exercises
+    return exercises;
   }
 
-  const scored: DatabaseExercise[] = []
+  const scored: DatabaseExercise[] = [];
 
   exercises.forEach((exercise) => {
-    const tokens = buildExerciseTokenSet(exercise)
-    const equipmentSet = buildEquipmentSet(exercise)
-    const hasEquipment = equipmentSet.size > 0
-    const requiresSpecificEquipment = allowedEquipment.size > 0
+    const tokens = buildExerciseTokenSet(exercise);
+    const equipmentSet = buildEquipmentSet(exercise);
+    const hasEquipment = equipmentSet.size > 0;
+    const requiresSpecificEquipment = allowedEquipment.size > 0;
 
     if (requiresSpecificEquipment) {
       const hasMismatch = Array.from(equipmentSet).some(
-        (item) => !isBodyweightEquipment(item) && !allowedEquipment.has(item)
-      )
+        (item) => !isBodyweightEquipment(item) && !allowedEquipment.has(item),
+      );
       if (hasMismatch) {
-        return
+        return;
       }
     }
 
-    let equipmentScore = 0
+    let equipmentScore = 0;
     if (requiresSpecificEquipment) {
-      let matchedEquipment = 0
+      let matchedEquipment = 0;
       allowedEquipment.forEach((item) => {
-        if (!item) return
+        if (!item) return;
         if (item === "bodyweight") {
-          if (equipmentSet.size === 0 || Array.from(equipmentSet).some(isBodyweightEquipment)) {
-            matchedEquipment += 1
+          if (
+            equipmentSet.size === 0 ||
+            Array.from(equipmentSet).some(isBodyweightEquipment)
+          ) {
+            matchedEquipment += 1;
           }
-          return
+          return;
         }
 
         if (
           equipmentSet.has(item) ||
           Array.from(equipmentSet).some(
-            (entry) => entry.includes(item) || item.includes(entry)
+            (entry) => entry.includes(item) || item.includes(entry),
           )
         ) {
-          matchedEquipment += 1
+          matchedEquipment += 1;
         }
-      })
+      });
 
       if (matchedEquipment === 0 && hasEquipment) {
-        return
+        return;
       }
 
-      equipmentScore = matchedEquipment > 0 ? 4 + matchedEquipment * 1.2 : hasEquipment ? 1 : 2
+      equipmentScore =
+        matchedEquipment > 0
+          ? 4 + matchedEquipment * 1.2
+          : hasEquipment
+            ? 1
+            : 2;
     } else {
-      equipmentScore = hasEquipment ? 1 : 2.5
+      equipmentScore = hasEquipment ? 1 : 2.5;
     }
 
     const matchedMuscles = normalizedMuscles.filter((needle) =>
-      tokenMatches(tokens, needle)
-    ).length
+      tokenMatches(tokens, needle),
+    ).length;
     const matchedBodyParts = normalizedBodyParts.filter((needle) =>
-      tokenMatches(tokens, needle)
-    ).length
+      tokenMatches(tokens, needle),
+    ).length;
 
-    const workoutScore = computeWorkoutTypeScore(exercise, workoutType, tokens)
+    const workoutScore = computeWorkoutTypeScore(exercise, workoutType, tokens);
 
-    let score = equipmentScore + workoutScore
+    let score = equipmentScore + workoutScore;
 
     if (normalizedMuscles.length > 0) {
-      score += matchedMuscles > 0 ? matchedMuscles * 4 : -3
+      score += matchedMuscles > 0 ? matchedMuscles * 4 : -3;
     }
 
     if (normalizedBodyParts.length > 0) {
-      score += matchedBodyParts > 0 ? matchedBodyParts * 3 : -1.5
+      score += matchedBodyParts > 0 ? matchedBodyParts * 3 : -1.5;
     }
 
-    const normalizedName = normalizeToken(exercise.name)
-    if (
-      normalizedMuscles.some((muscle) => normalizedName.includes(muscle))
-    ) {
-      score += 1.25
+    const normalizedName = normalizeToken(exercise.name);
+    if (normalizedMuscles.some((muscle) => normalizedName.includes(muscle))) {
+      score += 1.25;
     }
     if (
       normalizedBodyParts.some((bodyPart) => normalizedName.includes(bodyPart))
     ) {
-      score += 0.75
+      score += 0.75;
     }
 
-    const targetsCount =
-      normalizedMuscles.length + normalizedBodyParts.length
+    const targetsCount = normalizedMuscles.length + normalizedBodyParts.length;
     if (targetsCount > 0) {
-      const coverage = matchedMuscles + matchedBodyParts
-      score += (coverage / targetsCount) * 1.5
+      const coverage = matchedMuscles + matchedBodyParts;
+      score += (coverage / targetsCount) * 1.5;
     }
 
-    score += Math.random() * 0.25
+    score += Math.random() * 0.25;
 
-    const matchScore = Number(score.toFixed(3))
+    const matchScore = Number(score.toFixed(3));
     scored.push({
       ...exercise,
       matchScore,
-    })
-  })
+    });
+  });
 
   if (scored.length === 0) {
-    return []
+    return [];
   }
 
-  return scored.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
-}
+  return scored.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
+};
 
 // Calculate sets, reps, and rest based on workout type and duration
 const calculateWorkoutParameters = (workoutType: string, duration: number) => {
-  const exerciseCount = duration <= 20 ? 3 : duration <= 40 ? 4 : duration <= 60 ? 6 : 8
+  const exerciseCount =
+    duration <= 20 ? 3 : duration <= 40 ? 4 : duration <= 60 ? 6 : 8;
 
   switch (workoutType) {
-    case 'strength':
+    case "strength":
       return {
         exerciseCount,
         sets: duration <= 30 ? 3 : 4,
-        reps: duration <= 30 ? '8-12' : '10-15',
-        rest: duration <= 30 ? '60-90s' : '90-120s'
-      }
-    case 'cardio':
+        reps: duration <= 30 ? "8-12" : "10-15",
+        rest: duration <= 30 ? "60-90s" : "90-120s",
+      };
+    case "cardio":
       return {
         exerciseCount,
         sets: 3,
-        reps: duration <= 30 ? '30-45s' : '45-60s',
-        rest: '30-60s'
-      }
-    case 'hiit':
+        reps: duration <= 30 ? "30-45s" : "45-60s",
+        rest: "30-60s",
+      };
+    case "hiit":
       return {
         exerciseCount,
         sets: 4,
-        reps: '20-30s',
-        rest: '10-20s'
-      }
-    case 'flexibility':
+        reps: "20-30s",
+        rest: "10-20s",
+      };
+    case "flexibility":
       return {
         exerciseCount,
         sets: 2,
-        reps: '30-60s hold',
-        rest: '15-30s'
-      }
+        reps: "30-60s hold",
+        rest: "15-30s",
+      };
     default:
       return {
         exerciseCount,
         sets: 3,
-        reps: '8-12',
-        rest: '60s'
-      }
+        reps: "8-12",
+        rest: "60s",
+      };
   }
-}
-
-// Better randomization: Use Fisher-Yates shuffle algorithm
-function shuffleArray<T>(array: T[]): T[] {
-  const shuffled = [...array]
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-  }
-  return shuffled
-}
+};
 
 function weightedShuffle<T extends { matchScore?: number }>(array: T[]): T[] {
   return [...array]
@@ -1187,25 +1309,26 @@ function weightedShuffle<T extends { matchScore?: number }>(array: T[]): T[] {
       weight: (item.matchScore ?? 0) + Math.random(),
     }))
     .sort((a, b) => b.weight - a.weight)
-    .map((entry) => entry.item)
+    .map((entry) => entry.item);
 }
 
 // Load saved workout preferences from user settings
-const loadSavedWorkoutPreferences = async (): Promise<SavedWorkoutPrefs | null> => {
-  try {
-    const response = await fetch('/api/user/preferences')
-    if (!response.ok) {
-      logger.warn('Failed to fetch user preferences:', response.statusText)
-      return null
+const loadSavedWorkoutPreferences =
+  async (): Promise<SavedWorkoutPrefs | null> => {
+    try {
+      const response = await fetch("/api/user/preferences");
+      if (!response.ok) {
+        logger.warn("Failed to fetch user preferences:", response.statusText);
+        return null;
+      }
+
+      const data = await response.json();
+      return data.preferences?.workoutPrefs || null;
+    } catch (error) {
+      logger.error("Error loading saved workout preferences:", error);
+      return null;
     }
-    
-    const data = await response.json()
-    return data.preferences?.workoutPrefs || null
-  } catch (error) {
-    logger.error('Error loading saved workout preferences:', error)
-    return null
-  }
-}
+  };
 
 export function AIWorkoutGenerator() {
   const [preferences, setPreferences] = useState({
@@ -1216,58 +1339,66 @@ export function AIWorkoutGenerator() {
     targetBodyParts: [] as string[],
     equipment: [] as string[],
     notes: "",
-  })
-  const [savedPrefs, setSavedPrefs] = useState<SavedWorkoutPrefs | null>(null)
-  const [isLoadingPrefs, setIsLoadingPrefs] = useState(true)
-  const [generatedWorkout, setGeneratedWorkout] = useState<WorkoutPlan | null>(null)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [exercisePool, setExercisePool] = useState<DatabaseExercise[]>([])
-  const [currentConfig, setCurrentConfig] = useState<WorkoutConfig | null>(null)
-  const [isExercisePickerOpen, setIsExercisePickerOpen] = useState(false)
+  });
+  const [savedPrefs, setSavedPrefs] = useState<SavedWorkoutPrefs | null>(null);
+  const [isLoadingPrefs, setIsLoadingPrefs] = useState(true);
+  const [generatedWorkout, setGeneratedWorkout] = useState<WorkoutPlan | null>(
+    null,
+  );
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [exercisePool, setExercisePool] = useState<DatabaseExercise[]>([]);
+  const [currentConfig, setCurrentConfig] = useState<WorkoutConfig | null>(
+    null,
+  );
+  const [isExercisePickerOpen, setIsExercisePickerOpen] = useState(false);
 
   // Load saved preferences on component mount
   useEffect(() => {
     const loadPrefs = async () => {
-      const saved = await loadSavedWorkoutPreferences()
-      setSavedPrefs(saved)
-      
+      const saved = await loadSavedWorkoutPreferences();
+      setSavedPrefs(saved);
+
       // Auto-fill form with saved preferences if available
       if (saved) {
-        setPreferences(prev => ({
+        setPreferences((prev) => ({
           ...prev,
           // Map saved preferences to form preferences
           duration: saved.defaultDuration || "",
           equipment: saved.availableEquipment || [],
           // Set fitness level based on difficulty level from settings
           fitnessLevel: saved.difficultyLevel || "",
-        }))
+        }));
       }
-      
-      setIsLoadingPrefs(false)
-    }
-    
-    loadPrefs()
-  }, [])
+
+      setIsLoadingPrefs(false);
+    };
+
+    loadPrefs();
+  }, []);
 
   const generateWorkout = async () => {
-    setIsGenerating(true)
-    setIsExercisePickerOpen(false)
+    setIsGenerating(true);
+    setIsExercisePickerOpen(false);
 
-    const { workoutType, duration, targetMuscles, targetBodyParts, equipment } = preferences
-    const parsedDuration = Number.parseInt(duration || "0", 10)
-    const durationMinutes = Number.isNaN(parsedDuration) ? 30 : parsedDuration
-    const normalizedBodyParts = targetBodyParts || []
+    const { workoutType, duration, targetMuscles, targetBodyParts, equipment } =
+      preferences;
+    const parsedDuration = Number.parseInt(duration || "0", 10);
+    const durationMinutes = Number.isNaN(parsedDuration) ? 30 : parsedDuration;
+    const normalizedBodyParts = targetBodyParts || [];
 
-    const workoutParams = calculateWorkoutParameters(workoutType, durationMinutes)
+    const workoutParams = calculateWorkoutParameters(
+      workoutType,
+      durationMinutes,
+    );
     const config: WorkoutConfig = {
       workoutType: workoutType || "custom",
       sets: workoutParams.sets,
       reps: workoutParams.reps,
       rest: workoutParams.rest,
       exerciseCount: workoutParams.exerciseCount,
-    }
+    };
 
-    setCurrentConfig(config)
+    setCurrentConfig(config);
 
     try {
       const exercises = await loadExerciseDatabase(
@@ -1275,18 +1406,21 @@ export function AIWorkoutGenerator() {
         targetMuscles,
         normalizedBodyParts,
         equipment,
-        workoutParams.exerciseCount
-      )
+        workoutParams.exerciseCount,
+      );
 
       if (exercises.length === 0) {
-        throw new Error('No exercises match the selected criteria')
+        throw new Error("No exercises match the selected criteria");
       }
 
-      const uniqueExercises = uniqueById(exercises)
-      const variedExercises = selectVariedExercises(uniqueExercises, workoutParams.exerciseCount)
+      const uniqueExercises = uniqueById(exercises);
+      const variedExercises = selectVariedExercises(
+        uniqueExercises,
+        workoutParams.exerciseCount,
+      );
       const workoutExercises = variedExercises
         .slice(0, workoutParams.exerciseCount)
-        .map((dbExercise) => convertToWorkoutExercise(dbExercise, config))
+        .map((dbExercise) => convertToWorkoutExercise(dbExercise, config));
 
       const workout = createWorkoutPlan(
         config.workoutType,
@@ -1294,32 +1428,34 @@ export function AIWorkoutGenerator() {
         equipment,
         normalizedBodyParts,
         targetMuscles,
-        workoutExercises
-      )
+        workoutExercises,
+      );
 
-  setGeneratedWorkout(workout)
-  setExercisePool(uniqueExercises)
+      setGeneratedWorkout(workout);
+      setExercisePool(uniqueExercises);
     } catch (error) {
-      logger.error('Failed to generate workout:', error)
+      logger.error("Failed to generate workout:", error);
       const fallback = buildFallbackWorkout(
         config.workoutType,
         durationMinutes,
         targetMuscles,
         normalizedBodyParts,
         equipment,
-        config
-      )
-  setGeneratedWorkout(fallback.workout)
-  setExercisePool(uniqueById(fallback.pool))
-      toast.info('Showing a curated backup workout while we refresh the exercise library.')
+        config,
+      );
+      setGeneratedWorkout(fallback.workout);
+      setExercisePool(uniqueById(fallback.pool));
+      toast.info(
+        "Showing a curated backup workout while we refresh the exercise library.",
+      );
     } finally {
-      setIsGenerating(false)
+      setIsGenerating(false);
     }
-  }
+  };
 
   const exerciseOptions = useMemo<ExerciseOption[]>(() => {
     if (exercisePool.length === 0) {
-      return []
+      return [];
     }
 
     return exercisePool.map((exercise) => ({
@@ -1331,132 +1467,160 @@ export function AIWorkoutGenerator() {
         ...exercise.bodyParts,
       ]),
       equipment: uniqueDisplayStrings(
-        exercise.equipments.length > 0 ? exercise.equipments : [exercise.equipment || 'bodyweight']
+        exercise.equipments.length > 0
+          ? exercise.equipments
+          : [exercise.equipment || "bodyweight"],
       ),
-      instructions: exercise.instructions.join(' '),
+      instructions: exercise.instructions.join(" "),
       source: exercise.source ? formatLabel(exercise.source) : undefined,
-    }))
-  }, [exercisePool])
+    }));
+  }, [exercisePool]);
 
   const selectedExerciseIds = useMemo(() => {
     if (!generatedWorkout) {
-      return new Set<string>()
+      return new Set<string>();
     }
 
-    return new Set(generatedWorkout.exercises.map((exercise) => getWorkoutExerciseId(exercise)))
-  }, [generatedWorkout])
+    return new Set(
+      generatedWorkout.exercises.map((exercise) =>
+        getWorkoutExerciseId(exercise),
+      ),
+    );
+  }, [generatedWorkout]);
 
   const handleRemoveExercise = (exerciseId: string) => {
     if (!generatedWorkout) {
-      return
+      return;
     }
 
     setGeneratedWorkout((previous) => {
       if (!previous) {
-        return previous
+        return previous;
       }
 
       const updatedExercises = previous.exercises.filter(
-        (exercise) => getWorkoutExerciseId(exercise) !== exerciseId
-      )
+        (exercise) => getWorkoutExerciseId(exercise) !== exerciseId,
+      );
 
-      return { ...previous, exercises: updatedExercises }
-    })
-  }
+      return { ...previous, exercises: updatedExercises };
+    });
+  };
 
   const handleRegenerateExercise = (exerciseId: string) => {
     if (!generatedWorkout || !currentConfig) {
-      return
+      return;
     }
 
     const index = generatedWorkout.exercises.findIndex(
-      (exercise) => getWorkoutExerciseId(exercise) === exerciseId
-    )
+      (exercise) => getWorkoutExerciseId(exercise) === exerciseId,
+    );
 
     if (index === -1) {
-      return
+      return;
     }
 
     const usedIds = new Set(
       generatedWorkout.exercises
         .filter((_, idx) => idx !== index)
-        .map((exercise) => getWorkoutExerciseId(exercise))
-    )
+        .map((exercise) => getWorkoutExerciseId(exercise)),
+    );
 
     const poolToSearch =
-      exercisePool.length > 0 ? exercisePool : buildFallbackExercisePool(preferences.equipment)
-  if (poolToSearch.length === 0) {
-    toast.error('No additional exercises are available to swap in right now.')
-    return
-  }
+      exercisePool.length > 0
+        ? exercisePool
+        : buildFallbackExercisePool(preferences.equipment);
+    if (poolToSearch.length === 0) {
+      toast.error(
+        "No additional exercises are available to swap in right now.",
+      );
+      return;
+    }
 
-  const availableCandidates = poolToSearch.filter(
-    (exercise) => !usedIds.has(getExerciseId(exercise)) && getExerciseId(exercise) !== exerciseId
-  )
+    const availableCandidates = poolToSearch.filter(
+      (exercise) =>
+        !usedIds.has(getExerciseId(exercise)) &&
+        getExerciseId(exercise) !== exerciseId,
+    );
 
-  const candidatePool = availableCandidates.length > 0 ? availableCandidates : poolToSearch
+    const candidatePool =
+      availableCandidates.length > 0 ? availableCandidates : poolToSearch;
 
-  const targetBodyParts = preferences.targetBodyParts || []
-  const prioritizedByCriteria = filterExercises(
-    candidatePool,
-    preferences.workoutType,
-    preferences.targetMuscles,
-    targetBodyParts,
-    preferences.equipment
-  )
+    const targetBodyParts = preferences.targetBodyParts || [];
+    const prioritizedByCriteria = filterExercises(
+      candidatePool,
+      preferences.workoutType,
+      preferences.targetMuscles,
+      targetBodyParts,
+      preferences.equipment,
+    );
 
-  const prioritizedPool = prioritizedByCriteria.length > 0 ? prioritizedByCriteria : candidatePool
-  const weightedPool = weightedShuffle(prioritizedPool)
-  const replacementDb = weightedPool[0]
+    const prioritizedPool =
+      prioritizedByCriteria.length > 0 ? prioritizedByCriteria : candidatePool;
+    const weightedPool = weightedShuffle(prioritizedPool);
+    const replacementDb = weightedPool[0];
 
-  if (!replacementDb) {
-    toast.error('No additional exercises are available to swap in right now.')
-    return
-  }
+    if (!replacementDb) {
+      toast.error(
+        "No additional exercises are available to swap in right now.",
+      );
+      return;
+    }
 
-    const replacementExercise = convertToWorkoutExercise(replacementDb, currentConfig)
+    const replacementExercise = convertToWorkoutExercise(
+      replacementDb,
+      currentConfig,
+    );
 
     setGeneratedWorkout((previous) => {
       if (!previous) {
-        return previous
+        return previous;
       }
 
-      const updatedExercises = [...previous.exercises]
-      updatedExercises[index] = replacementExercise
-      return { ...previous, exercises: updatedExercises }
-    })
-  }
+      const updatedExercises = [...previous.exercises];
+      updatedExercises[index] = replacementExercise;
+      return { ...previous, exercises: updatedExercises };
+    });
+  };
 
   const handleAddExerciseFromOption = (option: ExerciseOption) => {
     if (!generatedWorkout || !currentConfig) {
-      return
+      return;
     }
 
     if (selectedExerciseIds.has(option.id)) {
-      toast.info('That exercise is already part of your plan.')
-      return
+      toast.info("That exercise is already part of your plan.");
+      return;
     }
 
-    const databaseExercise = exercisePool.find((exercise) => getExerciseId(exercise) === option.id)
+    const databaseExercise = exercisePool.find(
+      (exercise) => getExerciseId(exercise) === option.id,
+    );
 
     if (!databaseExercise) {
-      toast.error('Exercise not found in database. Please try a different exercise.')
-      return
+      toast.error(
+        "Exercise not found in database. Please try a different exercise.",
+      );
+      return;
     }
 
-    const workoutExercise = convertToWorkoutExercise(databaseExercise, currentConfig)
+    const workoutExercise = convertToWorkoutExercise(
+      databaseExercise,
+      currentConfig,
+    );
 
     setGeneratedWorkout((previous) =>
-      previous ? { ...previous, exercises: [...previous.exercises, workoutExercise] } : previous
-    )
-  }
+      previous
+        ? { ...previous, exercises: [...previous.exercises, workoutExercise] }
+        : previous,
+    );
+  };
 
   const handleCreateCustomExercise = (custom: CustomExerciseInput) => {
     if (!generatedWorkout) {
-      return
+      return;
     }
 
-    const exerciseId = `custom-${slugify(custom.name)}-${Date.now()}`
+    const exerciseId = `custom-${slugify(custom.name)}-${Date.now()}`;
     const workoutExercise: Exercise = {
       id: exerciseId,
       name: formatLabel(custom.name),
@@ -1464,25 +1628,28 @@ export function AIWorkoutGenerator() {
       reps: custom.reps,
       rest: custom.rest,
       instructions:
-        custom.instructions || 'Include precise coaching cues so you remember how this should feel.',
+        custom.instructions ||
+        "Include precise coaching cues so you remember how this should feel.",
       targetMuscles:
         custom.targetMuscles.length > 0
           ? custom.targetMuscles.map(formatLabel)
-          : ['Full Body'],
+          : ["Full Body"],
       equipment:
         custom.equipment.length > 0
           ? custom.equipment.map(formatLabel)
-          : ['Bodyweight'],
-      source: 'custom',
+          : ["Bodyweight"],
+      source: "custom",
       isTimeBased: custom.isTimeBased,
-    }
+    };
 
     setGeneratedWorkout((previous) =>
-      previous ? { ...previous, exercises: [...previous.exercises, workoutExercise] } : previous
-    )
-  }
+      previous
+        ? { ...previous, exercises: [...previous.exercises, workoutExercise] }
+        : previous,
+    );
+  };
 
-  const canGenerate = preferences.workoutType && preferences.duration
+  const canGenerate = preferences.workoutType && preferences.duration;
 
   return (
     <div className="space-y-6">
@@ -1492,7 +1659,10 @@ export function AIWorkoutGenerator() {
             <Zap className="w-5 h-5 text-blue-600" />
             Workout Generator
           </CardTitle>
-          <CardDescription>Create a personalized workout plan based on your available equipment and preferences</CardDescription>
+          <CardDescription>
+            Create a personalized workout plan based on your available equipment
+            and preferences
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <WorkoutPreferencesForm
@@ -1541,8 +1711,8 @@ export function AIWorkoutGenerator() {
             onSelectExercise={handleAddExerciseFromOption}
             onCreateCustomExercise={handleCreateCustomExercise}
             defaultSets={currentConfig?.sets ?? 3}
-            defaultReps={currentConfig?.reps ?? '8-12'}
-            defaultRest={currentConfig?.rest ?? '60s'}
+            defaultReps={currentConfig?.reps ?? "8-12"}
+            defaultRest={currentConfig?.rest ?? "60s"}
             workoutType={currentConfig?.workoutType ?? preferences.workoutType}
             defaultTargetMuscles={preferences.targetMuscles}
             defaultEquipment={preferences.equipment}
@@ -1550,5 +1720,5 @@ export function AIWorkoutGenerator() {
         </>
       )}
     </div>
-  )
+  );
 }

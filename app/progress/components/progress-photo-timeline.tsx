@@ -1,12 +1,18 @@
-"use client"
+"use client";
 
-import React, { useEffect, useState } from "react"
-import { formatDistanceToNow, format } from "date-fns"
-import { ChevronLeft, ChevronRight, Trash2, Calendar } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
-import { useToast } from "@/hooks/use-toast"
+import React, { useEffect, useState } from "react";
+import { formatDistanceToNow, format } from "date-fns";
+import { ChevronLeft, ChevronRight, Trash2, Calendar } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,102 +21,97 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
+} from "@/components/ui/alert-dialog";
 
 interface ProgressPhoto {
-  id: string
-  url: string
-  notes?: string
-  uploadDate: string
-  createdAt: string
+  id: string;
+  url: string;
+  notes?: string;
+  uploadDate: string;
+  createdAt: string;
 }
 
 interface ProgressPhotoTimelineProps {
-  onPhotoDeleted?: (photoId: string) => void
-  viewMode?: "grid" | "timeline"
+  onPhotoDeleted?: (photoId: string) => void;
+  viewMode?: "grid" | "timeline";
 }
 
 export function ProgressPhotoTimeline({
   onPhotoDeleted,
   viewMode = "timeline",
 }: ProgressPhotoTimelineProps) {
-  const [photos, setPhotos] = useState<ProgressPhoto[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
-  const [currentViewMode, setCurrentViewMode] = useState(viewMode)
-  const { toast } = useToast()
+  const [photos, setPhotos] = useState<ProgressPhoto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchPhotos = async () => {
       try {
-        setLoading(true)
+        setLoading(true);
         const response = await fetch("/api/progress/photos", {
           headers: {
             "Content-Type": "application/json",
           },
-        })
+        });
 
         if (!response.ok) {
-          throw new Error("Failed to fetch progress photos")
+          throw new Error("Failed to fetch progress photos");
         }
 
-        const data = await response.json()
-        setPhotos(data.photos || [])
+        const data = await response.json();
+        setPhotos(data.photos || []);
       } catch (err) {
-        console.error("Error fetching photos:", err)
         setError(
-          err instanceof Error ? err.message : "Failed to load progress photos"
-        )
+          err instanceof Error ? err.message : "Failed to load progress photos",
+        );
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchPhotos()
-  }, [])
+    fetchPhotos();
+  }, []);
 
   const handleDeletePhoto = async (photoId: string) => {
     try {
       const response = await fetch(`/api/progress/photos/${photoId}`, {
         method: "DELETE",
-      })
+      });
 
       if (!response.ok) {
-        throw new Error("Failed to delete photo")
+        throw new Error("Failed to delete photo");
       }
 
-      setPhotos(photos.filter((p) => p.id !== photoId))
+      setPhotos(photos.filter((p) => p.id !== photoId));
       if (selectedPhotoIndex >= photos.length - 1) {
-        setSelectedPhotoIndex(Math.max(0, photos.length - 2))
+        setSelectedPhotoIndex(Math.max(0, photos.length - 2));
       }
 
       toast({
         title: "Success",
         description: "Progress photo deleted",
-      })
+      });
 
-      onPhotoDeleted?.(photoId)
+      onPhotoDeleted?.(photoId);
     } catch (err) {
       toast({
         title: "Error",
         description:
           err instanceof Error ? err.message : "Failed to delete photo",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const handlePrevious = () => {
-    setSelectedPhotoIndex(Math.max(0, selectedPhotoIndex - 1))
-  }
+    setSelectedPhotoIndex(Math.max(0, selectedPhotoIndex - 1));
+  };
 
   const handleNext = () => {
-    setSelectedPhotoIndex(
-      Math.min(photos.length - 1, selectedPhotoIndex + 1)
-    )
-  }
+    setSelectedPhotoIndex(Math.min(photos.length - 1, selectedPhotoIndex + 1));
+  };
 
   if (loading) {
     return (
@@ -123,7 +124,7 @@ export function ProgressPhotoTimeline({
           <Skeleton className="w-full h-96 rounded-lg" />
         </CardContent>
       </Card>
-    )
+    );
   }
 
   if (error) {
@@ -139,7 +140,7 @@ export function ProgressPhotoTimeline({
           </p>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   if (photos.length === 0) {
@@ -157,10 +158,10 @@ export function ProgressPhotoTimeline({
           </p>
         </CardContent>
       </Card>
-    )
+    );
   }
 
-  const currentPhoto = photos[selectedPhotoIndex]
+  const currentPhoto = photos[selectedPhotoIndex];
 
   return (
     <Card>
@@ -194,7 +195,9 @@ export function ProgressPhotoTimeline({
             {currentPhoto.notes && (
               <div className="bg-muted/50 rounded-lg p-3 border border-border">
                 <p className="text-sm font-medium mb-1">Notes</p>
-                <p className="text-sm text-muted-foreground">{currentPhoto.notes}</p>
+                <p className="text-sm text-muted-foreground">
+                  {currentPhoto.notes}
+                </p>
               </div>
             )}
 
@@ -285,9 +288,7 @@ export function ProgressPhotoTimeline({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() =>
-                        handleDeletePhoto(photo.id)
-                      }
+                      onClick={() => handleDeletePhoto(photo.id)}
                       className="text-white"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -303,5 +304,5 @@ export function ProgressPhotoTimeline({
         )}
       </CardContent>
     </Card>
-  )
+  );
 }
