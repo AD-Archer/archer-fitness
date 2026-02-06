@@ -172,7 +172,7 @@ export async function GET(request: NextRequest) {
     let totalVolume = 0;
     const workoutDates = new Set<string>();
 
-    workoutSessions.forEach((session) => {
+    workoutSessions.forEach((session: any) => {
       const sessionDateTime = new Date(session.startTime);
       const sessionDate = sessionDateTime.toISOString().split("T")[0];
       const sessionBodyWeight = getBodyWeightForDate(sessionDateTime);
@@ -182,9 +182,11 @@ export async function GET(request: NextRequest) {
         totalWorkoutTime += session.duration;
       }
 
-      session.exercises.forEach((sessionEx) => {
+      session.exercises.forEach((sessionEx: any) => {
         const exerciseName = sessionEx.exercise.name;
-        const completedSets = sessionEx.sets.filter((set) => set.completed);
+        const completedSets = sessionEx.sets.filter(
+          (set: any) => set.completed,
+        );
         totalCompletedSets += completedSets.length;
 
         if (!exerciseRecords.has(exerciseName)) {
@@ -197,7 +199,9 @@ export async function GET(request: NextRequest) {
             totalVolume: 0,
             lastWorkout: sessionDate,
             frequency: 0,
-            muscleGroups: sessionEx.exercise.muscles.map((m) => m.muscle.name),
+            muscleGroups: sessionEx.exercise.muscles.map(
+              (m: any) => m.muscle.name,
+            ),
           });
         }
 
@@ -205,7 +209,7 @@ export async function GET(request: NextRequest) {
         record.frequency += 1;
         record.totalSets += completedSets.length;
 
-        completedSets.forEach((set) => {
+        completedSets.forEach((set: any) => {
           // Track if this is a bodyweight exercise (no external weight)
           const isBodyweight = !set.weight || set.weight === 0;
           // Use body weight for volume calculations (from workout date)
@@ -296,15 +300,15 @@ export async function GET(request: NextRequest) {
       Array<{ date: string; weight: number; reps: number }>
     >();
 
-    workoutSessions.forEach((session) => {
+    workoutSessions.forEach((session: any) => {
       const sessionDate = session.startTime;
       const sessionBodyWeight = getBodyWeightForDate(new Date(sessionDate));
-      session.exercises.forEach((sessionEx) => {
+      session.exercises.forEach((sessionEx: any) => {
         const exerciseName = sessionEx.exercise.name;
         const bestSet = sessionEx.sets
-          .filter((set) => set.completed && set.reps)
+          .filter((set: any) => set.completed && set.reps)
           .reduce(
-            (best, current) => {
+            (best: any, current: any) => {
               // Use body weight for exercises with 0 weight
               const currentWeight = current.weight || sessionBodyWeight;
               const bestWeight = best?.weight || sessionBodyWeight;
@@ -364,17 +368,17 @@ export async function GET(request: NextRequest) {
       }
     };
 
-    workoutSessions.forEach((session) => {
+    workoutSessions.forEach((session: any) => {
       const sessionDate = new Date(session.startTime);
       const sessionBodyWeight = getBodyWeightForDate(sessionDate);
       const groupKey = getGroupKey(sessionDate);
 
       let sessionVolume = 0;
       let sessionSets = 0;
-      session.exercises.forEach((exercise) => {
-        const completedSets = exercise.sets.filter((set) => set.completed);
+      session.exercises.forEach((exercise: any) => {
+        const completedSets = exercise.sets.filter((set: any) => set.completed);
         sessionSets += completedSets.length;
-        completedSets.forEach((set) => {
+        completedSets.forEach((set: any) => {
           if (set.reps) {
             // Use body weight if weight is 0 or missing
             const weight = set.weight || sessionBodyWeight;

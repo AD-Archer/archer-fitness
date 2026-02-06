@@ -49,25 +49,27 @@ export async function POST(
         description: originalSession.description,
         status: "active",
         exercises: {
-          create: originalSession.exercises.map((exercise, index) => ({
-            exerciseId: exercise.exerciseId,
-            order: index,
-            targetSets: exercise.targetSets,
-            targetReps: exercise.targetReps,
-            targetType: exercise.targetType,
-            notes: exercise.notes,
-            // Optionally pre-fill with previous performance data
-            sets: {
-              create: exercise.sets.map((set, setIndex) => ({
-                setNumber: setIndex + 1,
-                reps: set.reps,
-                weight: set.weight,
-                duration: set.duration,
-                completed: false, // Start fresh, not completed
-                notes: set.notes,
-              })),
-            },
-          })),
+          create: originalSession.exercises.map(
+            (exercise: any, index: any) => ({
+              exerciseId: exercise.exerciseId,
+              order: index,
+              targetSets: exercise.targetSets,
+              targetReps: exercise.targetReps,
+              targetType: exercise.targetType,
+              notes: exercise.notes,
+              // Optionally pre-fill with previous performance data
+              sets: {
+                create: exercise.sets.map((set: any, setIndex: any) => ({
+                  setNumber: setIndex + 1,
+                  reps: set.reps,
+                  weight: set.weight,
+                  duration: set.duration,
+                  completed: false, // Start fresh, not completed
+                  notes: set.notes,
+                })),
+              },
+            }),
+          ),
         },
       },
       include: {

@@ -260,7 +260,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Apply template items
     if (template.items.length > 0) {
       await prisma.scheduleItem.createMany({
-        data: template.items.map((item) => ({
+        data: template.items.map((item: any) => ({
           scheduleId: schedule.id,
           type: item.type,
           title: item.title,

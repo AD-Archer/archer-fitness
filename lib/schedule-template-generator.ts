@@ -1,7 +1,4 @@
-import {
-  WorkoutTemplate,
-  WorkoutTemplateExercise,
-} from "@prisma/client";
+import { WorkoutTemplate, WorkoutTemplateExercise } from "@prisma/client";
 import {
   TemplateGenerationCriteria,
   ScheduleTemplate,
@@ -47,8 +44,8 @@ const getRequiredEquipment = (
   template: WorkoutTemplateWithExercises,
 ): string[] => {
   const equipment = new Set<string>();
-  template.exercises.forEach((exercise) => {
-    exercise.exercise.equipments?.forEach((relation) => {
+  template.exercises.forEach((exercise: any) => {
+    exercise.exercise.equipments?.forEach((relation: any) => {
       const name = sanitizeEquipmentName(relation?.equipment?.name);
       if (name) {
         equipment.add(name);
@@ -99,7 +96,7 @@ const isCardioTemplate = (template: WorkoutTemplateWithExercises): boolean => {
     return true;
   }
 
-  return template.exercises.some((exercise) => {
+  return template.exercises.some((exercise: any) => {
     const exerciseName = exercise.exercise.name.toLowerCase();
     if (
       exerciseName.includes("cardio") ||
@@ -111,7 +108,7 @@ const isCardioTemplate = (template: WorkoutTemplateWithExercises): boolean => {
       return true;
     }
 
-    return exercise.exercise.muscles.some((relation) => {
+    return exercise.exercise.muscles.some((relation: any) => {
       const muscleName = relation.muscle.name.toLowerCase();
       return (
         muscleName.includes("cardio") ||
@@ -181,10 +178,10 @@ const buildItemDescription = (
 ): string => {
   const exerciseCount = template.exercises.length;
   const muscles = template.exercises
-    .flatMap((exercise) =>
-      exercise.exercise.muscles.filter((muscle) => muscle.isPrimary),
+    .flatMap((exercise: any) =>
+      exercise.exercise.muscles.filter((muscle: any) => muscle.isPrimary),
     )
-    .map((entry) => entry.muscle.name);
+    .map((entry: any) => entry.muscle.name);
 
   const distinctMuscles = Array.from(new Set(muscles)).slice(0, 3);
   const muscleText =
@@ -198,7 +195,7 @@ const toGeneratorData = (template: WorkoutTemplateWithExercises) => {
     name: template.name,
     duration: template.estimatedDuration ?? 60,
     difficulty: template.difficulty ?? "Mixed",
-    exercises: template.exercises.map((exercise) => ({
+    exercises: template.exercises.map((exercise: any) => ({
       name: exercise.exercise.name,
       sets: exercise.targetSets,
       reps: exercise.targetReps,
@@ -206,11 +203,11 @@ const toGeneratorData = (template: WorkoutTemplateWithExercises) => {
       instructions:
         exercise.exercise.description || exercise.exercise.instructions || "",
       targetMuscles: exercise.exercise.muscles.map(
-        (relation) => relation.muscle.name,
+        (relation: any) => relation.muscle.name,
       ),
       equipment:
         exercise.exercise.equipments?.map(
-          (relation) => relation.equipment.name,
+          (relation: any) => relation.equipment.name,
         ) ?? [],
     })),
     warmup: [],

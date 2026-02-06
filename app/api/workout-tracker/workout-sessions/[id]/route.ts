@@ -70,13 +70,13 @@ export async function GET(
       // Transform the data to match our performance calculation interface
       const transformedSession = {
         ...workoutSession,
-        exercises: workoutSession.exercises.map((ex) => ({
+        exercises: workoutSession.exercises.map((ex: any) => ({
           id: ex.id,
           targetSets: ex.targetSets,
           targetReps: ex.targetReps,
           targetType: ex.targetType,
           completed: ex.completed,
-          completedSets: ex.sets.filter((set) => set.completed).length,
+          completedSets: ex.sets.filter((set: any) => set.completed).length,
           sets: ex.sets,
         })),
       };
@@ -144,9 +144,9 @@ export async function PUT(
         // Transform the data to match our performance calculation interface
         const transformedSession = {
           ...workoutSession,
-          exercises: workoutSession.exercises.map((ex) => ({
+          exercises: workoutSession.exercises.map((ex: any) => ({
             ...ex,
-            completedSets: ex.sets.filter((set) => set.completed).length,
+            completedSets: ex.sets.filter((set: any) => set.completed).length,
           })),
         };
 

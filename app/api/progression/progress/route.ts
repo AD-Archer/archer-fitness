@@ -1,33 +1,35 @@
-import { NextResponse, NextRequest } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import prisma from "@/lib/prisma"
-import { logger } from "@/lib/logger"
-import type { NodeStatus } from "@/lib/progression/types"
-import { generateAlias } from "@/lib/progression/aliases"
+import { NextResponse, NextRequest } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import prisma from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import type { NodeStatus } from "@/lib/progression/types";
+import { generateAlias } from "@/lib/progression/aliases";
 
 const statusMap: Record<NodeStatus, "LOCKED" | "AVAILABLE" | "COMPLETED"> = {
   locked: "LOCKED",
   available: "AVAILABLE",
   completed: "COMPLETED",
-}
+};
 
 const ensureProfile = async (userId: string) => {
-  const existing = await prisma.progressionProfile.findUnique({ where: { userId } })
-  if (existing) return existing
+  const existing = await prisma.progressionProfile.findUnique({
+    where: { userId },
+  });
+  if (existing) return existing;
   return prisma.progressionProfile.create({
     data: {
       userId,
       alias: generateAlias(userId),
     },
-  })
-}
+  });
+};
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const [records, profile] = await Promise.all([
@@ -35,45 +37,50 @@ export async function GET() {
         where: { userId: session.user.id },
       }),
       ensureProfile(session.user.id),
-    ])
+    ]);
 
     return NextResponse.json({
       profile,
       records,
-    })
+    });
   } catch (error) {
-    logger.error("Error fetching progression progress", error)
-    return NextResponse.json({ error: "Failed to load progression" }, { status: 500 })
+    logger.error("Error fetching progression progress", error);
+    return NextResponse.json(
+      { error: "Failed to load progression" },
+      { status: 500 },
+    );
   }
 }
 
 interface ProgressPayload {
-  nodeId: string
-  status: NodeStatus
-  completionCount: number
-  xpEarned?: number
-  lastCompletedAt?: string | null
+  nodeId: string;
+  status: NodeStatus;
+  completionCount: number;
+  xpEarned?: number;
+  lastCompletedAt?: string | null;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = (await request.json()) as ProgressPayload[]
+    const body = (await request.json()) as ProgressPayload[];
     if (!Array.isArray(body)) {
-      return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
+      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
     const operations = body
       .filter((item) => item?.nodeId)
       .map(async (item) => {
-        const safeCount = Math.max(0, Math.floor(item.completionCount || 0))
-        const prismaStatus = statusMap[item.status] ?? "LOCKED"
-        const xpEarned = Math.max(0, Math.floor(item.xpEarned || 0))
-        const lastCompletedAt = item.lastCompletedAt ? new Date(item.lastCompletedAt) : null
+        const safeCount = Math.max(0, Math.floor(item.completionCount || 0));
+        const prismaStatus = statusMap[item.status] ?? "LOCKED";
+        const xpEarned = Math.max(0, Math.floor(item.xpEarned || 0));
+        const lastCompletedAt = item.lastCompletedAt
+          ? new Date(item.lastCompletedAt)
+          : null;
 
         await prisma.progressionNodeProgress.upsert({
           where: {
@@ -96,17 +103,22 @@ export async function POST(request: NextRequest) {
             xpEarned,
             lastCompletedAt,
           },
-        })
-      })
+        });
+      });
 
-    await Promise.all(operations)
+    await Promise.all(operations);
 
     const progressRecords = await prisma.progressionNodeProgress.findMany({
       where: { userId: session.user.id },
-    })
+    });
 
-    const crowns = progressRecords.filter((record) => record.status === "COMPLETED").length
-    const totalXp = progressRecords.reduce((sum, record) => sum + (record.xpEarned ?? 0), 0)
+    const crowns = progressRecords.filter(
+      (record: any) => record.status === "COMPLETED",
+    ).length;
+    const totalXp = progressRecords.reduce(
+      (sum: any, record: any) => sum + (record.xpEarned ?? 0),
+      0,
+    );
 
     await prisma.progressionProfile.upsert({
       where: { userId: session.user.id },
@@ -120,11 +132,14 @@ export async function POST(request: NextRequest) {
         crowns,
         totalXp,
       },
-    })
+    });
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true });
   } catch (error) {
-    logger.error("Error saving progression progress", error)
-    return NextResponse.json({ error: "Failed to save progression" }, { status: 500 })
+    logger.error("Error saving progression progress", error);
+    return NextResponse.json(
+      { error: "Failed to save progression" },
+      { status: 500 },
+    );
   }
 }

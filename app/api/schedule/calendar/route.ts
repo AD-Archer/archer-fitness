@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if Prisma client has been regenerated with new models
-     
+
     if (!(prisma as any).activeSchedule) {
       return NextResponse.json({
         workouts: [],
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all active schedules for this user that overlap with the date range
-     
+
     const activeSchedules = await (prisma as any).activeSchedule.findMany({
       where: {
         userId: session.user.id,
@@ -197,15 +197,17 @@ export async function GET(request: NextRequest) {
     });
 
     const completedDayMap = new Map(
-      completedDays.map((cd) => [formatDate(cd.date), cd]),
+      completedDays.map((cd: any) => [formatDate(cd.date), cd]),
     );
 
     // Attach completion status to calendar workouts
     const enrichedWorkouts = calendarWorkouts.map((workout) => ({
       ...workout,
       isCompleted: completedDayMap.has(workout.date),
-      completionStatus: completedDayMap.get(workout.date)?.status || null,
-      completionNotes: completedDayMap.get(workout.date)?.notes || null,
+      completionStatus:
+        (completedDayMap.get(workout.date) as any)?.status || null,
+      completionNotes:
+        (completedDayMap.get(workout.date) as any)?.notes || null,
     }));
 
     return NextResponse.json({

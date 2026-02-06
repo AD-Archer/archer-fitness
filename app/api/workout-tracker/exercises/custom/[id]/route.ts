@@ -25,7 +25,7 @@ export async function DELETE(
         where: { email: session.user.email },
         select: { id: true },
       })
-      .then((user) => user?.id);
+      .then((user: any) => user?.id);
 
     if (!userId) {
       return new NextResponse("User not found", { status: 404 });

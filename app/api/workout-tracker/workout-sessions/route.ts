@@ -111,41 +111,43 @@ export async function GET(request: NextRequest) {
     });
 
     // Calculate performance metrics for each workout session
-    const workoutSessionsWithPerformance = workoutSessions.map((session) => {
-      // If the session already has performance data stored, use it
-      if (
-        session.performanceStatus &&
-        session.completionRate !== null &&
-        session.perfectionScore !== null
-      ) {
-        return session;
-      }
+    const workoutSessionsWithPerformance = workoutSessions.map(
+      (session: any) => {
+        // If the session already has performance data stored, use it
+        if (
+          session.performanceStatus &&
+          session.completionRate !== null &&
+          session.perfectionScore !== null
+        ) {
+          return session;
+        }
 
-      // Otherwise, calculate performance metrics on-the-fly
-      // Transform the data to match our performance calculation interface
-      const transformedSession = {
-        ...session,
-        exercises: session.exercises.map((ex) => ({
-          id: ex.id,
-          targetSets: ex.targetSets,
-          targetReps: ex.targetReps,
-          targetType: ex.targetType,
-          completed: ex.completed,
-          completedSets: ex.sets.filter((set) => set.completed).length,
-          sets: ex.sets,
-        })),
-      };
+        // Otherwise, calculate performance metrics on-the-fly
+        // Transform the data to match our performance calculation interface
+        const transformedSession = {
+          ...session,
+          exercises: session.exercises.map((ex: any) => ({
+            id: ex.id,
+            targetSets: ex.targetSets,
+            targetReps: ex.targetReps,
+            targetType: ex.targetType,
+            completed: ex.completed,
+            completedSets: ex.sets.filter((set: any) => set.completed).length,
+            sets: ex.sets,
+          })),
+        };
 
-      const performance = calculateWorkoutPerformance(transformedSession);
+        const performance = calculateWorkoutPerformance(transformedSession);
 
-      // Return session with calculated performance data
-      return {
-        ...session,
-        performanceStatus: performance.performanceStatus,
-        completionRate: performance.completionRate,
-        perfectionScore: performance.perfectionScore,
-      };
-    });
+        // Return session with calculated performance data
+        return {
+          ...session,
+          performanceStatus: performance.performanceStatus,
+          completionRate: performance.completionRate,
+          perfectionScore: performance.perfectionScore,
+        };
+      },
+    );
 
     return NextResponse.json(workoutSessionsWithPerformance);
   } catch (error) {

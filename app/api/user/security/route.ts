@@ -48,7 +48,7 @@ export async function GET() {
       email: user?.email ?? null,
       emailVerified: user?.emailVerified ?? null,
       twoFactorEnabled: Boolean(user?.twoFactorEnabled),
-      linkedAccounts: accounts.map((account) => ({
+      linkedAccounts: accounts.map((account: any) => ({
         id: account.id,
         provider: account.provider,
       })),
@@ -141,13 +141,13 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    const accountToRemove = accounts.find((account) => account.provider === provider)
+    const accountToRemove = accounts.find((account: any) => account.provider === provider)
 
     if (!accountToRemove) {
       return NextResponse.json({ error: "Provider not linked" }, { status: 404 })
     }
 
-    const remainingAccounts = accounts.filter((account) => account.provider !== provider)
+    const remainingAccounts = accounts.filter((account: any) => account.provider !== provider)
 
     const hasAlternativeLogin = Boolean(user.password) || remainingAccounts.length > 0
 

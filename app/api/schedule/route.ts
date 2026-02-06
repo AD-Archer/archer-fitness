@@ -191,7 +191,7 @@ export async function GET(request: NextRequest) {
 
     const weekKey = weekStartDate.toISOString().split("T")[0];
 
-    const normalizedBaseItems = (schedule.items || []).map((item) => ({
+    const normalizedBaseItems = (schedule.items || []).map((item: any) => ({
       ...item,
       originId: (item as any).originId || item.id,
       isVirtual: false,
@@ -204,7 +204,7 @@ export async function GET(request: NextRequest) {
     }));
 
     const existingSignatures = new Set(
-      normalizedBaseItems.map((item) =>
+      normalizedBaseItems.map((item: any) =>
         `${item.title}-${item.startTime}-${item.day}`.toLowerCase(),
       ),
     );
