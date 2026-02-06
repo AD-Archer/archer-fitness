@@ -1,91 +1,93 @@
- 
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
-import { logger } from "@/lib/logger"
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import prisma from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string; exerciseId: string } }
+  { params }: { params: Promise<{ id: string; exerciseId: string }> },
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json()
-  const { reps, weight, duration, notes, restTime } = body
+    const { id, exerciseId } = await params;
+
+    const body = await request.json();
+    const { reps, weight, duration, restTime, notes } = body;
 
     if (!reps && !duration) {
       return NextResponse.json(
         { error: "Either reps or duration is required" },
-        { status: 400 }
-      )
+        { status: 400 },
+      );
     }
 
-  const prismaAny = prisma as any
-
     // Verify the session exercise belongs to the user's session
-    const sessionExercise = await prismaAny.workoutSessionExercise.findFirst({
+    const sessionExercise = await prisma.workoutSessionExercise.findFirst({
       where: {
-        id: params.exerciseId,
-        workoutSessionId: params.id,
+        id: exerciseId,
+        workoutSessionId: id,
         workoutSession: { userId: session.user.id },
       },
-    })
+    });
 
     if (!sessionExercise) {
-      return NextResponse.json({ error: "Session exercise not found" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Session exercise not found" },
+        { status: 404 },
+      );
     }
 
     // Determine next set number
-    const setCount = await prismaAny.exerciseSet.count({
-      where: { workoutSessionExerciseId: params.exerciseId },
-    })
+    const setCount = await prisma.exerciseSet.count({
+      where: { workoutSessionExerciseId: exerciseId },
+    });
 
-  const createdSet = await prismaAny.exerciseSet.create({
+    const createdSet = await prisma.exerciseSet.create({
       data: {
-        workoutSessionExerciseId: params.exerciseId,
+        workoutSessionExerciseId: exerciseId,
         setNumber: setCount + 1,
         reps: reps ?? null,
-    weight: weight === undefined || weight === "" ? null : weight,
+        weight: weight === undefined || weight === "" ? null : weight,
         duration: duration ?? null,
         completed: true,
         restTime: restTime ?? null,
         notes: notes ?? null,
       },
-    })
+    });
 
     // Return updated session exercise with sets
-    const updatedExercise = await prismaAny.workoutSessionExercise.findFirst({
-      where: { id: params.exerciseId },
+    const updatedExercise = await prisma.workoutSessionExercise.findFirst({
+      where: { id: exerciseId },
       include: {
         exercise: {
           include: {
             muscles: {
               include: {
-                muscle: true
-              }
+                muscle: true,
+              },
             },
             equipments: {
               include: {
-                equipment: true
-              }
-            }
-          }
+                equipment: true,
+              },
+            },
+          },
         },
         sets: { orderBy: { setNumber: "asc" } },
       },
-    })
+    });
 
-    return NextResponse.json({ set: createdSet, exercise: updatedExercise }, { status: 201 })
-  } catch (error) {
-    logger.error("Error adding set:", error)
     return NextResponse.json(
-      { error: "Failed to add set" },
-      { status: 500 }
-    )
+      { set: createdSet, exercise: updatedExercise },
+      { status: 201 },
+    );
+  } catch (error) {
+    logger.error("Error adding set:", error);
+    return NextResponse.json({ error: "Failed to add set" }, { status: 500 });
   }
 }

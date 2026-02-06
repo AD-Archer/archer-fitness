@@ -66,19 +66,13 @@ interface RecentSession {
 }
 
 interface RecoveryBodyDiagramProps {
-  userId?: string;
   timeRange?: "7days" | "30days";
-  onRefresh?: () => void;
   selectedDate?: Date;
-  recoveryStatus?: BodyPartRecoveryStatus[];
 }
 
 export function RecoveryBodyDiagram({
   timeRange = "7days",
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  onRefresh,
   selectedDate,
-  recoveryStatus = [],
 }: RecoveryBodyDiagramProps) {
   const [bodyParts, setBodyParts] = useState<WorkoutBodyPart[]>([]);
   const [painFeedback, setPainFeedback] = useState<PainFeedback[]>([]);

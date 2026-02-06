@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertOctagon,
   RefreshCcw,
@@ -94,63 +94,6 @@ export function RecoveryMonitor({ selectedDate }: RecoveryMonitorProps) {
     };
     fetchBodyParts();
   }, []);
-  const allBodyPartsStatus = useMemo(() => {
-    if (!data) return [];
-
-    const allBodyParts = [
-      "Chest",
-      "Back",
-      "Shoulders",
-      "Biceps",
-      "Triceps",
-      "Forearms",
-      "Abs",
-      "Quadriceps",
-      "Hamstrings",
-      "Glutes",
-      "Calves",
-    ];
-
-    return allBodyParts.map((bodyPartName) => {
-      const bodyPartData = data.bodyParts.find(
-        (bp) => bp.bodyPart.toLowerCase() === bodyPartName.toLowerCase(),
-      );
-
-      if (!bodyPartData) {
-        return {
-          name: bodyPartName,
-          status: "ready" as const,
-        };
-      }
-
-      const hoursSinceLast = bodyPartData.hoursSinceLast || 0;
-      const recommendedRest = bodyPartData.recommendedRestHours || 48;
-      const hoursUntilReady = Math.max(0, recommendedRest - hoursSinceLast);
-
-      let status: "ready" | "caution" | "rest" | "worked-recently";
-
-      if (hoursUntilReady <= 0) {
-        status = "ready";
-      } else if (hoursUntilReady < 24) {
-        if (hoursSinceLast < 12) {
-          status = "worked-recently";
-        } else {
-          status = "caution";
-        }
-      } else {
-        status = "rest";
-      }
-
-      return {
-        name: bodyPartName,
-        status,
-        lastWorked: bodyPartData.lastWorkout,
-        hoursUntilReady,
-        recommendedRest,
-        sets: bodyPartData.averageSets,
-      };
-    });
-  }, [data]);
 
   if (loading) {
     return (
@@ -346,9 +289,7 @@ export function RecoveryMonitor({ selectedDate }: RecoveryMonitorProps) {
       <RecoveryBodyDiagram
         key={refreshKey}
         timeRange="7days"
-        onRefresh={refresh}
         selectedDate={selectedDate}
-        recoveryStatus={allBodyPartsStatus}
       />
     </div>
   );

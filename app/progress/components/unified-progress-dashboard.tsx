@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -17,11 +18,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, Zap, TrendingUp, Activity } from "lucide-react";
+import {
+  Calendar,
+  Zap,
+  TrendingUp,
+  Activity,
+  Camera,
+  Dumbbell,
+  BarChart3,
+  PieChart,
+  Scale,
+  Trophy,
+} from "lucide-react";
 import { ProgressPhotoWithBody } from "./progress-photo-with-body";
 import { BodyPartFilter } from "./body-part-filter";
 import { ProgressPhotoUpload } from "./progress-photo-upload";
 import { KeyMetricsCards } from "./key-metrics-cards";
+import { FitnessOverview } from "./fitness-overview";
+import { StrengthAnalytics } from "./strength-analytics";
+import { VolumeAnalytics } from "./volume-analytics";
+import { DistributionAnalytics } from "./distribution-analytics";
+import { BodyCompositionAnalytics } from "./body-composition-analytics";
+import { AchievementsAnalytics } from "./achievements-analytics";
 import { BodyDiagram } from "@/components/body-diagram";
 import { photoMatchesFilter, slugToName } from "./body-part-mappings";
 import { logger } from "@/lib/logger";
@@ -56,7 +74,11 @@ export function UnifiedProgressDashboard({
   const [timeRange, setTimeRange] = useState("3months");
   const [dayStats, setDayStats] = useState<Record<string, DayStats>>({});
   const [refreshKey, setRefreshKey] = useState(0);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("analytics");
+  const [analyticsTab, setAnalyticsTab] = useState("overview");
+  const [strengthMetric, setStrengthMetric] = useState<"weight" | "reps">(
+    "weight",
+  );
 
   // Fetch photos
   useEffect(() => {
@@ -213,101 +235,13 @@ export function UnifiedProgressDashboard({
       <div className="flex flex-col gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            Progress Dashboard
+            Progress Analytics
           </h1>
           <p className="text-muted-foreground mt-2">
-            Comprehensive view of your fitness journey with photos and detailed
-            analytics
+            Comprehensive insights into your fitness journey and performance
+            trends
           </p>
         </div>
-
-        {/* Time Range Selector */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">View period:</span>
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7days">Last 7 Days</SelectItem>
-              <SelectItem value="4weeks">Last 4 Weeks</SelectItem>
-              <SelectItem value="3months">Last 3 Months</SelectItem>
-              <SelectItem value="6months">Last 6 Months</SelectItem>
-              <SelectItem value="1year">Last Year</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Quick Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Today's Stats */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Zap className="h-4 w-4 text-yellow-500" />
-              Today's Workouts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {todayStats?.workouts || 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {todayStats?.exercises.length || 0} exercises
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Activity className="h-4 w-4 text-blue-500" />
-              Today's Volume
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {todayStats?.totalVolume.toLocaleString() || 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {todayStats?.totalSets || 0} sets
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* All-Time Stats */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-green-500" />
-              Total Workouts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {allTimeStats?.totalWorkouts || 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">all time</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-purple-500" />
-              Total Volume
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {allTimeStats?.totalVolume.toLocaleString() || 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {allTimeStats?.uniqueBodyParts || 0} body parts
-            </p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Main Tabs */}
@@ -317,55 +251,185 @@ export function UnifiedProgressDashboard({
         className="space-y-6"
       >
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="photos">Photos & Body</TabsTrigger>
           <TabsTrigger value="filter">Body Parts</TabsTrigger>
           <TabsTrigger value="upload">Upload</TabsTrigger>
         </TabsList>
 
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-6">
-          <KeyMetricsCards timeRange={timeRange} />
+        {/* Analytics Tab - contains all dashboards */}
+        <TabsContent value="analytics" className="space-y-6">
+          {/* View Period Selector */}
+          <div className="flex items-center gap-2 p-4 border rounded-lg bg-card/50">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">View period:</span>
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7days">Last 7 Days</SelectItem>
+                <SelectItem value="4weeks">Last 4 Weeks</SelectItem>
+                <SelectItem value="3months">Last 3 Months</SelectItem>
+                <SelectItem value="6months">Last 6 Months</SelectItem>
+                <SelectItem value="1year">Last Year</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          {/* Photo Count */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Progress Photos</CardTitle>
-              <CardDescription>
-                {photos.length} photo{photos.length !== 1 ? "s" : ""} uploaded
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {filteredPhotos.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  {selectedParts.length > 0
-                    ? "No photos found for selected body parts"
-                    : "No progress photos yet. Upload your first photo!"}
+          {/* Key Metrics: Workouts + Weight */}
+          <KeyMetricsCards timeRange={timeRange} />
+          {/* Quick stats row */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-yellow-500" />
+                  Today&apos;s Workouts
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {todayStats?.workouts || 0}
                 </div>
-              ) : (
-                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                  {filteredPhotos.slice(0, 12).map((photo) => (
-                    <div
-                      key={photo.id}
-                      className="rounded-lg overflow-hidden bg-muted aspect-square"
-                    >
-                      {photo.url ? (
-                        <img
-                          src={photo.url}
-                          alt="Progress"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-                          N/A
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                <p className="text-xs text-muted-foreground mt-1">
+                  {todayStats?.exercises.length || 0} exercises
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-blue-500" />
+                  Today&apos;s Volume
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {todayStats?.totalVolume.toLocaleString() || 0}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {todayStats?.totalSets || 0} sets
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-green-500" />
+                  Total Workouts
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {allTimeStats?.totalWorkouts || 0}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">all time</p>
+              </CardContent>
+            </Card>
+
+            {/* Photo count card (no actual photos shown) */}
+            <Card
+              className="cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => setActiveTab("photos")}
+            >
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Camera className="h-4 w-4 text-pink-500" />
+                  Progress Photos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{photos.length}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {photos.length === 0
+                    ? "Upload your first photo"
+                    : "Click to view photos"}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Analytics Sub-Tabs */}
+          <Tabs
+            value={analyticsTab}
+            onValueChange={setAnalyticsTab}
+            className="space-y-6"
+          >
+            {/* Desktop: full tabs */}
+            <div className="hidden lg:block">
+              <TabsList className="grid w-full grid-cols-6">
+                <TabsTrigger value="overview" className="gap-1.5">
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger value="strength" className="gap-1.5">
+                  <Dumbbell className="h-3.5 w-3.5" />
+                  Strength
+                </TabsTrigger>
+                <TabsTrigger value="volume" className="gap-1.5">
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  Volume
+                </TabsTrigger>
+                <TabsTrigger value="distribution" className="gap-1.5">
+                  <PieChart className="h-3.5 w-3.5" />
+                  Muscle Distribution
+                </TabsTrigger>
+                <TabsTrigger value="body" className="gap-1.5">
+                  <Scale className="h-3.5 w-3.5" />
+                  Body Comp
+                </TabsTrigger>
+                <TabsTrigger value="achievements" className="gap-1.5">
+                  <Trophy className="h-3.5 w-3.5" />
+                  Achievements
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            {/* Mobile: dropdown */}
+            <div className="block lg:hidden">
+              <Select value={analyticsTab} onValueChange={setAnalyticsTab}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="overview">Overview</SelectItem>
+                  <SelectItem value="strength">Strength</SelectItem>
+                  <SelectItem value="volume">Volume</SelectItem>
+                  <SelectItem value="distribution">
+                    Muscle Distribution
+                  </SelectItem>
+                  <SelectItem value="body">Body Comp</SelectItem>
+                  <SelectItem value="achievements">Achievements</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <TabsContent value="overview">
+              <FitnessOverview timeRange={timeRange} />
+            </TabsContent>
+            <TabsContent value="strength">
+              <StrengthAnalytics
+                timeRange={timeRange}
+                metric={strengthMetric}
+                onMetricChange={setStrengthMetric}
+              />
+            </TabsContent>
+            <TabsContent value="volume">
+              <VolumeAnalytics timeRange={timeRange} />
+            </TabsContent>
+            <TabsContent value="distribution">
+              <DistributionAnalytics timeRange={timeRange} />
+            </TabsContent>
+            <TabsContent value="body">
+              <BodyCompositionAnalytics timeRange={timeRange} />
+            </TabsContent>
+            <TabsContent value="achievements">
+              <AchievementsAnalytics timeRange={timeRange} />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {/* Photos & Body Tab */}
@@ -381,10 +445,21 @@ export function UnifiedProgressDashboard({
               <CardHeader>
                 <CardTitle>Photo & Body Analysis</CardTitle>
               </CardHeader>
-              <CardContent className="text-center py-12 text-muted-foreground">
-                {selectedParts.length > 0
-                  ? "No photos found for selected body parts"
-                  : "No progress photos yet"}
+              <CardContent className="text-center py-12">
+                <p className="text-muted-foreground mb-4">
+                  {selectedParts.length > 0
+                    ? "No photos found for selected body parts"
+                    : "No progress photos yet"}
+                </p>
+                {selectedParts.length === 0 && (
+                  <Button
+                    onClick={() => setActiveTab("upload")}
+                    className="mt-2"
+                  >
+                    <Camera className="w-4 h-4 mr-2" />
+                    Upload Your First Photo
+                  </Button>
+                )}
               </CardContent>
             </Card>
           )}

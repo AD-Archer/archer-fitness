@@ -208,7 +208,7 @@ export function WorkoutSession({
                 ) : (
                   <Play className="w-4 h-4 mr-1" />
                 )}
-                {isTimerRunning ? "Resume" : "Pause"}
+                {isTimerRunning ? "Pause" : "Resume"}
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -340,11 +340,7 @@ export function WorkoutSession({
           <div className="flex flex-col sm:flex-row gap-2">
             <Button
               onClick={onPauseWorkout}
-              className={
-                isTimerRunning
-                  ? "bg-transparent border border-input hover:bg-accent hover:text-accent-foreground flex-1 sm:flex-none"
-                  : "bg-black hover:bg-gray-800 text-white flex-1 sm:flex-none"
-              }
+              className="bg-black hover:bg-gray-800 text-white flex-1 sm:flex-none"
             >
               {isTimerRunning ? (
                 <Pause className="w-4 h-4 mr-1" />

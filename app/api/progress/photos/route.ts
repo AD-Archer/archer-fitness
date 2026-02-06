@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 
 export async function GET() {
   try {
@@ -39,11 +39,10 @@ export async function GET() {
     return NextResponse.json(
       {
         success: true,
-        photos: photos.map((photo) => ({
+        photos: photos.map((photo: any) => ({
           id: photo.id,
-          url: photo.fileIv
-            ? `/api/progress/photos/${photo.id}/view`
-            : photo.storageProvider === "appwrite" && photo.storageFileId
+          url:
+            photo.storageProvider === "appwrite" && photo.storageFileId
               ? `/api/progress/photos/${photo.id}/view`
               : photo.imageUrl,
           notes: photo.notes,

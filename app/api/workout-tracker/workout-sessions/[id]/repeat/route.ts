@@ -1,40 +1,43 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
-import { logger } from "@/lib/logger"
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import prisma from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const originalSessionId = params.id
+    const { id: originalSessionId } = await params;
 
     // Get the original workout session
     const originalSession = await prisma.workoutSession.findFirst({
       where: {
         id: originalSessionId,
-        userId: session.user.id
+        userId: session.user.id,
       },
       include: {
         exercises: {
           include: {
             exercise: true,
-            sets: true
+            sets: true,
           },
-          orderBy: { order: "asc" }
-        }
-      }
-    })
+          orderBy: { order: "asc" },
+        },
+      },
+    });
 
     if (!originalSession) {
-      return NextResponse.json({ error: "Original workout session not found" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Original workout session not found" },
+        { status: 404 },
+      );
     }
 
     // Create a new workout session based on the original
@@ -61,29 +64,29 @@ export async function POST(
                 weight: set.weight,
                 duration: set.duration,
                 completed: false, // Start fresh, not completed
-                notes: set.notes
-              }))
-            }
-          }))
-        }
+                notes: set.notes,
+              })),
+            },
+          })),
+        },
       },
       include: {
         exercises: {
           include: {
             exercise: true,
-            sets: true
+            sets: true,
           },
-          orderBy: { order: "asc" }
-        }
-      }
-    })
+          orderBy: { order: "asc" },
+        },
+      },
+    });
 
-    return NextResponse.json(newSession, { status: 201 })
+    return NextResponse.json(newSession, { status: 201 });
   } catch (error) {
-    logger.error("Error repeating workout:", error)
+    logger.error("Error repeating workout:", error);
     return NextResponse.json(
       { error: "Failed to repeat workout" },
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }

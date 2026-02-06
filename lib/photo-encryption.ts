@@ -1,5 +1,5 @@
 import { randomBytes, createCipheriv, createDecipheriv } from "crypto"
-import { prisma } from "@/lib/prisma"
+import prisma from "@/lib/prisma"
 import { logger } from "@/lib/logger"
 
 const MASTER_KEY_B64 = process.env.PHOTO_ENCRYPTION_MASTER_KEY

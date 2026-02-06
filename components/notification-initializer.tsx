@@ -1,8 +1,11 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { notificationScheduler } from '@/lib/notification-scheduler';
-import { useSession } from 'next-auth/react';
+import { useEffect } from "react";
+import {
+  startNotificationScheduler,
+  stopNotificationScheduler,
+} from "@/lib/notification-scheduler";
+import { useSession } from "next-auth/react";
 
 export function NotificationInitializer() {
   const { data: session } = useSession();
@@ -13,12 +16,12 @@ export function NotificationInitializer() {
       return;
     }
 
-    // Start the notification scheduler
-    notificationScheduler.start();
+    // Start the notification scheduler on server
+    startNotificationScheduler();
 
     // Cleanup on unmount
     return () => {
-      notificationScheduler.stop();
+      stopNotificationScheduler();
     };
   }, [session?.user?.id]);
 

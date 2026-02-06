@@ -78,7 +78,9 @@ export function ProgressPhotoWithBody({
     {},
   );
   const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null);
-  const [selectedBodyPartFilter, setSelectedBodyPartFilter] = useState<string | null>(null);
+  const [selectedBodyPartFilter, setSelectedBodyPartFilter] = useState<
+    string | null
+  >(null);
   const { toast } = useToast();
 
   const isDev = process.env.NODE_ENV !== "production";
@@ -207,11 +209,15 @@ export function ProgressPhotoWithBody({
   const diagramBodyParts = useMemo(() => {
     if (selectedBodyPartFilter) {
       // When filtering by a body part, highlight just that part
-      return [{
-        name: selectedBodyPartFilter.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
-        slug: selectedBodyPartFilter,
-        intensity: "moderate" as const,
-      }];
+      return [
+        {
+          name: selectedBodyPartFilter
+            .replace(/-/g, " ")
+            .replace(/\b\w/g, (c) => c.toUpperCase()),
+          slug: selectedBodyPartFilter,
+          intensity: "moderate" as const,
+        },
+      ];
     }
     // Show the selected photo's tagged parts, or fall back to all parts worked that day
     return bodyPartsForSelectedPhoto.length > 0
@@ -371,26 +377,31 @@ export function ProgressPhotoWithBody({
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Body part tags on selected photo */}
-              {selectedPhoto?.bodyParts && selectedPhoto.bodyParts.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedPhoto.bodyParts.map((slug) => (
-                    <Badge
-                      key={slug}
-                      variant={selectedBodyPartFilter === slug ? "default" : "secondary"}
-                      className="cursor-pointer text-xs"
-                      onClick={() =>
-                        setSelectedBodyPartFilter(
-                          selectedBodyPartFilter === slug ? null : slug,
-                        )
-                      }
-                    >
-                      {slug
-                        .replace(/-/g, " ")
-                        .replace(/\b\w/g, (c) => c.toUpperCase())}
-                    </Badge>
-                  ))}
-                </div>
-              )}
+              {selectedPhoto?.bodyParts &&
+                selectedPhoto.bodyParts.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedPhoto.bodyParts.map((slug) => (
+                      <Badge
+                        key={slug}
+                        variant={
+                          selectedBodyPartFilter === slug
+                            ? "default"
+                            : "secondary"
+                        }
+                        className="cursor-pointer text-xs"
+                        onClick={() =>
+                          setSelectedBodyPartFilter(
+                            selectedBodyPartFilter === slug ? null : slug,
+                          )
+                        }
+                      >
+                        {slug
+                          .replace(/-/g, " ")
+                          .replace(/\b\w/g, (c) => c.toUpperCase())}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
 
               {/* Main Selected Photo */}
               {selectedPhoto && (
@@ -445,11 +456,17 @@ export function ProgressPhotoWithBody({
               )}
 
               {/* Additional Photos - Clickable Thumbnails */}
-              {filteredPhotosForDate.filter((p) => p.id !== selectedPhotoId).length > 0 && (
+              {filteredPhotosForDate.filter((p) => p.id !== selectedPhotoId)
+                .length > 0 && (
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground">
                     {selectedBodyPartFilter ? "Matching" : "Other"} Photos (
-                    {filteredPhotosForDate.filter((p) => p.id !== selectedPhotoId).length})
+                    {
+                      filteredPhotosForDate.filter(
+                        (p) => p.id !== selectedPhotoId,
+                      ).length
+                    }
+                    )
                   </p>
                   <div className="grid grid-cols-4 gap-2">
                     {filteredPhotosForDate
@@ -481,7 +498,9 @@ export function ProgressPhotoWithBody({
               {/* No matching photos message */}
               {selectedBodyPartFilter && filteredPhotosForDate.length === 0 && (
                 <div className="text-center py-6 text-muted-foreground">
-                  <p className="text-sm">No photos tagged with this body part</p>
+                  <p className="text-sm">
+                    No photos tagged with this body part
+                  </p>
                   <Button
                     variant="link"
                     size="sm"
@@ -544,7 +563,9 @@ export function ProgressPhotoWithBody({
                         // Show all day's parts as clickable, but only highlight the active ones
                         bodyPartsForDate.map((part) => ({
                           ...part,
-                          intensity: diagramBodyParts.some((dp) => dp.slug === part.slug)
+                          intensity: diagramBodyParts.some(
+                            (dp) => dp.slug === part.slug,
+                          )
                             ? ("moderate" as const)
                             : ("none" as const),
                         }))
@@ -578,7 +599,13 @@ export function ProgressPhotoWithBody({
                         return (
                           <Badge
                             key={part.slug}
-                            variant={isFiltered ? "default" : isHighlighted ? "secondary" : "outline"}
+                            variant={
+                              isFiltered
+                                ? "default"
+                                : isHighlighted
+                                  ? "secondary"
+                                  : "outline"
+                            }
                             className={`cursor-pointer transition-colors ${
                               !isHighlighted && !isFiltered ? "opacity-50" : ""
                             }`}

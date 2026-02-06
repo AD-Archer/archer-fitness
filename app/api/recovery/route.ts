@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import {
   formatBodyPartLabel,
@@ -99,7 +99,7 @@ async function buildRecoveryResponse(
   ]);
 
   const latestFeedbackByPart = new Map(
-    feedbackEntries.map((entry) => [
+    feedbackEntries.map((entry: any) => [
       normalizeBodyPartKey(entry.bodyPart),
       entry,
     ]),
@@ -191,10 +191,10 @@ async function buildRecoveryResponse(
   }
 
   for (const [key, feedback] of latestFeedbackByPart.entries()) {
-    if (!bodyPartAggregates.has(key)) {
-      bodyPartAggregates.set(key, {
-        bodyPart: key,
-        displayName: formatBodyPartLabel(feedback.bodyPart),
+    if (!bodyPartAggregates.has(key as string)) {
+      bodyPartAggregates.set(key as string, {
+        bodyPart: key as string,
+        displayName: formatBodyPartLabel((feedback as any).bodyPart),
         lastWorkout: null,
         totalSets: 0,
         sessionIds: new Set(),
@@ -213,7 +213,7 @@ async function buildRecoveryResponse(
     const status = getRecoveryStatusFromHours(
       hoursSinceLast,
       restWindowHours,
-      Boolean(feedback && feedback.feeling !== "GOOD"),
+      Boolean(feedback && (feedback as any).feeling !== "GOOD"),
     );
 
     return {
@@ -232,11 +232,11 @@ async function buildRecoveryResponse(
           : 0,
       feedback: feedback
         ? {
-            bodyPart: formatBodyPartLabel(feedback.bodyPart),
-            feeling: feedback.feeling,
-            intensity: feedback.intensity,
-            note: feedback.note,
-            createdAt: feedback.createdAt.toISOString(),
+            bodyPart: formatBodyPartLabel((feedback as any).bodyPart),
+            feeling: (feedback as any).feeling,
+            intensity: (feedback as any).intensity,
+            note: (feedback as any).note,
+            createdAt: (feedback as any).createdAt.toISOString(),
           }
         : null,
       trend: Array.from(aggregate.trend.entries())
