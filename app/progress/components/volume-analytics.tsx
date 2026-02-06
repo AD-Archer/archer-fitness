@@ -252,8 +252,8 @@ export function VolumeAnalytics({
                   />
                   <YAxis
                     className="text-xs"
-                    stroke="hsl(var(--muted-foreground))"
-                    tick={{ fill: "hsl(var(--muted-foreground))" }}
+                    stroke="hsl(var(--border))"
+                    tick={{ fill: "hsl(var(--foreground))" }}
                   />
                   <Tooltip
                     contentStyle={{

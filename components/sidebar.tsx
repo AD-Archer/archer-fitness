@@ -21,6 +21,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -73,9 +74,9 @@ export function Sidebar() {
       <div
         className={cn(
           "flex flex-col bg-card border-r border-border transition-all duration-300 z-50",
-          "fixed lg:relative h-full",
+          "fixed lg:relative h-screen lg:h-auto",
           collapsed ? "w-16" : "w-64",
-          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >
         {/* Header */}
@@ -103,7 +104,7 @@ export function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        <nav className="p-4 space-y-2 overflow-y-auto">
           {navigation.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -113,7 +114,7 @@ export function Sidebar() {
                   variant={isActive ? "secondary" : "ghost"}
                   className={cn(
                     "w-full justify-start gap-3 h-10",
-                    collapsed && "justify-center px-2 lg:px-2"
+                    collapsed && "justify-center px-2 lg:px-2",
                   )}
                 >
                   <Icon className="h-4 w-4 flex-shrink-0" />
@@ -124,14 +125,18 @@ export function Sidebar() {
           })}
         </nav>
 
+        {/* Spacer to push footer down */}
+        <div className="flex-1" />
+
         {/* Footer */}
         <div className="p-4 border-t border-border space-y-2">
+          <ThemeToggle showLabel={!collapsed} variant="ghost" />
           <Link href="/settings">
             <Button
               variant="ghost"
               className={cn(
                 "w-full justify-start gap-3 h-10",
-                collapsed && "justify-center px-2 lg:px-2"
+                collapsed && "justify-center px-2 lg:px-2",
               )}
             >
               <Settings className="h-4 w-4 flex-shrink-0" />
@@ -143,7 +148,7 @@ export function Sidebar() {
               variant="ghost"
               className={cn(
                 "w-full justify-start gap-3 h-10",
-                collapsed && "justify-center px-2 lg:px-2"
+                collapsed && "justify-center px-2 lg:px-2",
               )}
             >
               <Bug className="h-4 w-4 flex-shrink-0" />
@@ -154,7 +159,7 @@ export function Sidebar() {
             variant="ghost"
             className={cn(
               "w-full justify-start gap-3 h-10 text-red-600 hover:text-red-600 hover:bg-red-50",
-              collapsed && "justify-center px-2 lg:px-2"
+              collapsed && "justify-center px-2 lg:px-2",
             )}
             onClick={() => signOut({ callbackUrl: "/auth/signin" })}
           >

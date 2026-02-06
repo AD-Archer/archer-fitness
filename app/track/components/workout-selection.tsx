@@ -9,7 +9,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Dumbbell, Plus, ListPlus, Zap } from "lucide-react";
 import { CustomWorkoutForm } from "./custom-workout-form";
 import {
@@ -102,7 +107,7 @@ export function WorkoutSelection({
 
       <div className="space-y-8">
         {/* Quick Actions */}
-        <Card className="bg-gradient-to-r from-primary/5 to-purple-500/5 border-primary/20">
+        <Card className="border border-border bg-card">
           <CardHeader>
             <CardTitle className="text-lg">Get Started</CardTitle>
             <CardDescription>Choose how you want to begin</CardDescription>
@@ -143,6 +148,11 @@ export function WorkoutSelection({
                              max-w-none sm:max-w-[98vw] md:max-w-[96vw] lg:max-w-[95vw] xl:max-w-[92vw] 2xl:max-w-[1600px]
                              overflow-y-auto p-0 rounded-xl"
                 >
+                  <DialogTitle className="sr-only">
+                    {editingWorkout
+                      ? "Edit Workout Template"
+                      : "Create Custom Workout Template"}
+                  </DialogTitle>
                   <CustomWorkoutForm
                     initialWorkout={
                       editingWorkout

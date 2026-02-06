@@ -5,8 +5,10 @@ import type React from "react";
 import { useState, useRef, useEffect } from "react";
 import { WorkoutSelection } from "./workout-selection";
 import { WorkoutSession as WorkoutSessionView } from "./workout-session";
-import { AddExerciseModal } from "./add-exercise-modal";
+import { ExerciseSelector } from "./exercise-selector";
+import { ExerciseTypeSelector } from "./exercise-type-selector";
 import { SaveWorkoutDialog } from "./save-workout-dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   useWorkoutSession,
   useWorkoutTimer,
@@ -20,6 +22,10 @@ import type { WorkoutTimerState } from "../hooks";
 
 export function WorkoutTracker() {
   const [showAddExerciseModal, setShowAddExerciseModal] = useState(false);
+  const [showExerciseTypeSelector, setShowExerciseTypeSelector] =
+    useState(false);
+  const [selectedExerciseForType, setSelectedExerciseForType] =
+    useState<any>(null);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [isSavingWorkout, setIsSavingWorkout] = useState(false);
 
@@ -52,6 +58,8 @@ export function WorkoutTracker() {
     pauseWorkout,
     startRest,
     skipRest,
+    addRestTime,
+    removeRestTime,
     nextExercise,
     previousExercise,
     switchToExercise,
@@ -61,8 +69,10 @@ export function WorkoutTracker() {
     savedState as Partial<WorkoutTimerState> | undefined,
   );
 
-  const { isAddingExercise, addSet, addExercise, updateSet, deleteSet } =
-    useWorkoutActions(session, setSession);
+  const { addSet, addExercise, updateSet, deleteSet } = useWorkoutActions(
+    session,
+    setSession,
+  );
 
   // Enhanced save workout that includes timer state
   const saveWorkout = async () => {
@@ -594,16 +604,51 @@ export function WorkoutTracker() {
         onNextExercise={nextExercise}
         onPreviousExercise={previousExercise}
         onSkipRest={skipRest}
+        onAddRestTime={addRestTime}
+        onRemoveRestTime={removeRestTime}
         onSwitchToExercise={switchToExercise}
         onSaveWorkout={saveWorkout}
         getWorkoutProgress={() => getWorkoutProgress(session)}
       />
-      <AddExerciseModal
-        isOpen={showAddExerciseModal}
-        onClose={() => setShowAddExerciseModal(false)}
-        onAddExercise={handleAddExercise}
-        isLoading={isAddingExercise}
+      <Dialog
+        open={showAddExerciseModal}
+        onOpenChange={setShowAddExerciseModal}
+      >
+        <DialogContent className="w-[96vw] sm:w-[90vw] lg:w-[80vw] xl:w-[75vw] max-w-6xl sm:max-w-6xl p-0 gap-0 rounded-2xl h-[90vh] flex flex-col overflow-hidden">
+          <DialogTitle className="sr-only">Select Exercise to Add</DialogTitle>
+          <ExerciseSelector
+            onSelect={(exercise) => {
+              setSelectedExerciseForType(exercise);
+              setShowAddExerciseModal(false);
+              setShowExerciseTypeSelector(true);
+            }}
+            onClose={() => setShowAddExerciseModal(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <ExerciseTypeSelector
+        isOpen={showExerciseTypeSelector}
+        onSelectType={(targetType) => {
+          if (selectedExerciseForType) {
+            handleAddExercise(
+              {
+                name: selectedExerciseForType.name,
+                id: selectedExerciseForType.id,
+                instructions: selectedExerciseForType.instructions,
+              },
+              targetType,
+            );
+            setSelectedExerciseForType(null);
+          }
+          setShowExerciseTypeSelector(false);
+        }}
+        onClose={() => {
+          setShowExerciseTypeSelector(false);
+          setSelectedExerciseForType(null);
+        }}
       />
+
       <SaveWorkoutDialog
         isOpen={showSaveDialog}
         onClose={() => setShowSaveDialog(false)}

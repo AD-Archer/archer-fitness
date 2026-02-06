@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Eye, PlusCircle, Trash2, Dumbbell } from "lucide-react";
 import { ExerciseSelector } from "./exercise-selector";
+import { ExerciseTypeSelector } from "./exercise-type-selector";
 import type { WorkoutTemplate } from "../types/workout";
 import {
   Dialog,
@@ -91,6 +92,10 @@ export function CustomWorkoutForm({
     })) ?? [],
   );
   const [showExerciseSelector, setShowExerciseSelector] = useState(false);
+  const [showExerciseTypeSelector, setShowExerciseTypeSelector] =
+    useState(false);
+  const [selectedExerciseForType, setSelectedExerciseForType] =
+    useState<SelectedExercise | null>(null);
   const [previewExercise, setPreviewExercise] =
     useState<TrackedExercise | null>(null);
 
@@ -99,22 +104,31 @@ export function CustomWorkoutForm({
   };
 
   const handleExerciseSelect = (selectedExercise: SelectedExercise) => {
+    setSelectedExerciseForType(selectedExercise);
+    setShowExerciseSelector(false);
+    setShowExerciseTypeSelector(true);
+  };
+
+  const handleExerciseTypeSelected = (targetType: "reps" | "time") => {
+    if (!selectedExerciseForType) return;
+
     const newExercise: Omit<TrackedExercise, "sets" | "completed"> = {
       id: Date.now().toString(),
-      exerciseId: selectedExercise.id,
-      name: selectedExercise.name,
+      exerciseId: selectedExerciseForType.id,
+      name: selectedExerciseForType.name,
       targetSets: 3,
-      targetReps: "8-12",
-      targetType: "reps",
-      instructions: selectedExercise.instructions || "",
-      description: selectedExercise.description,
-      gifUrl: selectedExercise.gifUrl,
-      bodyParts: selectedExercise.bodyParts,
-      muscles: selectedExercise.muscles,
-      equipments: selectedExercise.equipments,
+      targetReps: targetType === "reps" ? "8-12" : "30",
+      targetType,
+      instructions: selectedExerciseForType.instructions || "",
+      description: selectedExerciseForType.description,
+      gifUrl: selectedExerciseForType.gifUrl,
+      bodyParts: selectedExerciseForType.bodyParts,
+      muscles: selectedExerciseForType.muscles,
+      equipments: selectedExerciseForType.equipments,
     };
     setExercises((prev) => [...prev, newExercise]);
-    setShowExerciseSelector(false);
+    setShowExerciseTypeSelector(false);
+    setSelectedExerciseForType(null);
   };
 
   const removeExercise = (index: number) => {
@@ -134,6 +148,9 @@ export function CustomWorkoutForm({
   const handleSave = () => {
     if (!workoutName.trim() || exercises.length === 0) return;
 
+    const hasCustomExercises = exercises.some(
+      (ex) => !ex.exerciseId || ex.exerciseId === "",
+    );
     const newWorkout: WorkoutTemplate = {
       id: (initialWorkout?.id as string) || Date.now().toString(),
       name: workoutName.trim(),
@@ -141,6 +158,7 @@ export function CustomWorkoutForm({
       estimatedDuration: Number.parseInt(estimatedDuration) || 30,
       exercises: exercises.map((ex) => ({
         id: ex.id,
+        exerciseId: ex.exerciseId || undefined,
         name: ex.name,
         targetSets:
           typeof ex.targetSets === "string"
@@ -150,7 +168,7 @@ export function CustomWorkoutForm({
         targetType: ex.targetType || "reps",
         instructions: ex.instructions || "",
       })),
-      isCustom: true,
+      isCustom: hasCustomExercises,
     };
 
     onSave(newWorkout);
@@ -166,7 +184,6 @@ export function CustomWorkoutForm({
           </h1>
         </div>
       </div>
-
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto scrollbar-hide">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
@@ -310,7 +327,6 @@ export function CustomWorkoutForm({
           </div>
         </div>
       </div>
-
       {/* Sticky Footer */}
       <div className="sticky bottom-0 z-40 bg-background/80 backdrop-blur-sm border-t px-4 sm:px-6 py-4 mt-6">
         <div className="max-w-4xl mx-auto flex gap-3 justify-end">
@@ -330,19 +346,26 @@ export function CustomWorkoutForm({
           </Button>
         </div>
       </div>
-
       <Dialog
         open={showExerciseSelector}
         onOpenChange={setShowExerciseSelector}
       >
         <DialogContent className="w-[96vw] sm:w-[90vw] lg:w-[80vw] xl:w-[75vw] max-w-6xl sm:max-w-6xl p-0 gap-0 rounded-2xl h-[90vh] flex flex-col overflow-hidden">
+          <DialogTitle className="sr-only">Select Exercise</DialogTitle>
           <ExerciseSelector
             onSelect={handleExerciseSelect}
             onClose={() => setShowExerciseSelector(false)}
           />
         </DialogContent>
       </Dialog>
-
+      <ExerciseTypeSelector
+        isOpen={showExerciseTypeSelector}
+        onSelectType={handleExerciseTypeSelected}
+        onClose={() => {
+          setShowExerciseTypeSelector(false);
+          setSelectedExerciseForType(null);
+        }}
+      />{" "}
       <Dialog open={Boolean(previewExercise)} onOpenChange={handleClosePreview}>
         <DialogContent className="w-[95vw] sm:max-w-lg md:max-w-2xl lg:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>

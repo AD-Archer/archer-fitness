@@ -402,8 +402,8 @@ export function StrengthAnalytics({
                   />
                   <YAxis
                     className="text-xs"
-                    stroke="hsl(var(--muted-foreground))"
-                    tick={{ fill: "hsl(var(--muted-foreground))" }}
+                    stroke="hsl(var(--border))"
+                    tick={{ fill: "hsl(var(--foreground))" }}
                     label={{
                       value:
                         metric === "weight"
@@ -411,7 +411,7 @@ export function StrengthAnalytics({
                           : "Reps",
                       angle: -90,
                       position: "insideLeft",
-                      fill: "hsl(var(--muted-foreground))",
+                      fill: "hsl(var(--foreground))",
                     }}
                   />
                   <Tooltip
