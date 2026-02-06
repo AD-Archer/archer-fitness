@@ -1,9 +1,8 @@
-'use client'
-
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Home, ArrowLeft, Search } from 'lucide-react'
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Home, Search } from "lucide-react";
+import { GoBackButton } from "@/components/go-back-button";
 
 export default function NotFound() {
   return (
@@ -17,7 +16,8 @@ export default function NotFound() {
               Page Not Found
             </h2>
             <p className="text-muted-foreground text-center max-w-sm">
-              The page you&apos;re looking for doesn&apos;t exist or has been moved to a different location.
+              The page you&apos;re looking for doesn&apos;t exist or has been
+              moved to a different location.
             </p>
           </div>
 
@@ -38,14 +38,7 @@ export default function NotFound() {
           </div>
 
           {/* Back Button */}
-          <Button 
-            variant="ghost" 
-            onClick={() => window.history.back()}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Go Back
-          </Button>
+          <GoBackButton />
 
           {/* Additional Links */}
           <div className="text-center space-y-2">
@@ -53,22 +46,22 @@ export default function NotFound() {
               Or try these popular sections:
             </p>
             <div className="flex flex-wrap justify-center gap-2">
-              <Link 
-                href="/nutrition" 
+              <Link
+                href="/nutrition"
                 className="text-sm text-primary hover:underline"
               >
                 Nutrition
               </Link>
               <span className="text-muted-foreground">•</span>
-              <Link 
-                href="/progress" 
+              <Link
+                href="/progress"
                 className="text-sm text-primary hover:underline"
               >
                 Progress
               </Link>
               <span className="text-muted-foreground">•</span>
-              <Link 
-                href="/track" 
+              <Link
+                href="/track"
                 className="text-sm text-primary hover:underline"
               >
                 Track Workout
@@ -78,5 +71,5 @@ export default function NotFound() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

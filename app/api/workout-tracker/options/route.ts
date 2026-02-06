@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import { logger } from "@/lib/logger"
 
-const prisma = new PrismaClient()
+import prisma from "@/lib/prisma"
 
 export async function GET() {
   try {
@@ -20,17 +19,17 @@ export async function GET() {
     ])
 
     return NextResponse.json({
-      equipment: equipment.map(eq => ({
+      equipment: equipment.map((eq: any) => ({
         id: eq.id,
         name: eq.name,
         value: eq.name.toLowerCase().replace(/\s+/g, '-') // Convert to kebab-case for form values
       })),
-      muscles: muscles.map(muscle => ({
+      muscles: muscles.map((muscle: any) => ({
         id: muscle.id,
         name: muscle.name,
         value: muscle.name.toLowerCase().replace(/\s+/g, '-')
       })),
-      bodyParts: bodyParts.map(bodyPart => ({
+      bodyParts: bodyParts.map((bodyPart: any) => ({
         id: bodyPart.id,
         name: bodyPart.name,
         value: bodyPart.name.toLowerCase().replace(/\s+/g, '-')

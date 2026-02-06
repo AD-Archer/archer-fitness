@@ -3,6 +3,7 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Analytics } from "@vercel/analytics/next";
 import { AuthProvider } from "@/components/auth-provider";
+import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 import Script from "next/script";
 // @ts-ignore - allow importing global CSS without explicit type declarations
@@ -110,7 +111,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Site-level structured data */}
         <Script
@@ -198,20 +199,23 @@ export default function RootLayout({
         />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="theme-color" content="#000000" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Archer Fitness" />
       </head>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
-        <AuthProvider>
-          <NotificationInitializer />
-          <PrivacyCheck />
-          {children}
-          <footer className="py-6 mt-auto">
-            <Footer />
-          </footer>
-          <Toaster />
-        </AuthProvider>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <AuthProvider>
+            <NotificationInitializer />
+            <PrivacyCheck />
+            {children}
+            <footer className="py-6 mt-auto">
+              <Footer />
+            </footer>
+            <Toaster />
+          </AuthProvider>
+        </ThemeProvider>
         {process.env.NODE_ENV === "production" && <Analytics />}
 
         {/* Service Worker Registration */}

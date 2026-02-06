@@ -1,7 +1,7 @@
 import { NextResponse, NextRequest } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
+import prisma from "@/lib/prisma"
 import { z } from "zod"
 import bcrypt from "bcryptjs"
 import { emailNotificationManager } from "@/lib/email-notifications"
@@ -48,7 +48,7 @@ export async function GET() {
       email: user?.email ?? null,
       emailVerified: user?.emailVerified ?? null,
       twoFactorEnabled: Boolean(user?.twoFactorEnabled),
-      linkedAccounts: accounts.map((account) => ({
+      linkedAccounts: accounts.map((account: any) => ({
         id: account.id,
         provider: account.provider,
       })),
@@ -106,7 +106,7 @@ export async function PUT(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Invalid input", details: error.errors },
+        { error: "Invalid input", details: error.issues },
         { status: 400 }
       )
     }
@@ -141,13 +141,13 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    const accountToRemove = accounts.find((account) => account.provider === provider)
+    const accountToRemove = accounts.find((account: any) => account.provider === provider)
 
     if (!accountToRemove) {
       return NextResponse.json({ error: "Provider not linked" }, { status: 404 })
     }
 
-    const remainingAccounts = accounts.filter((account) => account.provider !== provider)
+    const remainingAccounts = accounts.filter((account: any) => account.provider !== provider)
 
     const hasAlternativeLogin = Boolean(user.password) || remainingAccounts.length > 0
 
@@ -166,7 +166,7 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Invalid input", details: error.errors },
+        { error: "Invalid input", details: error.issues },
         { status: 400 }
       )
     }

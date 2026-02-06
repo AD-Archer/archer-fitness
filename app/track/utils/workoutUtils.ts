@@ -1,59 +1,75 @@
-import type { WorkoutTemplate, WorkoutSession, TrackedExercise, WorkoutTemplateExercise } from "../types/workout"
+import type {
+  WorkoutTemplate,
+  WorkoutSession,
+  TrackedExercise,
+  WorkoutTemplateExercise,
+} from "../types/workout";
 
 export const formatTime = (seconds: number): string => {
-  const mins = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
-}
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+};
 
 export const getWorkoutProgress = (session: WorkoutSession): number => {
-  if (session.exercises.length === 0) return 0
-  
-  const totalSets = session.exercises.reduce((total, ex) => total + ex.targetSets, 0)
-  const completedSets = session.exercises.reduce((total, ex) => total + ex.sets.length, 0)
-  
-  return totalSets > 0 ? Math.min((completedSets / totalSets) * 100, 100) : 0
-}
+  if (session.exercises.length === 0) return 0;
+
+  const totalSets = session.exercises.reduce(
+    (total, ex) => total + ex.targetSets,
+    0,
+  );
+  const completedSets = session.exercises.reduce(
+    (total, ex) => total + ex.sets.length,
+    0,
+  );
+
+  return totalSets > 0 ? Math.min((completedSets / totalSets) * 100, 100) : 0;
+};
 
 export const getExerciseProgress = (exercise: TrackedExercise): number => {
-  if (exercise.targetSets === 0) return 0
-  const completedSets = exercise.sets.filter(set => set.completed).length
-  return Math.min((completedSets / exercise.targetSets) * 100, 100)
-}
+  if (exercise.targetSets === 0) return 0;
+  const completedSets = exercise.sets.filter((set) => set.completed).length;
+  return Math.min((completedSets / exercise.targetSets) * 100, 100);
+};
 
 export const parseTimeToSeconds = (timeStr: string): number => {
   if (timeStr.includes(":")) {
-    const [mins, secs] = timeStr.split(":").map(Number)
-    return (mins || 0) * 60 + (secs || 0)
+    const [mins, secs] = timeStr.split(":").map(Number);
+    return (mins || 0) * 60 + (secs || 0);
   } else if (timeStr.includes("s")) {
-    return Number.parseInt(timeStr.replace("s", ""))
+    return Number.parseInt(timeStr.replace("s", ""));
   } else {
-    return Number.parseInt(timeStr) || 0
+    return Number.parseInt(timeStr) || 0;
   }
-}
+};
 
 export const isExerciseCompleted = (exercise: TrackedExercise): boolean => {
-  return exercise.sets.length >= exercise.targetSets || exercise.completed
-}
+  return exercise.sets.length >= exercise.targetSets || exercise.completed;
+};
 
 export const isWorkoutCompleted = (session: WorkoutSession): boolean => {
-  return session.exercises.every(exercise => isExerciseCompleted(exercise))
-}
+  return session.exercises.every((exercise) => isExerciseCompleted(exercise));
+};
 
 export const getCompletedExercisesCount = (session: WorkoutSession): number => {
-  return session.exercises.filter(exercise => isExerciseCompleted(exercise)).length
-}
+  return session.exercises.filter((exercise) => isExerciseCompleted(exercise))
+    .length;
+};
 
-export const transformTemplateFromAPI = (data: unknown[]): WorkoutTemplate[] => {
+export const transformTemplateFromAPI = (
+  data: unknown[],
+): WorkoutTemplate[] => {
   return data.map((t: unknown) => {
     const template = t as {
-      id: string
-      name: string
-      description?: string
-      estimatedDuration?: number
-      exercises?: unknown[]
-      isPredefined?: boolean
-    }
+      id: string;
+      name: string;
+      description?: string;
+      estimatedDuration?: number;
+      exercises?: unknown[];
+      isPredefined?: boolean;
+      category?: string;
+      difficulty?: string;
+    };
 
     return {
       id: template.id,
@@ -63,20 +79,23 @@ export const transformTemplateFromAPI = (data: unknown[]): WorkoutTemplate[] => 
       exercises: (template.exercises || []).map((ex: unknown) => {
         const exercise = ex as {
           exercise?: {
-            id?: string
-            name?: string
-            description?: string
-            instructions?: string
-            gifUrl?: string
-            bodyParts?: Array<{ bodyPart: { id: string; name: string } }>
-            muscles?: Array<{ muscle: { id: string; name: string }; isPrimary: boolean }>
-            equipments?: Array<{ equipment: { id: string; name: string } }>
-          }
-          exerciseId?: string
-          targetSets?: number
-          targetReps?: string
-          targetType?: string
-        }
+            id?: string;
+            name?: string;
+            description?: string;
+            instructions?: string;
+            gifUrl?: string;
+            bodyParts?: Array<{ bodyPart: { id: string; name: string } }>;
+            muscles?: Array<{
+              muscle: { id: string; name: string };
+              isPrimary: boolean;
+            }>;
+            equipments?: Array<{ equipment: { id: string; name: string } }>;
+          };
+          exerciseId?: string;
+          targetSets?: number;
+          targetReps?: string;
+          targetType?: string;
+        };
 
         return {
           id: exercise.exercise?.id || exercise.exerciseId || "",
@@ -97,102 +116,113 @@ export const transformTemplateFromAPI = (data: unknown[]): WorkoutTemplate[] => 
                 equipments: exercise.exercise.equipments || [],
               }
             : undefined,
-        }
+        };
       }),
       isCustom: !template.isPredefined,
-      isAIGenerated: template.name?.toLowerCase().includes('ai-generated') || false,
-    }
-  })
-}
+      isAIGenerated:
+        template.name?.toLowerCase().includes("ai-generated") || false,
+      category: template.category,
+      difficulty: template.difficulty,
+      isPredefined: template.isPredefined,
+    };
+  });
+};
 
-export const transformSessionFromAPI = (sessionData: unknown): WorkoutSession => {
+export const transformSessionFromAPI = (
+  sessionData: unknown,
+): WorkoutSession => {
   const session = sessionData as {
-    id: string
-    name: string
-    startTime: string
-    duration?: number
-    exercises?: unknown[]
-  }
+    id: string;
+    name: string;
+    startTime: string;
+    duration?: number;
+    exercises?: unknown[];
+  };
 
-  const mappedExercises: TrackedExercise[] = (session.exercises || []).map((ex: unknown) => {
-    const exercise = ex as {
-      id: string
-      exercise?: { 
-        id?: string
-        name?: string
-        description?: string
-        instructions?: string
-        gifUrl?: string
-        bodyParts?: Array<{
-          bodyPart: {
-            id: string
-            name: string
-          }
-        }>
-        muscles?: Array<{
-          muscle: {
-            id: string
-            name: string
-          }
-          isPrimary: boolean
-        }>
-        equipments?: Array<{
-          equipment: {
-            id: string
-            name: string
-          }
-        }>
-      }
-      targetSets: number
-      targetReps: string
-      targetType?: string
-      completed?: boolean
-      sets?: unknown[]
-    }
+  const mappedExercises: TrackedExercise[] = (session.exercises || []).map(
+    (ex: unknown) => {
+      const exercise = ex as {
+        id: string;
+        exercise?: {
+          id?: string;
+          name?: string;
+          description?: string;
+          instructions?: string;
+          gifUrl?: string;
+          bodyParts?: Array<{
+            bodyPart: {
+              id: string;
+              name: string;
+            };
+          }>;
+          muscles?: Array<{
+            muscle: {
+              id: string;
+              name: string;
+            };
+            isPrimary: boolean;
+          }>;
+          equipments?: Array<{
+            equipment: {
+              id: string;
+              name: string;
+            };
+          }>;
+        };
+        targetSets: number;
+        targetReps: string;
+        targetType?: string;
+        completed?: boolean;
+        sets?: unknown[];
+      };
 
-    return {
-      id: exercise.id,
-      name: exercise.exercise?.name || "Exercise",
-      targetSets: exercise.targetSets,
-      targetReps: exercise.targetReps,
-      targetType: (exercise.targetType as "reps" | "time") || "reps",
-      instructions: exercise.exercise?.instructions,
-      sets: (exercise.sets || []).map((s: unknown) => {
-        const set = s as {
-          id: string
-          setNumber: number
-          reps?: number | null
-          duration?: number | null
-          weight?: number | null
-          notes?: string | null
-          completed: boolean
-        }
-        return {
-          id: set.id,
-          setNumber: set.setNumber,
-          reps: set.reps ?? null,
-          duration: set.duration ?? null,
-          weight: set.weight === null || set.weight === undefined ? undefined : set.weight,
-          notes: set.notes ?? undefined,
-          completed: set.completed,
-        }
-      }),
-      completed: exercise.completed ?? false,
-      // Include the full exercise data with muscles, equipments, and gifUrl
-      exercise: exercise.exercise
-        ? {
-            id: exercise.exercise.id || "",
-            name: exercise.exercise.name || "Exercise",
-            description: exercise.exercise.description,
-            instructions: exercise.exercise.instructions,
-            gifUrl: exercise.exercise.gifUrl,
-            bodyParts: exercise.exercise.bodyParts || [],
-            muscles: exercise.exercise.muscles || [],
-            equipments: exercise.exercise.equipments || [],
-          }
-        : undefined,
-    }
-  })
+      return {
+        id: exercise.id,
+        name: exercise.exercise?.name || "Exercise",
+        targetSets: exercise.targetSets,
+        targetReps: exercise.targetReps,
+        targetType: (exercise.targetType as "reps" | "time") || "reps",
+        instructions: exercise.exercise?.instructions,
+        sets: (exercise.sets || []).map((s: unknown) => {
+          const set = s as {
+            id: string;
+            setNumber: number;
+            reps?: number | null;
+            duration?: number | null;
+            weight?: number | null;
+            notes?: string | null;
+            completed: boolean;
+          };
+          return {
+            id: set.id,
+            setNumber: set.setNumber,
+            reps: set.reps ?? null,
+            duration: set.duration ?? null,
+            weight:
+              set.weight === null || set.weight === undefined
+                ? undefined
+                : set.weight,
+            notes: set.notes ?? undefined,
+            completed: set.completed,
+          };
+        }),
+        completed: exercise.completed ?? false,
+        // Include the full exercise data with muscles, equipments, and gifUrl
+        exercise: exercise.exercise
+          ? {
+              id: exercise.exercise.id || "",
+              name: exercise.exercise.name || "Exercise",
+              description: exercise.exercise.description,
+              instructions: exercise.exercise.instructions,
+              gifUrl: exercise.exercise.gifUrl,
+              bodyParts: exercise.exercise.bodyParts || [],
+              muscles: exercise.exercise.muscles || [],
+              equipments: exercise.exercise.equipments || [],
+            }
+          : undefined,
+      };
+    },
+  );
 
   return {
     id: session.id,
@@ -201,8 +231,8 @@ export const transformSessionFromAPI = (sessionData: unknown): WorkoutSession =>
     duration: session.duration || 0,
     exercises: mappedExercises,
     isActive: true,
-  }
-}
+  };
+};
 
 export const createWorkoutPayload = (workoutTemplate: WorkoutTemplate) => {
   return {
@@ -216,8 +246,8 @@ export const createWorkoutPayload = (workoutTemplate: WorkoutTemplate) => {
       targetType: ex.targetType || "reps",
       notes: ex.instructions,
     })),
-  }
-}
+  };
+};
 
 export const createTemplatePayload = (workout: WorkoutTemplate) => {
   return {
@@ -232,5 +262,5 @@ export const createTemplatePayload = (workout: WorkoutTemplate) => {
       targetType: ex.targetType || "reps",
       notes: ex.instructions,
     })),
-  }
-}
+  };
+};

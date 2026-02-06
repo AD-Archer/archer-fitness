@@ -59,3 +59,18 @@ export interface SubmitRecoveryFeedbackPayload {
   intensity?: number
   note?: string
 }
+
+export type BodyPartEventType = "worked" | "sore" | "resolved" | "safe"
+
+export interface BodyPartEvent {
+  bodyPart: string
+  date: string
+  type: BodyPartEventType // worked = body part exercised, sore = feeling sore, resolved = no longer sore, safe = ready to work again
+  intensity?: number // 1-5 for soreness intensity
+  note?: string
+}
+
+export interface RecoveryCalendarData {
+  events: BodyPartEvent[]
+  workoutHistory: Array<{ date: string; bodyParts: string[] }>
+}

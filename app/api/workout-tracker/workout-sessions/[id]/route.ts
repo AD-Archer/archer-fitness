@@ -1,23 +1,25 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
-import { calculateWorkoutPerformance } from "@/lib/workout-performance"
-import { logger } from "@/lib/logger"
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import prisma from "@/lib/prisma";
+import { calculateWorkoutPerformance } from "@/lib/workout-performance";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const { id } = await params;
 
     const workoutSession = await prisma.workoutSession.findFirst({
       where: {
-        id: params.id,
+        id,
         userId: session.user.id,
       },
       include: {
@@ -28,15 +30,15 @@ export async function GET(
               include: {
                 muscles: {
                   include: {
-                    muscle: true
-                  }
+                    muscle: true,
+                  },
                 },
                 equipments: {
                   include: {
-                    equipment: true
-                  }
-                }
-              }
+                    equipment: true,
+                  },
+                },
+              },
             },
             sets: {
               orderBy: {
@@ -49,69 +51,77 @@ export async function GET(
           },
         },
       },
-    })
+    });
 
     if (!workoutSession) {
-      return NextResponse.json({ error: "Workout session not found" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Workout session not found" },
+        { status: 404 },
+      );
     }
 
     // Calculate performance metrics if not already stored
-    let sessionWithPerformance = workoutSession
-    if (!workoutSession.performanceStatus || workoutSession.completionRate === null || workoutSession.perfectionScore === null) {
+    let sessionWithPerformance = workoutSession;
+    if (
+      !workoutSession.performanceStatus ||
+      workoutSession.completionRate === null ||
+      workoutSession.perfectionScore === null
+    ) {
       // Transform the data to match our performance calculation interface
       const transformedSession = {
         ...workoutSession,
-        exercises: workoutSession.exercises.map(ex => ({
+        exercises: workoutSession.exercises.map((ex: any) => ({
           id: ex.id,
           targetSets: ex.targetSets,
           targetReps: ex.targetReps,
           targetType: ex.targetType,
           completed: ex.completed,
-          completedSets: ex.sets.filter(set => set.completed).length,
-          sets: ex.sets
-        }))
-      }
-      
-      const performance = calculateWorkoutPerformance(transformedSession)
-      
+          completedSets: ex.sets.filter((set: any) => set.completed).length,
+          sets: ex.sets,
+        })),
+      };
+
+      const performance = calculateWorkoutPerformance(transformedSession);
+
       sessionWithPerformance = {
         ...workoutSession,
         performanceStatus: performance.performanceStatus,
         completionRate: performance.completionRate,
         perfectionScore: performance.perfectionScore,
-      }
+      };
     }
 
-    return NextResponse.json(sessionWithPerformance)
+    return NextResponse.json(sessionWithPerformance);
   } catch (error) {
-    logger.error("Error fetching workout session:", error)
+    logger.error("Error fetching workout session:", error);
     return NextResponse.json(
       { error: "Failed to fetch workout session" },
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json()
-    const { status, endTime, duration, notes, isArchived } = body
+    const { id } = await params;
+    const body = await request.json();
+    const { status, endTime, duration, notes, isArchived } = body;
 
     // If completing the workout, calculate performance metrics
-    let performanceData = {}
+    let performanceData = {};
     if (status === "completed") {
       // First get the workout session with all exercises and sets
       const workoutSession = await prisma.workoutSession.findFirst({
         where: {
-          id: params.id,
+          id,
           userId: session.user.id,
         },
         include: {
@@ -128,25 +138,25 @@ export async function PUT(
             },
           },
         },
-      })
+      });
 
       if (workoutSession) {
         // Transform the data to match our performance calculation interface
         const transformedSession = {
           ...workoutSession,
-          exercises: workoutSession.exercises.map(ex => ({
+          exercises: workoutSession.exercises.map((ex: any) => ({
             ...ex,
-            completedSets: ex.sets.filter(set => set.completed).length,
-          }))
-        }
-        
-        const performance = calculateWorkoutPerformance(transformedSession)
-        
+            completedSets: ex.sets.filter((set: any) => set.completed).length,
+          })),
+        };
+
+        const performance = calculateWorkoutPerformance(transformedSession);
+
         performanceData = {
           performanceStatus: performance.performanceStatus,
           completionRate: performance.completionRate,
           perfectionScore: performance.perfectionScore,
-        }
+        };
 
         // Update individual exercise scores and completed sets count
         // Note: perfectionScore and completedSets will be available after DB migration
@@ -169,21 +179,21 @@ export async function PUT(
       notes,
       ...performanceData,
       updatedAt: new Date(),
-    }
+    };
 
     // Handle archive status
     if (isArchived !== undefined) {
-      updateData.isArchived = isArchived
+      updateData.isArchived = isArchived;
       if (isArchived) {
-        updateData.archivedAt = new Date()
+        updateData.archivedAt = new Date();
       } else {
-        updateData.archivedAt = null
+        updateData.archivedAt = null;
       }
     }
 
     const workoutSession = await prisma.workoutSession.update({
       where: {
-        id: params.id,
+        id,
         userId: session.user.id,
       },
       data: updateData,
@@ -195,15 +205,15 @@ export async function PUT(
               include: {
                 muscles: {
                   include: {
-                    muscle: true
-                  }
+                    muscle: true,
+                  },
                 },
                 equipments: {
                   include: {
-                    equipment: true
-                  }
-                }
-              }
+                    equipment: true,
+                  },
+                },
+              },
             },
             sets: {
               orderBy: {
@@ -216,54 +226,61 @@ export async function PUT(
           },
         },
       },
-    })
+    });
 
-    return NextResponse.json(workoutSession)
+    return NextResponse.json(workoutSession);
   } catch (error) {
-    logger.error("Error updating workout session:", error)
+    logger.error("Error updating workout session:", error);
     return NextResponse.json(
       { error: "Failed to update workout session" },
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const { id } = await params;
 
     // Check if workout exists
     const workoutSession = await prisma.workoutSession.findFirst({
       where: {
-        id: params.id,
+        id,
         userId: session.user.id,
       },
-    })
+    });
 
     if (!workoutSession) {
-      return NextResponse.json({ error: "Workout session not found" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Workout session not found" },
+        { status: 404 },
+      );
     }
 
     // Delete the workout session
     await prisma.workoutSession.delete({
       where: {
-        id: params.id,
+        id,
         userId: session.user.id,
       },
-    })
+    });
 
-    return NextResponse.json({ message: "Workout session deleted successfully" })
+    return NextResponse.json({
+      message: "Workout session deleted successfully",
+    });
   } catch (error) {
-    logger.error("Error deleting workout session:", error)
+    logger.error("Error deleting workout session:", error);
     return NextResponse.json(
       { error: "Failed to delete workout session" },
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }

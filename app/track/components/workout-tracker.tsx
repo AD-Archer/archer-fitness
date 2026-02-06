@@ -1,25 +1,33 @@
-"use client"
+"use client";
 
- 
+import type React from "react";
 
-import type React from "react"
-
-import { useState, useRef, useEffect } from "react"
-import { WorkoutSelection } from "./workout-selection"
-import { WorkoutSession as WorkoutSessionView } from "./workout-session"
-import { AddExerciseModal } from "./add-exercise-modal"
-import { SaveWorkoutDialog } from "./save-workout-dialog"
-import { useWorkoutSession, useWorkoutTimer, useWorkoutActions } from "../hooks"
-import { getWorkoutProgress } from "../utils"
-import { logger } from "@/lib/logger"
+import { useState, useRef, useEffect } from "react";
+import { WorkoutSelection } from "./workout-selection";
+import { WorkoutSession as WorkoutSessionView } from "./workout-session";
+import { ExerciseSelector } from "./exercise-selector";
+import { ExerciseTypeSelector } from "./exercise-type-selector";
+import { SaveWorkoutDialog } from "./save-workout-dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  useWorkoutSession,
+  useWorkoutTimer,
+  useWorkoutActions,
+} from "../hooks";
+import { getWorkoutProgress } from "../utils";
+import { logger } from "@/lib/logger";
 
 // Import WorkoutTimerState type
-import type { WorkoutTimerState } from "../hooks"
+import type { WorkoutTimerState } from "../hooks";
 
 export function WorkoutTracker() {
-  const [showAddExerciseModal, setShowAddExerciseModal] = useState(false)
-  const [showSaveDialog, setShowSaveDialog] = useState(false)
-  const [isSavingWorkout, setIsSavingWorkout] = useState(false)
+  const [showAddExerciseModal, setShowAddExerciseModal] = useState(false);
+  const [showExerciseTypeSelector, setShowExerciseTypeSelector] =
+    useState(false);
+  const [selectedExerciseForType, setSelectedExerciseForType] =
+    useState<any>(null);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [isSavingWorkout, setIsSavingWorkout] = useState(false);
 
   // Use the custom hooks
   const {
@@ -32,14 +40,13 @@ export function WorkoutTracker() {
     startWorkout,
     saveCustomWorkout,
     editCustomWorkout,
-    deleteWorkout,
     backToSelection,
-  } = useWorkoutSession()
+  } = useWorkoutSession();
 
-  const sessionRef = useRef(session)
+  const sessionRef = useRef(session);
   useEffect(() => {
-    sessionRef.current = session
-  }, [session])
+    sessionRef.current = session;
+  }, [session]);
 
   const {
     timer,
@@ -51,167 +58,194 @@ export function WorkoutTracker() {
     pauseWorkout,
     startRest,
     skipRest,
+    addRestTime,
+    removeRestTime,
     nextExercise,
     previousExercise,
     switchToExercise,
     reset,
-  } = useWorkoutTimer(session, savedState as Partial<WorkoutTimerState> | undefined)
+  } = useWorkoutTimer(
+    session,
+    savedState as Partial<WorkoutTimerState> | undefined,
+  );
 
-  const {
-    isAddingExercise,
-    addSet,
-    addExercise,
-    updateSet,
-    deleteSet,
-  } = useWorkoutActions(session, setSession)
+  const { addSet, addExercise, updateSet, deleteSet } = useWorkoutActions(
+    session,
+    setSession,
+  );
 
   // Enhanced save workout that includes timer state
   const saveWorkout = async () => {
-    if (!session) return
-    setShowSaveDialog(true)
-  }
+    if (!session) return;
+    setShowSaveDialog(true);
+  };
 
   // Save the session to history
   const saveSession = async () => {
-    if (!session) return
+    if (!session) return;
 
-    const completionPercent = Math.round(getWorkoutProgress(session))
+    const completionPercent = Math.round(getWorkoutProgress(session));
 
-    setIsSavingWorkout(true)
+    setIsSavingWorkout(true);
     try {
       // Mark as completed and save to history
-      const completeResponse = await fetch(`/api/workout-tracker/workout-sessions/${session.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: "completed",
-          endTime: new Date().toISOString(),
-          duration: timer,
-        }),
-      })
+      const completeResponse = await fetch(
+        `/api/workout-tracker/workout-sessions/${session.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: "completed",
+            endTime: new Date().toISOString(),
+            duration: timer,
+          }),
+        },
+      );
 
       if (!completeResponse.ok) {
-        const errorText = await completeResponse.text()
-        throw new Error(`Failed to save workout: ${errorText || completeResponse.status}`)
+        const errorText = await completeResponse.text();
+        throw new Error(
+          `Failed to save workout: ${errorText || completeResponse.status}`,
+        );
       }
 
       // Clear any saved state since workout is saved
       try {
-        await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
-          method: "DELETE",
-        })
+        await fetch(
+          `/api/workout-tracker/workout-sessions/${session.id}/saved-state`,
+          {
+            method: "DELETE",
+          },
+        );
       } catch (stateError) {
-        logger.info("No saved state to clear after saving workout", stateError)
+        logger.info("No saved state to clear after saving workout", stateError);
       }
 
-      reset()
-      setSession(null)
-      backToSelection()
-      setShowSaveDialog(false)
-      alert(`Workout saved successfully! (${completionPercent}% complete)`)
+      reset();
+      setSession(null);
+      backToSelection();
+      setShowSaveDialog(false);
+      alert(`Workout saved successfully! (${completionPercent}% complete)`);
     } catch (e) {
-      logger.error("Failed to save workout", e)
-      alert("Failed to save workout. Please try again.")
+      logger.error("Failed to save workout", e);
+      alert("Failed to save workout. Please try again.");
     } finally {
-      setIsSavingWorkout(false)
+      setIsSavingWorkout(false);
     }
-  }
+  };
 
   // Archive the workout
   const archiveWorkout = async () => {
-    if (!session) return
+    if (!session) return;
 
-    setIsSavingWorkout(true)
+    setIsSavingWorkout(true);
     try {
-      const archiveResponse = await fetch(`/api/workout-tracker/workout-sessions/${session.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: "completed",
-          endTime: new Date().toISOString(),
-          duration: timer,
-          isArchived: true,
-        }),
-      })
+      const archiveResponse = await fetch(
+        `/api/workout-tracker/workout-sessions/${session.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: "completed",
+            endTime: new Date().toISOString(),
+            duration: timer,
+            isArchived: true,
+          }),
+        },
+      );
 
       if (!archiveResponse.ok) {
-        const errorText = await archiveResponse.text()
-        throw new Error(`Failed to archive workout: ${errorText || archiveResponse.status}`)
+        const errorText = await archiveResponse.text();
+        throw new Error(
+          `Failed to archive workout: ${errorText || archiveResponse.status}`,
+        );
       }
 
       // Clear saved state
       try {
-        await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
-          method: "DELETE",
-        })
+        await fetch(
+          `/api/workout-tracker/workout-sessions/${session.id}/saved-state`,
+          {
+            method: "DELETE",
+          },
+        );
       } catch {
         // No saved state to clear
       }
 
-      reset()
-      setSession(null)
-      backToSelection()
-      setShowSaveDialog(false)
-      alert("Workout archived successfully!")
+      reset();
+      setSession(null);
+      backToSelection();
+      setShowSaveDialog(false);
+      alert("Workout archived successfully!");
     } catch (e) {
-      logger.error("Failed to archive workout", e)
-      alert("Failed to archive workout. Please try again.")
+      logger.error("Failed to archive workout", e);
+      alert("Failed to archive workout. Please try again.");
     } finally {
-      setIsSavingWorkout(false)
+      setIsSavingWorkout(false);
     }
-  }
+  };
 
   // Discard the workout completely
   const discardWorkout = async () => {
-    if (!session) return
+    if (!session) return;
 
-    setIsSavingWorkout(true)
+    setIsSavingWorkout(true);
     try {
       // Clear saved state before deleting
       try {
-        await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
-          method: "DELETE",
-        })
+        await fetch(
+          `/api/workout-tracker/workout-sessions/${session.id}/saved-state`,
+          {
+            method: "DELETE",
+          },
+        );
       } catch {
         // No saved state to clear
       }
 
-      const deleteResponse = await fetch(`/api/workout-tracker/workout-sessions/${session.id}`, {
-        method: "DELETE",
-      })
+      const deleteResponse = await fetch(
+        `/api/workout-tracker/workout-sessions/${session.id}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       if (!deleteResponse.ok) {
-        const errorText = await deleteResponse.text()
-        throw new Error(errorText || "Failed to discard workout session")
+        const errorText = await deleteResponse.text();
+        throw new Error(errorText || "Failed to discard workout session");
       }
 
-      reset()
-      setSession(null)
-      backToSelection()
-      setShowSaveDialog(false)
+      reset();
+      setSession(null);
+      backToSelection();
+      setShowSaveDialog(false);
     } catch (e) {
-      logger.error("Failed to discard workout", e)
-      alert("Failed to discard workout. Please try again.")
+      logger.error("Failed to discard workout", e);
+      alert("Failed to discard workout. Please try again.");
     } finally {
-      setIsSavingWorkout(false)
+      setIsSavingWorkout(false);
     }
-  }
+  };
 
   // Save as a new workout template
   const saveAsNewWorkout = async (name: string, description?: string) => {
-    if (!session) return
+    if (!session) return;
 
-    setIsSavingWorkout(true)
+    setIsSavingWorkout(true);
     try {
       // Create new workout template
       const exercisesForTemplate = session.exercises.map((ex, index) => ({
         name: ex.name,
         exerciseId: ex.id,
-        targetSets: typeof ex.targetSets === 'string' ? parseInt(ex.targetSets, 10) : ex.targetSets,
+        targetSets:
+          typeof ex.targetSets === "string"
+            ? parseInt(ex.targetSets, 10)
+            : ex.targetSets,
         targetReps: ex.targetReps,
         targetType: ex.targetType || "reps",
         order: index,
-      }))
+      }));
 
       const response = await fetch("/api/workout-tracker/workout-templates", {
         method: "POST",
@@ -222,10 +256,10 @@ export function WorkoutTracker() {
           estimatedDuration: Math.ceil(timer / 60), // Convert seconds to minutes
           exercises: exercisesForTemplate,
         }),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error("Failed to create workout template")
+        throw new Error("Failed to create workout template");
       }
 
       // Mark session as completed (since we're saving and exiting)
@@ -237,58 +271,67 @@ export function WorkoutTracker() {
           endTime: new Date().toISOString(),
           duration: timer,
         }),
-      })
+      });
 
       // Clear any saved state since workout is completed
       try {
-        await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
-          method: "DELETE",
-        })
+        await fetch(
+          `/api/workout-tracker/workout-sessions/${session.id}/saved-state`,
+          {
+            method: "DELETE",
+          },
+        );
       } catch {
         // No saved state to clear
       }
 
       // Reset everything and go back to selection
-      reset()
-      setSession(null)
-      backToSelection()
-      setShowSaveDialog(false)
-      alert(`Workout "${name}" saved successfully!`)
+      reset();
+      setSession(null);
+      backToSelection();
+      setShowSaveDialog(false);
+      alert(`Workout "${name}" saved successfully!`);
     } catch (e) {
-      logger.error("Failed to save workout template", e)
-      alert("Failed to save workout template. Please try again.")
+      logger.error("Failed to save workout template", e);
+      alert("Failed to save workout template. Please try again.");
     } finally {
-      setIsSavingWorkout(false)
+      setIsSavingWorkout(false);
     }
-  }
+  };
 
   // Update existing workout template
   const updateExistingWorkout = async () => {
-    if (!session || !(session as any).workoutTemplateId) return
+    if (!session || !(session as any).workoutTemplateId) return;
 
-    setIsSavingWorkout(true)
+    setIsSavingWorkout(true);
     try {
       // Update existing workout template
       const exercisesForTemplate = session.exercises.map((ex, index) => ({
         name: ex.name,
         exerciseId: ex.id,
-        targetSets: typeof ex.targetSets === 'string' ? parseInt(ex.targetSets, 10) : ex.targetSets,
+        targetSets:
+          typeof ex.targetSets === "string"
+            ? parseInt(ex.targetSets, 10)
+            : ex.targetSets,
         targetReps: ex.targetReps,
         targetType: ex.targetType || "reps",
         order: index,
-      }))
+      }));
 
-      const response = await fetch(`/api/workout-tracker/workout-templates/${(session as any).workoutTemplateId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: session.name,
-          exercises: exercisesForTemplate,
-        }),
-      })
+      const response = await fetch(
+        `/api/workout-tracker/workout-templates/${(session as any).workoutTemplateId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: session.name,
+            exercises: exercisesForTemplate,
+          }),
+        },
+      );
 
       if (!response.ok) {
-        throw new Error("Failed to update workout template")
+        throw new Error("Failed to update workout template");
       }
 
       // Mark session as completed (since we're saving and exiting)
@@ -300,34 +343,37 @@ export function WorkoutTracker() {
           endTime: new Date().toISOString(),
           duration: timer,
         }),
-      })
+      });
 
       // Clear any saved state since workout is completed
       try {
-        await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
-          method: "DELETE",
-        })
+        await fetch(
+          `/api/workout-tracker/workout-sessions/${session.id}/saved-state`,
+          {
+            method: "DELETE",
+          },
+        );
       } catch {
         // No saved state to clear
       }
 
       // Reset everything and go back to selection
-      reset()
-      setSession(null)
-      backToSelection()
-      setShowSaveDialog(false)
-      alert(`Workout "${session.name}" updated successfully!`)
+      reset();
+      setSession(null);
+      backToSelection();
+      setShowSaveDialog(false);
+      alert(`Workout "${session.name}" updated successfully!`);
     } catch (e) {
-      logger.error("Failed to update workout template", e)
-      alert("Failed to update workout template. Please try again.")
+      logger.error("Failed to update workout template", e);
+      alert("Failed to update workout template. Please try again.");
     } finally {
-      setIsSavingWorkout(false)
+      setIsSavingWorkout(false);
     }
-  }
+  };
 
   // Enhanced finish workout that includes timer state
   const finishWorkoutWithTimer = async () => {
-    if (!session) return
+    if (!session) return;
     try {
       // Update session status to completed
       await fetch(`/api/workout-tracker/workout-sessions/${session.id}`, {
@@ -338,150 +384,174 @@ export function WorkoutTracker() {
           endTime: new Date().toISOString(),
           duration: timer,
         }),
-      })
+      });
 
       // Clear saved state since workout is complete
       try {
-        await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
-          method: "DELETE",
-        })
+        await fetch(
+          `/api/workout-tracker/workout-sessions/${session.id}/saved-state`,
+          {
+            method: "DELETE",
+          },
+        );
       } catch {
         // No saved state to clear
       }
     } catch (e) {
-      logger.error("Failed to complete session", e)
+      logger.error("Failed to complete session", e);
     }
-    reset()
-    setSession(null)
-    backToSelection()
-  }
+    reset();
+    setSession(null);
+    backToSelection();
+  };
 
   // Enhanced stop workout that includes timer state
   const stopWorkoutWithTimer = async () => {
-    if (!session) return
+    if (!session) return;
     try {
       // Clear any saved state before deleting the session entirely
       try {
-        await fetch(`/api/workout-tracker/workout-sessions/${session.id}/saved-state`, {
-          method: "DELETE",
-        })
+        await fetch(
+          `/api/workout-tracker/workout-sessions/${session.id}/saved-state`,
+          {
+            method: "DELETE",
+          },
+        );
       } catch {
         // No saved state to clear or already removed
       }
 
-      const deleteResponse = await fetch(`/api/workout-tracker/workout-sessions/${session.id}`, {
-        method: "DELETE",
-      })
+      const deleteResponse = await fetch(
+        `/api/workout-tracker/workout-sessions/${session.id}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       if (!deleteResponse.ok) {
-        const errorText = await deleteResponse.text()
-        throw new Error(errorText || "Failed to discard workout session")
+        const errorText = await deleteResponse.text();
+        throw new Error(errorText || "Failed to discard workout session");
       }
     } catch (e) {
-      logger.error("Failed to discard session", e)
-      alert("We couldn't discard that workout completely. Please try again.")
+      logger.error("Failed to discard session", e);
+      alert("We couldn't discard that workout completely. Please try again.");
     }
-    reset()
-    setSession(null)
-    backToSelection()
-  }
+    reset();
+    setSession(null);
+    backToSelection();
+  };
 
   // Enhanced add set that starts rest timer
-  const addSetWithRest = async (exerciseId: string, reps: number, weight?: number) => {
-    await addSet(exerciseId, reps, weight)
+  const addSetWithRest = async (
+    exerciseId: string,
+    reps: number,
+    weight?: number,
+  ) => {
+    await addSet(exerciseId, reps, weight);
 
     // Start rest timer after completing a set
-    startRest(90) // 90 seconds rest
+    startRest(90); // 90 seconds rest
 
     // Reset exercise timer for next set (for timed exercises)
-    if (sessionRef.current?.exercises.find((ex: any) => ex.id === exerciseId)?.targetType === "time") {
+    if (
+      sessionRef.current?.exercises.find((ex: any) => ex.id === exerciseId)
+        ?.targetType === "time"
+    ) {
       // The exercise timer will be reset by the useEffect in the timer hook
     }
-  }
+  };
 
   const updateSetWithoutRest = async (
     exerciseId: string,
     setId: string,
-    payload: { reps?: number; weight?: number; duration?: number }
+    payload: { reps?: number; weight?: number; duration?: number },
   ) => {
-    await updateSet(exerciseId, setId, payload)
-  }
+    await updateSet(exerciseId, setId, payload);
+  };
 
   const deleteSetWithoutRest = async (exerciseId: string, setId: string) => {
-    await deleteSet(exerciseId, setId)
-  }
+    await deleteSet(exerciseId, setId);
+  };
 
   // Add exercise mid-workout: open modal
   const addExerciseMidWorkout = () => {
-    setShowAddExerciseModal(true)
-  }
+    setShowAddExerciseModal(true);
+  };
 
   // Handle adding exercise from modal
   const handleAddExercise = async (
     exercise: { name: string; id?: string; instructions?: string },
     targetType?: "reps" | "time",
-    targetUnit?: "seconds" | "minutes"
+    targetUnit?: "seconds" | "minutes",
   ) => {
-    await addExercise(exercise.name, targetType, exercise.id, targetUnit)
+    await addExercise(exercise.name, targetType, exercise.id, targetUnit);
     // Switch to the newly added exercise (it will be at the end)
     setTimeout(() => {
-      const newLength = sessionRef.current?.exercises.length || 0
-      switchToExercise(newLength - 1)
-    }, 0)
-  }
+      const newLength = sessionRef.current?.exercises.length || 0;
+      switchToExercise(newLength - 1);
+    }, 0);
+  };
 
   // Handle removing exercise from workout
   const removeExercise = async (exerciseId: string) => {
-    if (!session) return
-    
+    if (!session) return;
+
     try {
       // Remove from server first
-      const response = await fetch(`/api/workout-tracker/workout-sessions/${session.id}/exercises/${exerciseId}`, {
-        method: "DELETE",
-      })
+      const response = await fetch(
+        `/api/workout-tracker/workout-sessions/${session.id}/exercises/${exerciseId}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to remove exercise')
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to remove exercise");
       }
 
       // Find the exercise in the session
-      const exerciseIndex = session.exercises.findIndex(ex => ex.id === exerciseId)
-      if (exerciseIndex === -1) return
+      const exerciseIndex = session.exercises.findIndex(
+        (ex) => ex.id === exerciseId,
+      );
+      if (exerciseIndex === -1) return;
 
       // If we're removing the current exercise and it's not the first one, switch to previous
-      let newCurrentIndex = currentExerciseIndex
+      let newCurrentIndex = currentExerciseIndex;
       if (exerciseIndex === currentExerciseIndex && currentExerciseIndex > 0) {
-        newCurrentIndex = currentExerciseIndex - 1
-        previousExercise()
+        newCurrentIndex = currentExerciseIndex - 1;
+        previousExercise();
       } else if (exerciseIndex < currentExerciseIndex) {
         // If we're removing an exercise before the current one, adjust the index
-        newCurrentIndex = currentExerciseIndex - 1
+        newCurrentIndex = currentExerciseIndex - 1;
       }
 
       // Remove from session state
-      const updatedExercises = session.exercises.filter(ex => ex.id !== exerciseId)
+      const updatedExercises = session.exercises.filter(
+        (ex) => ex.id !== exerciseId,
+      );
       setSession({
         ...session,
-        exercises: updatedExercises
-      })
+        exercises: updatedExercises,
+      });
 
       // If no exercises left, go back to selection
       if (updatedExercises.length === 0) {
-        stopWorkoutWithTimer()
-        return
+        stopWorkoutWithTimer();
+        return;
       }
 
       // If the current exercise index is now out of bounds, adjust it
       if (newCurrentIndex >= updatedExercises.length) {
-        switchToExercise(updatedExercises.length - 1)
+        switchToExercise(updatedExercises.length - 1);
       }
-
     } catch (error) {
-      logger.error("Failed to remove exercise:", error)
-      alert(`Failed to remove exercise: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      logger.error("Failed to remove exercise:", error);
+      alert(
+        `Failed to remove exercise: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
-  }
+  };
 
   if (isLoading) {
     return (
@@ -491,7 +561,7 @@ export function WorkoutTracker() {
           <p className="text-muted-foreground">Loading workouts...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (showWorkoutSelection) {
@@ -499,15 +569,14 @@ export function WorkoutTracker() {
       <WorkoutSelection
         availableWorkouts={availableWorkouts}
         onStartWorkout={startWorkout}
-        onDeleteWorkout={deleteWorkout}
         onSaveCustomWorkout={saveCustomWorkout}
         onEditCustomWorkout={editCustomWorkout}
       />
-    )
+    );
   }
 
   if (!session) {
-    return null
+    return null;
   }
 
   return (
@@ -524,8 +593,8 @@ export function WorkoutTracker() {
         onFinishWorkout={finishWorkoutWithTimer}
         onStopWorkout={stopWorkoutWithTimer}
         onBackToSelection={() => {
-          reset()
-          backToSelection()
+          reset();
+          backToSelection();
         }}
         onAddSet={addSetWithRest}
         onUpdateSet={updateSetWithoutRest}
@@ -535,16 +604,51 @@ export function WorkoutTracker() {
         onNextExercise={nextExercise}
         onPreviousExercise={previousExercise}
         onSkipRest={skipRest}
+        onAddRestTime={addRestTime}
+        onRemoveRestTime={removeRestTime}
         onSwitchToExercise={switchToExercise}
         onSaveWorkout={saveWorkout}
         getWorkoutProgress={() => getWorkoutProgress(session)}
       />
-      <AddExerciseModal
-        isOpen={showAddExerciseModal}
-        onClose={() => setShowAddExerciseModal(false)}
-        onAddExercise={handleAddExercise}
-        isLoading={isAddingExercise}
+      <Dialog
+        open={showAddExerciseModal}
+        onOpenChange={setShowAddExerciseModal}
+      >
+        <DialogContent className="w-[96vw] sm:w-[90vw] lg:w-[80vw] xl:w-[75vw] max-w-6xl sm:max-w-6xl p-0 gap-0 rounded-2xl h-[90vh] flex flex-col overflow-hidden">
+          <DialogTitle className="sr-only">Select Exercise to Add</DialogTitle>
+          <ExerciseSelector
+            onSelect={(exercise) => {
+              setSelectedExerciseForType(exercise);
+              setShowAddExerciseModal(false);
+              setShowExerciseTypeSelector(true);
+            }}
+            onClose={() => setShowAddExerciseModal(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <ExerciseTypeSelector
+        isOpen={showExerciseTypeSelector}
+        onSelectType={(targetType) => {
+          if (selectedExerciseForType) {
+            handleAddExercise(
+              {
+                name: selectedExerciseForType.name,
+                id: selectedExerciseForType.id,
+                instructions: selectedExerciseForType.instructions,
+              },
+              targetType,
+            );
+            setSelectedExerciseForType(null);
+          }
+          setShowExerciseTypeSelector(false);
+        }}
+        onClose={() => {
+          setShowExerciseTypeSelector(false);
+          setSelectedExerciseForType(null);
+        }}
       />
+
       <SaveWorkoutDialog
         isOpen={showSaveDialog}
         onClose={() => setShowSaveDialog(false)}
@@ -558,5 +662,5 @@ export function WorkoutTracker() {
         completionPercentage={Math.round(getWorkoutProgress(session))}
       />
     </>
-  )
+  );
 }

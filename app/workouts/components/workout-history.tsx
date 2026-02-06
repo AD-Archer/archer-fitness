@@ -4,11 +4,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Clock, Calendar, Trash2, Eye, Archive, ArchiveRestore, CheckSquare, Square, ArrowUp } from "lucide-react"
+import { Clock, Calendar, Trash2, Eye, Archive, ArchiveRestore, CheckSquare, Square, ArrowUp, Plus } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
 import { WorkoutDetailsModal } from "./workout-details-modal"
 import { QuickViewModal } from "./quick-view-modal"
+import { AddPastWorkoutDialog } from "./add-past-workout-dialog"
 import { getPerformanceBadgeProps, type WorkoutPerformanceStatus } from "@/lib/workout-performance"
 import { logger } from "@/lib/logger"
 import {
@@ -85,6 +86,7 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
+  const [showAddWorkoutDialog, setShowAddWorkoutDialog] = useState(false)
   
   // Advanced filter states
   const [dateFrom, setDateFrom] = useState("")
@@ -521,6 +523,15 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
             <CardDescription>Your recent training sessions and performance</CardDescription>
           </div>
           <div className="flex gap-2 flex-wrap">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setShowAddWorkoutDialog(true)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Log Workout
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -982,6 +993,12 @@ export function WorkoutHistory({ onRepeatWorkout }: { onRepeatWorkout?: (workout
           <ArrowUp className="w-5 h-5" />
         </Button>
       )}
+
+      <AddPastWorkoutDialog
+        open={showAddWorkoutDialog}
+        onOpenChange={setShowAddWorkoutDialog}
+        onCreated={() => fetchWorkoutHistory(true)}
+      />
     </Card>
   )
 }

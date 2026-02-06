@@ -7,12 +7,12 @@ const nextConfig = {
     unoptimized: true,
   },
   // Enable standalone output for Docker optimization
-  output: 'standalone',
+  output: "standalone",
   // Experimental features for better performance
   experimental: {
     // Optimize bundle size
-    optimizePackageImports: ['@radix-ui/react-icons'],
+    optimizePackageImports: ["@radix-ui/react-icons"],
   },
-}
+};
 
-export default nextConfig
+export default nextConfig;

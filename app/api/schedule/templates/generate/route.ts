@@ -34,8 +34,8 @@ const extractPreferredDays = (value: unknown): number[] | undefined => {
 const collectEquipmentOptions = (templates: WorkoutTemplateWithExercises[]): string[] => {
   const equipment = new Set<string>()
   templates.forEach((template) => {
-    template.exercises.forEach((exercise) => {
-      exercise.exercise.equipments?.forEach((relation) => {
+    template.exercises.forEach((exercise: any) => {
+      exercise.exercise.equipments?.forEach((relation: any) => {
         const name = relation?.equipment?.name
         if (name) {
           equipment.add(name)

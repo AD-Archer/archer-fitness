@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
+import prisma from "@/lib/prisma"
 import { z } from "zod"
 import { logger } from "@/lib/logger"
 
@@ -268,11 +268,11 @@ export async function PUT(request: NextRequest) {
     })
   } catch (error) {
     if (error instanceof z.ZodError) {
-      logger.error("Zod validation error:", error.errors)
+      logger.error("Zod validation error:", error.issues)
       return NextResponse.json(
         {
           error: "Invalid input",
-          details: error.errors,
+          details: error.issues,
           message: "Please check that all required fields are provided with correct types"
         },
         { status: 400 }

@@ -1,91 +1,207 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { Dumbbell } from "lucide-react"
-import { useEffect, useState } from "react"
-import { useUserPreferences } from "@/hooks/use-user-preferences"
-import { getWeightUnitAbbr } from "@/lib/weight-utils"
-import { logger } from "@/lib/logger"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { Dumbbell } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useUserPreferences } from "@/hooks/use-user-preferences";
+import { getWeightUnitAbbr } from "@/lib/weight-utils";
+import { logger } from "@/lib/logger";
 
 interface VolumeData {
-  week: string
-  volume: number
-  workouts: number
+  week: string;
+  volume: number;
+  workouts: number;
 }
 
 interface VolumeMetric {
-  volume: number
-  workouts: number
-  sets: number
+  volume: number;
+  workouts: number;
+  sets: number;
 }
 
 interface VolumeStats {
-  averageVolume: number
-  peakVolume: number
-  volumeTrend: number
+  averageVolume: number;
+  peakVolume: number;
+  volumeTrend: number;
 }
 
 interface VolumeAnalyticsProps {
-  timeRange?: string
+  timeRange?: string;
 }
 
-export function VolumeAnalytics({ timeRange = "3months" }: VolumeAnalyticsProps) {
-  const [volumeData, setVolumeData] = useState<VolumeData[]>([])
-  const [volumeStats, setVolumeStats] = useState<VolumeStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const { units } = useUserPreferences()
+export function VolumeAnalytics({
+  timeRange = "3months",
+}: VolumeAnalyticsProps) {
+  const [volumeData, setVolumeData] = useState<VolumeData[]>([]);
+  const [volumeStats, setVolumeStats] = useState<VolumeStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { units } = useUserPreferences();
 
   useEffect(() => {
     const fetchVolumeData = async () => {
       try {
-        const response = await fetch(`/api/workout-tracker/analytics?type=volume&timeRange=${timeRange}`)
+        setLoading(true);
+        setVolumeData([]);
+        setVolumeStats(null);
+        const response = await fetch(
+          `/api/workout-tracker/analytics?type=volume&timeRange=${timeRange}`,
+        );
         if (response.ok) {
-          const data = await response.json()
-          
+          const data = await response.json();
+
           // Convert volume metrics to chart data
-          const chartData: VolumeData[] = Object.entries(data.volumeMetrics)
-            .sort((a, b) => a[0].localeCompare(b[0])) // Sort by date
-            .slice(-8) // Last 8 weeks
-            .map(([, volumeData], index) => {
-              const metric = volumeData as VolumeMetric
+          const allEntries = Object.entries(data.volumeMetrics).sort((a, b) =>
+            a[0].localeCompare(b[0]),
+          );
+
+          // Determine how many data points and label format based on timeRange
+          let dataPointsToShow = 8;
+          let labelFormat: (date: string, index: number) => string;
+
+          switch (timeRange) {
+            case "7days":
+              dataPointsToShow = 7;
+              labelFormat = (date: string) => {
+                const d = new Date(date);
+                return d.toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                });
+              };
+              break;
+            case "4weeks":
+              dataPointsToShow = 4;
+              labelFormat = (_date: string, index: number) =>
+                `Week ${index + 1}`;
+              break;
+            case "3months":
+              dataPointsToShow = 12; // 12 weeks
+              labelFormat = (date: string) => {
+                const d = new Date(date);
+                return d.toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                });
+              };
+              break;
+            case "6months":
+              dataPointsToShow = 26; // 26 weeks
+              labelFormat = (date: string) => {
+                const d = new Date(date);
+                return d.toLocaleDateString("en-US", { month: "short" });
+              };
+              break;
+            case "1year":
+              dataPointsToShow = 12; // 12 months
+              labelFormat = (date: string) => {
+                const d = new Date(date);
+                return d.toLocaleDateString("en-US", { month: "short" });
+              };
+              break;
+            default:
+              dataPointsToShow = 12;
+              labelFormat = (_date: string, index: number) =>
+                `Week ${index + 1}`;
+          }
+
+          const chartData: VolumeData[] = allEntries
+            .slice(-dataPointsToShow)
+            .map(([dateKey, volumeData], index) => {
+              const metric = volumeData as VolumeMetric;
+
+              // For month-based views (6 months, 1 year), aggregate by month name only
+              const label = labelFormat(dateKey, index);
+
               return {
-                week: `Week ${index + 1}`,
+                week: label,
                 volume: metric.volume,
-                workouts: metric.workouts
+                workouts: metric.workouts,
+              };
+            });
+
+          // For 1 year view, consolidate duplicate month labels by summing their values
+          let finalChartData = chartData;
+          if (timeRange === "1year" || timeRange === "6months") {
+            const monthMap = new Map<
+              string,
+              { volume: number; workouts: number }
+            >();
+
+            chartData.forEach((item) => {
+              const existing = monthMap.get(item.week);
+              if (existing) {
+                existing.volume += item.volume;
+                existing.workouts += item.workouts;
+              } else {
+                monthMap.set(item.week, {
+                  volume: item.volume,
+                  workouts: item.workouts,
+                });
               }
-            })
-          
-          setVolumeData(chartData)
-          
+            });
+
+            finalChartData = Array.from(monthMap.entries()).map(
+              ([label, data]) => ({
+                week: label,
+                volume: data.volume,
+                workouts: data.workouts,
+              }),
+            );
+          }
+
+          setVolumeData(finalChartData);
+
           // Calculate stats from general stats
-          const stats = data.generalStats
+          const stats = data.generalStats;
           if (stats && chartData.length > 0) {
-            const volumes = chartData.map(d => d.volume)
-            const averageVolume = volumes.length > 0 ? volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length : 0
-            const peakVolume = volumes.length > 0 ? Math.max(...volumes) : 0
-            const firstWeekVolume = chartData[0]?.volume || 0
-            const lastWeekVolume = chartData[chartData.length - 1]?.volume || 0
-            const volumeTrend = firstWeekVolume > 0 
-              ? Math.round(((lastWeekVolume - firstWeekVolume) / firstWeekVolume) * 100)
-              : 0
-            
+            const volumes = chartData.map((d) => d.volume);
+            const averageVolume =
+              volumes.length > 0
+                ? volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length
+                : 0;
+            const peakVolume = volumes.length > 0 ? Math.max(...volumes) : 0;
+            const firstWeekVolume = chartData[0]?.volume || 0;
+            const lastWeekVolume = chartData[chartData.length - 1]?.volume || 0;
+            const volumeTrend =
+              firstWeekVolume > 0
+                ? Math.round(
+                    ((lastWeekVolume - firstWeekVolume) / firstWeekVolume) *
+                      100,
+                  )
+                : 0;
+
             setVolumeStats({
               averageVolume,
               peakVolume,
-              volumeTrend
-            })
+              volumeTrend,
+            });
           }
         }
       } catch (error) {
-        logger.error('Failed to fetch volume data:', error)
+        logger.error("Failed to fetch volume data:", error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchVolumeData()
-  }, [timeRange])
+    fetchVolumeData();
+  }, [timeRange]);
 
   if (loading) {
     return (
@@ -105,7 +221,7 @@ export function VolumeAnalytics({ timeRange = "3months" }: VolumeAnalyticsProps)
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
   return (
     <div className="space-y-6">
@@ -115,31 +231,59 @@ export function VolumeAnalytics({ timeRange = "3months" }: VolumeAnalyticsProps)
             <Dumbbell className="w-5 h-5 text-green-600" />
             Training Volume Trends
           </CardTitle>
-          <CardDescription>Weekly volume and workout frequency analysis</CardDescription>
+          <CardDescription>
+            Weekly volume and workout frequency analysis
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {volumeData.length > 0 ? (
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={volumeData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="week" className="text-xs" />
-                  <YAxis className="text-xs" />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    className="stroke-muted"
+                  />
+                  <XAxis
+                    dataKey="week"
+                    className="text-xs"
+                    stroke="hsl(var(--muted-foreground))"
+                    tick={{ fill: "hsl(var(--muted-foreground))" }}
+                  />
+                  <YAxis
+                    className="text-xs"
+                    stroke="hsl(var(--border))"
+                    tick={{ fill: "hsl(var(--foreground))" }}
+                  />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "hsl(var(--card))",
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "8px",
+                      color: "hsl(var(--foreground))",
                     }}
-                    formatter={(value: number) => [`${value.toLocaleString()} ${getWeightUnitAbbr(units)}`, 'Volume']}
+                    labelStyle={{ color: "hsl(var(--foreground))" }}
+                    formatter={(value?: number) =>
+                      value !== undefined
+                        ? [
+                            `${value.toLocaleString()} ${getWeightUnitAbbr(units)}`,
+                            "Volume",
+                          ]
+                        : ["", "Volume"]
+                    }
                   />
-                  <Bar dataKey="volume" fill="#10b981" name={`Volume (${getWeightUnitAbbr(units)})`} />
+                  <Bar
+                    dataKey="volume"
+                    fill="#10b981"
+                    name={`Volume (${getWeightUnitAbbr(units)})`}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           ) : (
             <div className="h-80 flex items-center justify-center text-muted-foreground">
-              No volume data available. Complete workouts with tracked weights to see your training volume!
+              No volume data available. Complete workouts with tracked weights
+              to see your training volume!
             </div>
           )}
         </CardContent>
@@ -154,9 +298,12 @@ export function VolumeAnalytics({ timeRange = "3months" }: VolumeAnalyticsProps)
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                {volumeStats.averageVolume.toLocaleString()} {getWeightUnitAbbr(units)}
+                {volumeStats.averageVolume.toLocaleString()}{" "}
+                {getWeightUnitAbbr(units)}
               </div>
-              <p className="text-sm text-muted-foreground">{getWeightUnitAbbr(units)} per week</p>
+              <p className="text-sm text-muted-foreground">
+                {getWeightUnitAbbr(units)} per week
+              </p>
             </CardContent>
           </Card>
 
@@ -166,7 +313,8 @@ export function VolumeAnalytics({ timeRange = "3months" }: VolumeAnalyticsProps)
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-600">
-                {volumeStats.peakVolume.toLocaleString()} {getWeightUnitAbbr(units)}
+                {volumeStats.peakVolume.toLocaleString()}{" "}
+                {getWeightUnitAbbr(units)}
               </div>
               <p className="text-sm text-muted-foreground">highest week</p>
             </CardContent>
@@ -177,8 +325,11 @@ export function VolumeAnalytics({ timeRange = "3months" }: VolumeAnalyticsProps)
               <CardTitle className="text-lg">Volume Trend</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${volumeStats.volumeTrend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {volumeStats.volumeTrend > 0 ? '+' : ''}{volumeStats.volumeTrend}%
+              <div
+                className={`text-2xl font-bold ${volumeStats.volumeTrend >= 0 ? "text-green-600" : "text-red-600"}`}
+              >
+                {volumeStats.volumeTrend > 0 ? "+" : ""}
+                {volumeStats.volumeTrend}%
               </div>
               <p className="text-sm text-muted-foreground">vs first week</p>
             </CardContent>
@@ -186,5 +337,5 @@ export function VolumeAnalytics({ timeRange = "3months" }: VolumeAnalyticsProps)
         </div>
       )}
     </div>
-  )
+  );
 }

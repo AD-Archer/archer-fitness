@@ -1,7 +1,7 @@
 import { NextResponse, NextRequest } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
+import prisma from "@/lib/prisma"
 import { z } from "zod"
 import { logger } from "@/lib/logger"
 import { createEmailVerificationToken } from "@/lib/email-verification"

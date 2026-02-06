@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { RefreshCw, Home, AlertTriangle, Bug, Mail, Settings } from 'lucide-react'
 import Link from 'next/link'
-import { useSession } from 'next-auth/react'
 import { logger } from "@/lib/logger"
 
 interface ErrorProps {
@@ -15,8 +14,6 @@ interface ErrorProps {
 }
 
 export default function Error({ error, reset }: ErrorProps) {
-  const { data: session } = useSession()
-  const userId = session?.user?.id
   const [adminNotificationsEnabled, setAdminNotificationsEnabled] = useState<boolean>(true)
   const [emailSent, setEmailSent] = useState<boolean>(false)
   const [isReporting, setIsReporting] = useState<boolean>(false)
@@ -24,7 +21,6 @@ export default function Error({ error, reset }: ErrorProps) {
   useEffect(() => {
     // Fetch user preferences to check admin notifications setting
     const fetchPreferences = async () => {
-      if (!userId) return
       try {
         const response = await fetch('/api/user/preferences')
         if (response.ok) {
@@ -38,7 +34,7 @@ export default function Error({ error, reset }: ErrorProps) {
     }
 
     fetchPreferences()
-  }, [userId])
+  }, [])
 
   const reportError = useCallback(async () => {
     setIsReporting(true)
@@ -57,7 +53,7 @@ export default function Error({ error, reset }: ErrorProps) {
           context: 'Client-side error in Archer Fitness app',
           userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'Server-side',
           url: typeof window !== 'undefined' ? window.location.href : 'Server-side',
-          userId: userId || 'Anonymous',
+          userId: 'Anonymous',
           timestamp: new Date().toISOString(),
         }),
       })
@@ -71,7 +67,7 @@ export default function Error({ error, reset }: ErrorProps) {
     } finally {
       setIsReporting(false)
     }
-  }, [error.message, error.stack, error.digest, userId])
+  }, [error.message, error.stack, error.digest])
 
   useEffect(() => {
     // Log the error to an error reporting service
@@ -81,7 +77,7 @@ export default function Error({ error, reset }: ErrorProps) {
     if (adminNotificationsEnabled) {
       reportError()
     }
-  }, [error, userId, adminNotificationsEnabled, reportError])
+  }, [error, adminNotificationsEnabled, reportError])
 
   const isDevelopment = process.env.NODE_ENV === 'development'
 

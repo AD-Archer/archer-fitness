@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { prisma } from "@/lib/prisma"
+import prisma from "@/lib/prisma"
 import { createPasswordResetToken } from "@/lib/password-reset"
 import { emailNotificationManager } from "@/lib/email-notifications"
 import { logger } from "@/lib/logger"
