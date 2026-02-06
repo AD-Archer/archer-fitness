@@ -28,6 +28,7 @@ next-env.d.ts
 /lib/generated/prisma
 
 exercise-summary.json
+prisma/generated/*
 .vscode/
 .DS_Store
 .idea/

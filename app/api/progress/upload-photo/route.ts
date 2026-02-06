@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
@@ -13,6 +13,7 @@ import { logger } from "@/lib/logger";
 // @ts-ignore
 import heicConvert from "heic-convert";
 import { encryptPhotoBuffer } from "@/lib/photo-encryption";
+import path from "path";
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,7 +58,9 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes);
 
     const timestamp = Date.now();
-    let filename = `${user.id}-${timestamp}-${file.name}`;
+    // Sanitize filename to prevent path traversal attacks
+    const safeName = path.basename(file.name).replace(/[^a-zA-Z0-9.-]/g, "_");
+    let filename = `${user.id}-${timestamp}-${safeName}`;
     let publicUrl = "";
     let storageProvider: "local" | "appwrite" = "local";
     let storageFileId: string | null = null;

@@ -1,38 +1,38 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import prisma from "@/lib/prisma"
-import { Prisma, Food } from "@prisma/client"
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import prisma from "@/lib/prisma";
+import { Prisma, Food } from "@prisma/client";
 
 interface IngredientInput {
-  foodId: string
-  quantity: string | number
+  foodId: string;
+  quantity: string | number;
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url)
-    const search = searchParams.get("search")
-    const limit = parseInt(searchParams.get("limit") || "50")
+    const { searchParams } = new URL(request.url);
+    const search = searchParams.get("search");
+    const limit = parseInt(searchParams.get("limit") || "50");
 
     // Get both user's meals and public meals from other users
     const where: Prisma.MealWhereInput = {
       OR: [
         { userId: session.user.id }, // User's meals
-        { isPublic: true } // Public meals from other users
-      ]
-    }
+        { isPublic: true }, // Public meals from other users
+      ],
+    };
 
     if (search) {
       where.name = {
         contains: search,
-        mode: "insensitive"
-      }
+        mode: "insensitive",
+      };
     }
 
     const meals = await prisma.meal.findMany({
@@ -40,76 +40,83 @@ export async function GET(request: NextRequest) {
       include: {
         ingredients: {
           include: {
-            food: true
-          }
+            food: true,
+          },
         },
         user: {
           select: {
-            name: true
-          }
-        }
+            name: true,
+          },
+        },
       },
-      orderBy: [
-        { createdAt: "desc" }
-      ],
-      take: limit
-    })
+      orderBy: [{ createdAt: "desc" }],
+      take: limit,
+    });
 
-    return NextResponse.json(meals)
+    return NextResponse.json(meals);
   } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json()
-    const { name, description, ingredients, isPublic } = body
+    const body = await request.json();
+    const { name, description, ingredients, isPublic } = body;
 
     // Validate required fields
     if (!name || !ingredients || ingredients.length === 0) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 },
+      );
     }
 
     // Calculate totals from ingredients
-    let totalCalories = 0
-    let totalProtein = 0
-    let totalCarbs = 0
-    let totalFat = 0
-    let totalFiber = 0
-    let totalSugar = 0
-    let totalSodium = 0
+    let totalCalories = 0;
+    let totalProtein = 0;
+    let totalCarbs = 0;
+    let totalFat = 0;
+    let totalFiber = 0;
+    let totalSugar = 0;
+    let totalSodium = 0;
 
     // First, get all the food items
-    const foodIds = ingredients.map((ing: IngredientInput) => ing.foodId)
+    const foodIds = ingredients.map((ing: IngredientInput) => ing.foodId);
     const foods = await prisma.food.findMany({
       where: {
-        id: { in: foodIds }
-      }
-    })
+        id: { in: foodIds },
+      },
+    });
 
-    const foodMap = foods.reduce((map, food) => {
-      map[food.id] = food
-      return map
-    }, {} as Record<string, Food>)
+    const foodMap = foods.reduce(
+      (map: Record<string, Food>, food: Food) => {
+        map[food.id] = food;
+        return map;
+      },
+      {} as Record<string, Food>,
+    );
 
     // Calculate totals
     for (const ingredient of ingredients) {
-      const food = foodMap[ingredient.foodId]
+      const food = foodMap[ingredient.foodId];
       if (food) {
-        const quantity = parseFloat(ingredient.quantity)
-        totalCalories += food.calories * quantity
-        totalProtein += food.protein * quantity
-        totalCarbs += food.carbs * quantity
-        totalFat += food.fat * quantity
-        if (food.fiber) totalFiber += food.fiber * quantity
-        if (food.sugar) totalSugar += food.sugar * quantity
-        if (food.sodium) totalSodium += food.sodium * quantity
+        const quantity = parseFloat(ingredient.quantity);
+        totalCalories += food.calories * quantity;
+        totalProtein += food.protein * quantity;
+        totalCarbs += food.carbs * quantity;
+        totalFat += food.fat * quantity;
+        if (food.fiber) totalFiber += food.fiber * quantity;
+        if (food.sugar) totalSugar += food.sugar * quantity;
+        if (food.sodium) totalSodium += food.sodium * quantity;
       }
     }
 
@@ -130,21 +137,24 @@ export async function POST(request: NextRequest) {
         ingredients: {
           create: ingredients.map((ing: IngredientInput) => ({
             foodId: ing.foodId,
-            quantity: parseFloat(ing.quantity.toString())
-          }))
-        }
+            quantity: parseFloat(ing.quantity.toString()),
+          })),
+        },
       },
       include: {
         ingredients: {
           include: {
-            food: true
-          }
-        }
-      }
-    })
+            food: true,
+          },
+        },
+      },
+    });
 
-    return NextResponse.json(meal, { status: 201 })
+    return NextResponse.json(meal, { status: 201 });
   } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
