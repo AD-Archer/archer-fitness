@@ -24,6 +24,8 @@ import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { getWeightUnitAbbr } from "@/lib/weight-utils";
 import { logger } from "@/lib/logger";
 
+const IS_DEV = process.env.NODE_ENV !== "production";
+
 interface StrengthProgress {
   date: string;
   [exerciseName: string]: number | string;
@@ -212,13 +214,17 @@ export function StrengthAnalytics({
           setChartDataWeight(chartDataWeight);
           setChartDataReps(chartDataReps);
 
-          // Store debug info
-          setDebugInfo({
-            timeRange,
-            exerciseNames: Object.keys(data.strengthProgress),
-            totalDataPoints: chartDataReps.length,
-            strengthProgress: data.strengthProgress,
-          });
+          // Store debug info (development only)
+          if (IS_DEV) {
+            setDebugInfo({
+              timeRange,
+              exerciseNames: Object.keys(data.strengthProgress),
+              totalDataPoints: chartDataReps.length,
+              strengthProgress: data.strengthProgress,
+            });
+          } else {
+            setDebugInfo(null);
+          }
 
           // Get top 4 exercises - prioritize recent workouts over frequency
           // This ensures we see exercises from recent workouts even if they're not frequently trained
@@ -507,7 +513,7 @@ export function StrengthAnalytics({
       </Card>
 
       {/* Debug Panel */}
-      {debugInfo && (
+      {IS_DEV && debugInfo && (
         <Card className="mt-4 border-red-500">
           <CardHeader>
             <CardTitle className="text-red-500">Debug Info</CardTitle>
