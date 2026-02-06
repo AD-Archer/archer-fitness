@@ -3,11 +3,38 @@ import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 
 const MASTER_KEY_B64 = process.env.PHOTO_ENCRYPTION_MASTER_KEY;
+const MASTER_KEYS_B64 = process.env.PHOTO_ENCRYPTION_MASTER_KEYS;
 
-const getMasterKey = () => {
-  if (!MASTER_KEY_B64) return null;
-  const key = Buffer.from(MASTER_KEY_B64, "base64");
-  return key.length === 32 ? key : null;
+const parseMasterKey = (b64: string): Buffer | null => {
+  try {
+    const key = Buffer.from(b64, "base64");
+    return key.length === 32 ? key : null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Returns master keys in priority order.
+ * - `PHOTO_ENCRYPTION_MASTER_KEYS` (comma-separated) takes precedence.
+ * - Falls back to `PHOTO_ENCRYPTION_MASTER_KEY`.
+ */
+const getMasterKeys = (): Buffer[] => {
+  const keys: Buffer[] = [];
+
+  if (MASTER_KEYS_B64 && MASTER_KEYS_B64.trim().length > 0) {
+    for (const part of MASTER_KEYS_B64.split(",")) {
+      const trimmed = part.trim();
+      if (!trimmed) continue;
+      const parsed = parseMasterKey(trimmed);
+      if (parsed) keys.push(parsed);
+    }
+    return keys;
+  }
+
+  if (!MASTER_KEY_B64) return [];
+  const parsed = parseMasterKey(MASTER_KEY_B64);
+  return parsed ? [parsed] : [];
 };
 
 const encryptWithKey = (plaintext: Buffer, key: Buffer) => {
@@ -32,9 +59,11 @@ const decryptWithKey = (ciphertext: Buffer, iv: Buffer, key: Buffer) => {
 export const getOrCreateUserPhotoKey = async (
   userId: string,
 ): Promise<Buffer> => {
-  const masterKey = getMasterKey();
-  if (!masterKey) {
-    throw new Error("PHOTO_ENCRYPTION_MASTER_KEY is missing or invalid");
+  const masterKeys = getMasterKeys();
+  if (masterKeys.length === 0) {
+    throw new Error(
+      "Photo encryption is not configured (missing/invalid PHOTO_ENCRYPTION_MASTER_KEY or PHOTO_ENCRYPTION_MASTER_KEYS)",
+    );
   }
 
   const user = await prisma.user.findUnique({
@@ -48,12 +77,51 @@ export const getOrCreateUserPhotoKey = async (
   if (user?.progressPhotoKeyEnc && user.progressPhotoKeyIv) {
     const wrapped = Buffer.from(user.progressPhotoKeyEnc, "base64");
     const iv = Buffer.from(user.progressPhotoKeyIv, "base64");
-    const rawKey = decryptWithKey(wrapped, iv, masterKey);
-    return rawKey;
+    let lastError: unknown = null;
+    for (let i = 0; i < masterKeys.length; i++) {
+      try {
+        const rawKey = decryptWithKey(wrapped, iv, masterKeys[i]);
+
+        // If we decrypted with a non-primary key, re-wrap with the primary key
+        // to migrate forward (best-effort; does not block).
+        if (i > 0) {
+          try {
+            const rewrapped = encryptWithKey(rawKey, masterKeys[0]);
+            await prisma.user.update({
+              where: { id: userId },
+              data: {
+                progressPhotoKeyEnc: rewrapped.data.toString("base64"),
+                progressPhotoKeyIv: rewrapped.iv.toString("base64"),
+              },
+            });
+            logger.info("Re-wrapped progress photo key with primary master key", {
+              userId,
+            });
+          } catch (rewrapError) {
+            logger.warn("Failed to re-wrap progress photo key (non-blocking)", {
+              userId,
+              rewrapError,
+            });
+          }
+        }
+
+        return rawKey;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    logger.error("Failed to unwrap progress photo key", {
+      userId,
+      error: lastError,
+    });
+    throw new Error(
+      "Unable to decrypt progress photo key. If you recently rotated PHOTO_ENCRYPTION_MASTER_KEY, set PHOTO_ENCRYPTION_MASTER_KEYS to include both the current and previous keys.",
+    );
   }
 
   const rawKey = randomBytes(32);
-  const wrapped = encryptWithKey(rawKey, masterKey);
+  const wrapped = encryptWithKey(rawKey, masterKeys[0]);
 
   // Use atomic upsert to prevent race conditions
   const result = await prisma.user.updateMany({
@@ -95,5 +163,10 @@ export const decryptPhotoBuffer = async (
 ) => {
   const key = await getOrCreateUserPhotoKey(userId);
   const iv = Buffer.from(ivBase64, "base64");
-  return decryptWithKey(buffer, iv, key);
+  try {
+    return decryptWithKey(buffer, iv, key);
+  } catch (error) {
+    logger.error("Failed to decrypt photo buffer", { userId, error });
+    throw new Error("Unable to decrypt photo data");
+  }
 };
