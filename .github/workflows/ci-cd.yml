@@ -2,7 +2,7 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
   release:
@@ -35,6 +35,8 @@ jobs:
 
       - name: Generate Prisma client
         run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://user:password@localhost:5432/archer_fitness?schema=public' }}
 
       - name: Run ESLint
         run: pnpm lint
@@ -65,6 +67,8 @@ jobs:
 
       - name: Generate Prisma client
         run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://user:password@localhost:5432/archer_fitness?schema=public' }}
 
       - name: Build application
         run: pnpm build
