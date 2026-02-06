@@ -58,6 +58,7 @@ const decryptWithKey = (ciphertext: Buffer, iv: Buffer, key: Buffer) => {
 
 export const getOrCreateUserPhotoKey = async (
   userId: string,
+  opts?: { resetIfNoPhotos?: boolean; _resetAttempted?: boolean },
 ): Promise<Buffer> => {
   const masterKeys = getMasterKeys();
   if (masterKeys.length === 0) {
@@ -65,6 +66,9 @@ export const getOrCreateUserPhotoKey = async (
       "Photo encryption is not configured (missing/invalid PHOTO_ENCRYPTION_MASTER_KEY or PHOTO_ENCRYPTION_MASTER_KEYS)",
     );
   }
+
+  const resetIfNoPhotos = opts?.resetIfNoPhotos ?? true;
+  const resetAttempted = opts?._resetAttempted ?? false;
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -108,6 +112,38 @@ export const getOrCreateUserPhotoKey = async (
         return rawKey;
       } catch (error) {
         lastError = error;
+      }
+    }
+
+    if (resetIfNoPhotos && !resetAttempted) {
+      try {
+        const photosCount = await prisma.progressPhoto.count({
+          where: { userId },
+        });
+
+        if (photosCount === 0) {
+          logger.warn(
+            "Unwrap failed but user has no progress photos; resetting photo key",
+            { userId },
+          );
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              progressPhotoKeyEnc: null,
+              progressPhotoKeyIv: null,
+            },
+          });
+
+          return getOrCreateUserPhotoKey(userId, {
+            resetIfNoPhotos,
+            _resetAttempted: true,
+          });
+        }
+      } catch (resetError) {
+        logger.warn("Failed to reset progress photo key (non-blocking)", {
+          userId,
+          resetError,
+        });
       }
     }
 
