@@ -1,7 +1,7 @@
 import {
   WorkoutTemplate,
   WorkoutTemplateExercise,
-} from "@/lib/generated/prisma";
+} from "@prisma/client";
 import {
   TemplateGenerationCriteria,
   ScheduleTemplate,
