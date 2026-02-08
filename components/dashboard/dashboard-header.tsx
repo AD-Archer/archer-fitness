@@ -13,7 +13,9 @@ export function DashboardHeader() {
     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between pt-12 lg:pt-0">
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-balance">Fitness Dashboard</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-balance">
+            Fitness Dashboard
+          </h1>
           {pwaMode && (
             <div className="flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full text-xs font-medium">
               <Smartphone className="h-3 w-3" />
@@ -21,14 +23,23 @@ export function DashboardHeader() {
             </div>
           )}
         </div>
-        <p className="text-muted-foreground text-pretty">AI-powered workout planning and progress tracking</p>
+        <p className="text-muted-foreground text-pretty">
+          AI-powered workout planning and progress tracking
+        </p>
       </div>
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+      <div className="flex flex-col-2 sm:flex-row items-start sm:items-center gap-3">
         <UserNav />
         <Link href="/track">
-          <Button className="bg-blue-700 hover:bg-blue-800 text-white w-full sm:w-auto">Begin Workout</Button>
+          <Button className="bg-blue-700 hover:bg-blue-800 text-white w-full sm:w-auto">
+            Begin Workout
+          </Button>
+        </Link>
+        <Link href="/progress">
+          <Button className="bg-blue-700 hover:bg-blue-800 text-white w-full sm:w-auto">
+            Progress photos
+          </Button>
         </Link>
       </div>
     </div>
-  )
+  );
 }

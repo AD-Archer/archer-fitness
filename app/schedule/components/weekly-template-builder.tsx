@@ -308,17 +308,17 @@ export function WeeklyTemplateBuilder() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-7 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                   {template.days.map((day) => {
                     const dt = day.dailyTemplate;
                     const isRest = dt?.isRestDay ?? true;
                     return (
                       <div
                         key={day.dayOfWeek}
-                        className={`p-3 rounded-lg border-2 text-center transition-all hover:shadow-md ${
+                        className={`p-4 rounded-lg border-2 text-center transition-all hover:shadow-lg ${
                           isRest
-                            ? "bg-muted/40 border-muted-foreground/20"
-                            : "border-2 hover:shadow-lg"
+                            ? "bg-muted/40 border-muted-foreground/20 hover:bg-muted/50"
+                            : "hover:shadow-lg"
                         }`}
                         style={{
                           borderColor: !isRest
@@ -328,52 +328,52 @@ export function WeeklyTemplateBuilder() {
                             !isRest && dt?.color ? `${dt.color}08` : undefined,
                         }}
                       >
-                        <div className="text-xs font-bold text-muted-foreground mb-2 tracking-wide uppercase">
-                          {DAY_NAMES_SHORT[day.dayOfWeek]}
-                        </div>
-                        {dt ? (
-                          <div className="flex flex-col items-center gap-2">
-                            <div
-                              className={`p-2 rounded-lg ${
-                                isRest ? "bg-amber-100" : ""
-                              }`}
-                              style={{
-                                backgroundColor:
-                                  !isRest && dt?.color
-                                    ? `${dt.color}20`
-                                    : undefined,
-                              }}
-                            >
-                              {isRest ? (
-                                <Moon className="h-5 w-5 text-amber-600" />
-                              ) : (
-                                <Dumbbell
-                                  className="h-5 w-5"
-                                  style={{ color: dt.color }}
-                                />
-                              )}
-                            </div>
-                            <div className="w-full">
+                        <div>
+                          <div className="text-sm font-bold text-muted-foreground mb-3 tracking-wide uppercase">
+                            {DAY_NAMES_SHORT[day.dayOfWeek]}
+                          </div>
+                          {dt ? (
+                            <div className="flex flex-col items-center gap-3">
                               <div
-                                className="text-xs font-bold truncate leading-tight"
+                                className={`p-3 rounded-lg ${isRest ? "bg-amber-100" : ""}`}
                                 style={{
-                                  color: !isRest ? dt?.color : "#6b7280",
+                                  backgroundColor:
+                                    !isRest && dt?.color
+                                      ? `${dt.color}20`
+                                      : undefined,
                                 }}
                               >
-                                {dt.name}
+                                {isRest ? (
+                                  <Moon className="h-6 w-6 text-amber-600" />
+                                ) : (
+                                  <Dumbbell
+                                    className="h-6 w-6"
+                                    style={{ color: dt.color }}
+                                  />
+                                )}
                               </div>
-                              {!isRest && (
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  {dt.duration}min
+                              <div className="w-full">
+                                <div
+                                  className="text-sm font-bold"
+                                  style={{
+                                    color: !isRest ? dt?.color : "#6b7280",
+                                  }}
+                                >
+                                  {dt.name}
                                 </div>
-                              )}
+                                {!isRest && (
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    {dt.duration} min
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <div className="text-xs text-muted-foreground italic py-1">
-                            Rest
-                          </div>
-                        )}
+                          ) : (
+                            <div className="text-sm text-muted-foreground italic py-2">
+                              Rest Day
+                            </div>
+                          )}
+                        </div>
                       </div>
                     );
                   })}

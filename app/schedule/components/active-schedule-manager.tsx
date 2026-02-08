@@ -80,10 +80,18 @@ export function ActiveScheduleManager() {
   const [scheduleToDelete, setScheduleToDelete] =
     useState<ActiveSchedule | null>(null);
   const [showInactive, setShowInactive] = useState(true);
+
+  // Helper to get tomorrow's date
+  const getTomorrow = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow;
+  };
+
   const [formData, setFormData] = useState({
     weeklyTemplateId: "",
     name: "",
-    startDate: formatDateForAPI(new Date()),
+    startDate: formatDateForAPI(getTomorrow()),
     hasEndDate: false,
     endDate: "",
   });
@@ -95,11 +103,12 @@ export function ActiveScheduleManager() {
   }, [fetchActiveSchedules, fetchWeeklyTemplates]);
 
   const openCreateDialog = () => {
-    const today = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
     setFormData({
       weeklyTemplateId: weeklyTemplates[0]?.id || "",
       name: "",
-      startDate: formatDateForAPI(today),
+      startDate: formatDateForAPI(tomorrow),
       hasEndDate: false,
       endDate: "",
     });
@@ -451,7 +460,24 @@ export function ActiveScheduleManager() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="startDate">Start Date</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="startDate">Start Date</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto py-1 px-2 text-xs"
+                  onClick={() => {
+                    const today = new Date();
+                    setFormData((prev) => ({
+                      ...prev,
+                      startDate: formatDateForAPI(today),
+                    }));
+                  }}
+                >
+                  Start Today
+                </Button>
+              </div>
               <Input
                 id="startDate"
                 type="date"
@@ -463,6 +489,9 @@ export function ActiveScheduleManager() {
                   }))
                 }
               />
+              <p className="text-xs text-muted-foreground">
+                Defaults to tomorrow. Click "Start Today" to begin immediately.
+              </p>
             </div>
 
             <div className="flex items-center justify-between">

@@ -191,7 +191,14 @@ export function RecoveryBodyDiagram({
               }
 
               const data = muscleMap.get(muscleName)!;
-              data.sets = (data.sets || 0) + (ex.completedSets || 0);
+              // Calculate completedSets from the sets array
+              // Fall back to total sets count if none marked completed,
+              // minimum 1 since the exercise was in the session
+              const completedSets = (ex.sets || []).filter(
+                (set: any) => set.completed,
+              ).length;
+              const totalSets = (ex.sets || []).length;
+              data.sets = (data.sets || 0) + (completedSets || totalSets || 1);
               data.sessionCount = (data.sessionCount || 0) + 1;
               data.lastWorked = session.startTime;
 
@@ -215,6 +222,7 @@ export function RecoveryBodyDiagram({
         "chest",
         "pectorals",
         "back",
+        "lower back",
         "lats",
         "shoulders",
         "deltoids",
@@ -586,12 +594,15 @@ export function RecoveryBodyDiagram({
         chest: "chest",
         back: "upper-back",
         "lower-back": "lower-back",
+        "lower back": "lower-back",
         "upper-back": "upper-back",
+        "upper back": "upper-back",
         shoulders: "deltoids",
         shoulder: "deltoids",
         biceps: "biceps",
         triceps: "triceps",
         arms: "biceps",
+        forearms: "forearm",
         core: "abs",
         abs: "abs",
         legs: "quadriceps",
@@ -636,13 +647,14 @@ export function RecoveryBodyDiagram({
         chest: "chest",
         back: "upper-back",
         "lower-back": "lower-back",
+        "lower back": "lower-back",
         "upper-back": "upper-back",
         shoulders: "deltoids",
         shoulder: "deltoids",
         biceps: "biceps",
         triceps: "triceps",
         arms: "biceps",
-        forearms: "forearms",
+        forearms: "forearm",
         core: "abs",
         abs: "abs",
         legs: "quadriceps",
@@ -652,7 +664,7 @@ export function RecoveryBodyDiagram({
         glutes: "gluteal",
         glute: "gluteal",
         butt: "gluteal",
-        calves: "calf",
+        calves: "calves",
       };
 
       slug = slugMapping[slug] || slug;

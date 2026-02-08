@@ -63,10 +63,14 @@ interface DayStats {
 
 interface UnifiedProgressDashboardProps {
   onPhotoUploaded?: () => void;
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
 }
 
 export function UnifiedProgressDashboard({
   onPhotoUploaded,
+  activeTab: initialTab = "analytics",
+  onTabChange: onTabChangeCallback,
 }: UnifiedProgressDashboardProps) {
   const [photos, setPhotos] = useState<ProgressPhoto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,11 +78,21 @@ export function UnifiedProgressDashboard({
   const [timeRange, setTimeRange] = useState("3months");
   const [dayStats, setDayStats] = useState<Record<string, DayStats>>({});
   const [refreshKey, setRefreshKey] = useState(0);
-  const [activeTab, setActiveTab] = useState("analytics");
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [analyticsTab, setAnalyticsTab] = useState("overview");
   const [strengthMetric, setStrengthMetric] = useState<"weight" | "reps">(
     "weight",
   );
+
+  // Override initial tab from props
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    onTabChangeCallback?.(tab);
+  };
 
   // Fetch photos
   useEffect(() => {
@@ -190,6 +204,7 @@ export function UnifiedProgressDashboard({
 
   const handlePhotoUploaded = () => {
     setRefreshKey((prev) => prev + 1);
+    handleTabChange("photos");
     onPhotoUploaded?.();
   };
 
@@ -247,24 +262,68 @@ export function UnifiedProgressDashboard({
       {/* Main Tabs */}
       <Tabs
         value={activeTab}
-        onValueChange={setActiveTab}
+        onValueChange={handleTabChange}
         className="space-y-6"
       >
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="photos">Photos & Body</TabsTrigger>
-          <TabsTrigger value="filter">Body Parts</TabsTrigger>
-          <TabsTrigger value="upload">Upload</TabsTrigger>
-        </TabsList>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+          <TabsList className="grid grid-cols-4 sm:grid-cols-4 w-full sm:w-auto">
+            <TabsTrigger
+              value="analytics"
+              className="text-xs sm:text-sm px-2 sm:px-4"
+            >
+              <BarChart3 className="sm:hidden h-4 w-4" />
+              <span className="hidden sm:inline">Analytics</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="photos"
+              className="text-xs sm:text-sm px-2 sm:px-4"
+            >
+              <Camera className="sm:hidden h-4 w-4" />
+              <span className="hidden sm:inline">Photos</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="filter"
+              className="text-xs sm:text-sm px-2 sm:px-4"
+            >
+              <PieChart className="sm:hidden h-4 w-4" />
+              <span className="hidden sm:inline">Filter</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="upload"
+              className="text-xs sm:text-sm px-2 sm:px-4"
+            >
+              <Dumbbell className="sm:hidden h-4 w-4" />
+              <span className="hidden sm:inline">Upload</span>
+            </TabsTrigger>
+          </TabsList>
+          {activeTab === "analytics" && (
+            <div className="hidden sm:flex items-center gap-2 p-2 border rounded-lg bg-card/50">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs sm:text-sm font-medium">Period:</span>
+              <Select value={timeRange} onValueChange={setTimeRange}>
+                <SelectTrigger className="w-40 text-xs sm:text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7days">Last 7 Days</SelectItem>
+                  <SelectItem value="4weeks">Last 4 Weeks</SelectItem>
+                  <SelectItem value="3months">Last 3 Months</SelectItem>
+                  <SelectItem value="6months">Last 6 Months</SelectItem>
+                  <SelectItem value="1year">Last Year</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
 
         {/* Analytics Tab - contains all dashboards */}
         <TabsContent value="analytics" className="space-y-6">
-          {/* View Period Selector */}
-          <div className="flex items-center gap-2 p-4 border rounded-lg bg-card/50">
+          {/* Mobile Period Selector */}
+          <div className="sm:hidden flex items-center gap-2 p-3 border rounded-lg bg-card/50">
             <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">View period:</span>
+            <span className="text-xs font-medium">Period:</span>
             <Select value={timeRange} onValueChange={setTimeRange}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="flex-1 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -276,7 +335,6 @@ export function UnifiedProgressDashboard({
               </SelectContent>
             </Select>
           </div>
-
           {/* Key Metrics: Workouts + Weight */}
           <KeyMetricsCards timeRange={timeRange} />
           {/* Quick stats row */}

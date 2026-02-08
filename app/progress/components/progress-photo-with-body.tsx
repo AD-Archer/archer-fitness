@@ -560,15 +560,18 @@ export function ProgressPhotoWithBody({
                   <div className="flex justify-center">
                     <BodyDiagram
                       bodyParts={
-                        // Show all day's parts as clickable, but only highlight the active ones
-                        bodyPartsForDate.map((part) => ({
-                          ...part,
-                          intensity: diagramBodyParts.some(
-                            (dp) => dp.slug === part.slug,
-                          )
-                            ? ("moderate" as const)
-                            : ("none" as const),
-                        }))
+                        bodyPartsForDate.length > 0
+                          ? // If we have workout data for this day, show all parts and highlight the active ones
+                            bodyPartsForDate.map((part) => ({
+                              ...part,
+                              intensity: diagramBodyParts.some(
+                                (dp) => dp.slug === part.slug,
+                              )
+                                ? ("moderate" as const)
+                                : ("none" as const),
+                            }))
+                          : // If no workout, but we have photo tags, show just the tagged parts
+                            diagramBodyParts
                       }
                       size="lg"
                       interactive
