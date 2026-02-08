@@ -27,7 +27,7 @@ export function DashboardHeader() {
           AI-powered workout planning and progress tracking
         </p>
       </div>
-      <div className="flex flex-col-2 sm:flex-row items-start sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <UserNav />
         <Link href="/track">
           <Button className="bg-blue-700 hover:bg-blue-800 text-white w-full sm:w-auto">
