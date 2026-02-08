@@ -210,80 +210,79 @@ export function WeeklyCalendar({
                   <div className="text-center py-4 text-muted-foreground text-xs border border-dashed rounded-lg bg-muted/30">
                     Rest day
                   </div>
-              ) : (
+                ) : (
                   day.items.map((item) => {
-                      const completed = isWorkoutCompleted(item);
+                    const completed = isWorkoutCompleted(item);
 
-                      return (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      "p-3 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md",
-                      completed
-                        ? "bg-green-100 border-green-300 dark:bg-green-900 dark:border-green-700"
-                        : getItemColor(item.type),
-                      selectedItem === item.id && "ring-2 ring-primary",
-                    )}
-                    onClick={() =>
-                      setSelectedItem(
-                        selectedItem === item.id ? null : item.id,
-                      )
-                    }
-                  >
-                    <div className="flex items-start gap-2">
-                      <div className="flex-shrink-0 mt-0.5">
-                        {getItemIcon(item.type)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-sm">{item.title}</div>
-                        <div className="flex items-center gap-2 flex-wrap mt-1">
-                          {completed && (
-                            <Badge className="text-xs bg-green-200 text-green-900">✓ Done</Badge>
-                          )}
-                          {item.isFromGenerator && !completed && (
-                            <Badge variant="secondary" className="text-xs">
-                              AI
-                            </Badge>
-                          )}
+                    return (
+                      <div
+                        key={item.id}
+                        className={cn(
+                          "p-3 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md",
+                          completed
+                            ? "bg-green-100 border-green-300 dark:bg-green-900 dark:border-green-700"
+                            : getItemColor(item.type),
+                          selectedItem === item.id && "ring-2 ring-primary",
+                        )}
+                        onClick={() =>
+                          setSelectedItem(
+                            selectedItem === item.id ? null : item.id,
+                          )
+                        }
+                      >
+                        <div className="flex items-start gap-2">
+                          <div className="flex-shrink-0 mt-0.5">
+                            {getItemIcon(item.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-sm">{item.title}</div>
+                            <div className="flex items-center gap-2 flex-wrap mt-1">
+                              {completed && (
+                                <Badge className="text-xs bg-green-200 text-green-900">✓ Done</Badge>
+                              )}
+                              {item.isFromGenerator && !completed && (
+                                <Badge variant="secondary" className="text-xs">
+                                  AI
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-2 pl-6">
-                      {formatTimeRange(item.startTime, item.endTime)}
-                    </div>
-                    {item.duration && (
-                      <div className="text-xs text-muted-foreground mt-1 pl-6">
-                        {item.duration} min
-                      </div>
-                    )}
-                    {selectedItem === item.id && (
-                      <div className="mt-3 pt-3 border-t space-y-2 pl-6">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-xs text-red-600 hover:text-red-700 h-auto p-1"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setItemToDelete(item);
-                            setDeleteDialogOpen(true);
-                            setSelectedItem(null);
-                          }}
-                        >
-                          <Trash2 className="h-3 w-3 mr-1" />
-                          Delete
-                        </Button>
-                        {item.description && (
-                          <p className="text-xs text-muted-foreground">
-                            {item.description}
-                          </p>
+                        <div className="text-xs text-muted-foreground mt-2 pl-6">
+                          {formatTimeRange(item.startTime, item.endTime)}
+                        </div>
+                        {item.duration && (
+                          <div className="text-xs text-muted-foreground mt-1 pl-6">
+                            {item.duration} min
+                          </div>
+                        )}
+                        {selectedItem === item.id && (
+                          <div className="mt-3 pt-3 border-t space-y-2 pl-6">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-xs text-red-600 hover:text-red-700 h-auto p-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setItemToDelete(item);
+                                setDeleteDialogOpen(true);
+                                setSelectedItem(null);
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Delete
+                            </Button>
+                            {item.description && (
+                              <p className="text-xs text-muted-foreground">
+                                {item.description}
+                              </p>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
-                      );
-                    })
-                  )}
-                </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           ))}

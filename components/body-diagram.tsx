@@ -19,32 +19,13 @@ interface BodyDiagramProps {
   size?: "sm" | "md" | "lg";
   colors?: string[];
   defaultFill?: string;
+  showLegend?: boolean;
   showLabels?: boolean;
   gender?: "male" | "female";
   view?: "front" | "back";
   dualView?: boolean; // Show both front and back side by side
   legendLabels?: string[]; // Custom legend labels [light, moderate, heavy]
-  showLegend?: boolean;
 }
-
-const getIntensityColor = (
-  intensity: "none" | "light" | "moderate" | "heavy",
-  colors?: string[],
-  defaultFill?: string,
-) => {
-  const defaultColors = colors || ["#eab308", "#f97316", "#ef4444"];
-
-  switch (intensity) {
-    case "heavy":
-      return defaultColors[2];
-    case "moderate":
-      return defaultColors[1];
-    case "light":
-      return defaultColors[0];
-    case "none":
-      return defaultFill || "#6b7280";
-  }
-};
 
 export function BodyDiagram({
   bodyParts = [],
