@@ -111,11 +111,6 @@ export function BodyDiagram({
       neck: "neck",
       "neck muscles": "neck",
       sternocleidomastoid: "neck",
-      // Ankles
-      ankles: "ankles",
-      ankle: "ankles",
-      feet: "ankles",
-      foot: "ankles",
       // Lats
       lats: "upper-back",
       latissimus: "upper-back",
