@@ -10,7 +10,25 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { ToastAction } from "@/components/ui/toast";
 import {
   AlertCircle,
   CheckCircle2,
@@ -21,9 +39,14 @@ import {
   TrendingUp,
   Calendar,
   Zap,
+  ChevronDown,
+  Loader2,
+  X,
+  Eye,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getBodyPartSlug } from "../../progress/components/body-part-mappings";
+import { QuickViewModal } from "@/app/workouts/components/quick-view-modal";
 
 interface WorkoutBodyPart {
   name: string;
@@ -63,20 +86,36 @@ interface RecentSession {
   performedAt: string;
   bodyParts: string[];
   durationMinutes: number | null;
+  quickViewWorkout: React.ComponentProps<typeof QuickViewModal>["workout"];
+}
+
+interface DailyCheckInRecord {
+  id: string;
+  date: string;
+  energyLevel: number;
+  notes?: string | null;
+  bodyPartChecks?: Array<{
+    bodyPart: string;
+    sorenessLevel: number;
+    createdAt?: string;
+  }>;
 }
 
 interface RecoveryBodyDiagramProps {
   timeRange?: "7days" | "30days";
   selectedDate?: Date;
+  defaultView?: "workout" | "soreness" | "recovery";
 }
 
 export function RecoveryBodyDiagram({
   timeRange = "7days",
   selectedDate,
+  defaultView,
 }: RecoveryBodyDiagramProps) {
   const [bodyParts, setBodyParts] = useState<WorkoutBodyPart[]>([]);
   const [painFeedback, setPainFeedback] = useState<PainFeedback[]>([]);
   const [sorenessData, setSorenessData] = useState<BodyPartCheck[]>([]);
+  const [dailyCheckIns, setDailyCheckIns] = useState<DailyCheckInRecord[]>([]);
   const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
   const [detailedRecoveryStatus, setDetailedRecoveryStatus] = useState<
     BodyPartRecoveryStatus[]
@@ -84,6 +123,10 @@ export function RecoveryBodyDiagram({
   const [mappedParts, setMappedParts] = useState<WorkoutBodyPart[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [quickViewWorkout, setQuickViewWorkout] = useState<
+    React.ComponentProps<typeof QuickViewModal>["workout"]
+  >(null);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
 
   // Always default to recovery tab, no localStorage persistence
   const [activeView, setActiveView] = useState<
@@ -104,6 +147,12 @@ export function RecoveryBodyDiagram({
   });
 
   const { toast } = useToast();
+  const [clearSorenessOpen, setClearSorenessOpen] = useState(false);
+  const [clearingSoreness, setClearingSoreness] = useState(false);
+  const [showSorenessHistory, setShowSorenessHistory] = useState(false);
+  const [updatingSorenessPart, setUpdatingSorenessPart] = useState<
+    string | null
+  >(null);
 
   // Check if viewing today
   const isViewingToday = React.useMemo(() => {
@@ -124,6 +173,16 @@ export function RecoveryBodyDiagram({
     }
   }, [isViewingToday, activeView]);
 
+  useEffect(() => {
+    if (defaultView) {
+      setActiveView(defaultView);
+    }
+  }, [defaultView]);
+
+  useEffect(() => {
+    setShowSorenessHistory(false);
+  }, [selectedDate]);
+
   // Handle view change without localStorage persistence
   const handleViewChange = (view: "workout" | "soreness" | "recovery") => {
     setActiveView(view);
@@ -137,6 +196,55 @@ export function RecoveryBodyDiagram({
     if (typeof window !== "undefined") {
       localStorage.setItem("recovery-insights-tab", tab);
     }
+  };
+
+  const getIsoDateKey = (dateLike: string | Date) => {
+    try {
+      if (typeof dateLike === "string") {
+        const dateOnly = dateLike.split("T")[0];
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+          return dateOnly;
+        }
+      }
+
+      const date = typeof dateLike === "string" ? new Date(dateLike) : dateLike;
+      if (Number.isNaN(date.getTime())) {
+        return "";
+      }
+
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    } catch {
+      return "";
+    }
+  };
+
+  const getCurrentSorenessChecks = (checkIn: DailyCheckInRecord) => {
+    const checks = Array.isArray(checkIn.bodyPartChecks)
+      ? [...checkIn.bodyPartChecks]
+      : [];
+    checks.sort(
+      (a, b) =>
+        new Date(b.createdAt ?? 0).getTime() -
+        new Date(a.createdAt ?? 0).getTime(),
+    );
+
+    const latestByBodyPart = new Map<string, number>();
+    for (const check of checks) {
+      if (!check?.bodyPart) continue;
+      if (latestByBodyPart.has(check.bodyPart)) continue;
+      latestByBodyPart.set(check.bodyPart, Number(check.sorenessLevel));
+    }
+
+    return Array.from(latestByBodyPart.entries())
+      .filter(([, sorenessLevel]) => sorenessLevel > 0)
+      .map(([bodyPart, sorenessLevel]) => ({
+        bodyPart,
+        sorenessLevel,
+        createdAt: checkIn.date,
+      }));
   };
 
   const fetchData = async () => {
@@ -191,7 +299,14 @@ export function RecoveryBodyDiagram({
               }
 
               const data = muscleMap.get(muscleName)!;
-              data.sets = (data.sets || 0) + (ex.completedSets || 0);
+              // Calculate completedSets from the sets array
+              // Fall back to total sets count if none marked completed,
+              // minimum 1 since the exercise was in the session
+              const completedSets = (ex.sets || []).filter(
+                (set: any) => set.completed,
+              ).length;
+              const totalSets = (ex.sets || []).length;
+              data.sets = (data.sets || 0) + (completedSets || totalSets || 1);
               data.sessionCount = (data.sessionCount || 0) + 1;
               data.lastWorked = session.startTime;
 
@@ -215,6 +330,7 @@ export function RecoveryBodyDiagram({
         "chest",
         "pectorals",
         "back",
+        "lower back",
         "lats",
         "shoulders",
         "deltoids",
@@ -320,21 +436,19 @@ export function RecoveryBodyDiagram({
 
       // Fetch daily check-in data for soreness
       const checkInResponse = await fetch(
-        "/api/recovery/daily-check-in?days=7",
+        `/api/recovery/daily-check-in?days=${daysBack}`,
       );
       let sorenessCheckData: BodyPartCheck[] = [];
       if (checkInResponse.ok) {
         const checkIns = await checkInResponse.json();
-        // Flatten the body part checks from all check-ins
-        if (Array.isArray(checkIns)) {
-          sorenessCheckData = checkIns.flatMap((checkIn: any) =>
-            (checkIn.bodyPartChecks || []).map((check: any) => ({
-              bodyPart: check.bodyPart,
-              sorenessLevel: check.sorenessLevel,
-              createdAt: checkIn.date,
-            })),
-          );
-        }
+        const checkInList: DailyCheckInRecord[] = Array.isArray(checkIns)
+          ? checkIns
+          : [];
+        setDailyCheckIns(checkInList);
+
+        // Flatten latest soreness values (latest check per bodyPart wins).
+        // This lets us "clear" soreness without deleting historical entries.
+        sorenessCheckData = checkInList.flatMap(getCurrentSorenessChecks);
       }
 
       // Use recent workout sessions from the detailed data we already fetched
@@ -352,12 +466,71 @@ export function RecoveryBodyDiagram({
             }
           }
 
+          const workoutName =
+            session.workoutTemplate?.name || session.name || "Workout";
+
           return {
             id: session.id,
-            name: session.workoutTemplate?.name || "Workout",
+            name: workoutName,
             performedAt: session.startTime,
             durationMinutes: session.durationMinutes,
             bodyParts: Array.from(muscles), // Use detailed muscle names
+            quickViewWorkout: {
+              id: session.id,
+              name: workoutName,
+              date: session.startTime,
+              duration: Math.max(
+                0,
+                Math.round((Number(session.durationMinutes) || 0) * 60),
+              ),
+              exercises: Array.isArray(session.exercises)
+                ? session.exercises.map((exerciseSession: any, index: number) => ({
+                    exerciseId:
+                      exerciseSession.exerciseId ||
+                      exerciseSession.exercise?.id ||
+                      exerciseSession.id ||
+                      `exercise-${session.id}-${index}`,
+                    exerciseName:
+                      exerciseSession.exercise?.name || "Exercise",
+                    targetSets:
+                      exerciseSession.targetSets ||
+                      exerciseSession.sets?.length ||
+                      undefined,
+                    instructions: exerciseSession.exercise?.instructions,
+                    sets: Array.isArray(exerciseSession.sets)
+                      ? exerciseSession.sets.map((set: any) => ({
+                          reps: Number(set.reps) || 0,
+                          weight:
+                            typeof set.weight === "number"
+                              ? set.weight
+                              : undefined,
+                          completed: Boolean(set.completed),
+                        }))
+                      : [],
+                  }))
+                : [],
+              status:
+                session.status === "active" ||
+                session.status === "completed" ||
+                session.status === "paused" ||
+                session.status === "cancelled" ||
+                session.status === "skipped" ||
+                session.status === "in_progress"
+                  ? session.status
+                  : "completed",
+              performanceStatus: session.performanceStatus,
+              completionRate:
+                typeof session.completionRate === "number"
+                  ? session.completionRate
+                  : undefined,
+              perfectionScore:
+                typeof session.perfectionScore === "number"
+                  ? session.perfectionScore
+                  : undefined,
+              displayStatus: session.displayStatus,
+              isDiscarded: Boolean(session.isDiscarded),
+              notes: session.notes,
+            },
           };
         });
 
@@ -395,12 +568,12 @@ export function RecoveryBodyDiagram({
   useEffect(() => {
     const checkDailyCheckIn = async () => {
       try {
-        const today = new Date().toISOString().split("T")[0];
+        const today = getIsoDateKey(new Date());
         const response = await fetch("/api/recovery/daily-check-in?days=1");
         if (response.ok) {
           const checkIns = await response.json();
           const todayCheckIn = checkIns.find(
-            (c: any) => new Date(c.date).toISOString().split("T")[0] === today,
+            (c: any) => getIsoDateKey(c.date) === today,
           );
 
           if (!todayCheckIn) {
@@ -480,48 +653,40 @@ export function RecoveryBodyDiagram({
       };
     }
 
-    const selectedDateString = selectedDate.toISOString().split("T")[0];
+    const selectedDateString = getIsoDateKey(selectedDate);
 
     // Filter body parts by lastWorked date
     const filteredParts = bodyParts.filter((part) => {
       if (!part.lastWorked) return false;
-      const lastWorkedDate = new Date(part.lastWorked)
-        .toISOString()
-        .split("T")[0];
+      const lastWorkedDate = getIsoDateKey(part.lastWorked);
       return lastWorkedDate === selectedDateString;
     });
 
     // Filter muscle data by lastWorked date for workout view
     const filteredMuscleData = mappedParts.filter((muscle) => {
       if (!muscle.lastWorked) return false;
-      const lastWorkedDate = new Date(muscle.lastWorked)
-        .toISOString()
-        .split("T")[0];
+      const lastWorkedDate = getIsoDateKey(muscle.lastWorked);
       return lastWorkedDate === selectedDateString;
     });
 
     // Filter pain feedback by date
     const filteredPain = painFeedback.filter((pain) => {
       if (!pain.createdAt) return false;
-      const painDate = new Date(pain.createdAt).toISOString().split("T")[0];
+      const painDate = getIsoDateKey(pain.createdAt);
       return painDate === selectedDateString;
     });
 
     // Filter soreness data by date
     const filteredSoreness = sorenessData.filter((soreness) => {
       if (!soreness.createdAt) return false;
-      const sorenessDate = new Date(soreness.createdAt)
-        .toISOString()
-        .split("T")[0];
+      const sorenessDate = getIsoDateKey(soreness.createdAt);
       return sorenessDate === selectedDateString;
     });
 
     // Filter recent sessions by date
     const filteredSessions = recentSessions.filter((session) => {
       if (!session.performedAt) return false;
-      const sessionDate = new Date(session.performedAt)
-        .toISOString()
-        .split("T")[0];
+      const sessionDate = getIsoDateKey(session.performedAt);
       return sessionDate === selectedDateString;
     });
 
@@ -540,6 +705,203 @@ export function RecoveryBodyDiagram({
     mappedParts,
     selectedDate,
   ]);
+
+  const sorenessHistory = React.useMemo(() => {
+    if (!selectedDate) return [];
+    const dateKey = getIsoDateKey(selectedDate);
+    const checkIn = dailyCheckIns.find(
+      (c) => getIsoDateKey(c.date) === dateKey,
+    );
+    if (!checkIn?.bodyPartChecks?.length) return [];
+
+    const checks = [...checkIn.bodyPartChecks].sort(
+      (a, b) =>
+        new Date(b.createdAt ?? 0).getTime() -
+        new Date(a.createdAt ?? 0).getTime(),
+    );
+
+    // Latest non-zero per body part (represents "what was reported" even if cleared later).
+    const latestNonZeroByPart = new Map<string, number>();
+    for (const check of checks) {
+      if (!check?.bodyPart) continue;
+      if (latestNonZeroByPart.has(check.bodyPart)) continue;
+      if (check.sorenessLevel > 0) {
+        latestNonZeroByPart.set(check.bodyPart, check.sorenessLevel);
+      }
+    }
+
+    return Array.from(latestNonZeroByPart.entries()).map(
+      ([bodyPart, sorenessLevel]) => ({ bodyPart, sorenessLevel }),
+    );
+  }, [dailyCheckIns, selectedDate]);
+
+  const updateSorenessForDateKey = async (
+    targetDateKey: string,
+    bodyParts: Array<{ bodyPart: string; soreness: number }>,
+  ) => {
+    const matchingCheckIn = dailyCheckIns.find(
+      (checkIn) => getIsoDateKey(checkIn.date) === targetDateKey,
+    );
+
+    if (!matchingCheckIn) {
+      throw new Error(
+        "Couldn't find a check-in for this day. Try refreshing the page.",
+      );
+    }
+
+    const response = await fetch("/api/recovery/daily-check-in", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        date: matchingCheckIn.date,
+        energyLevel: matchingCheckIn.energyLevel ?? 5,
+        notes:
+          typeof matchingCheckIn.notes === "string"
+            ? matchingCheckIn.notes
+            : undefined,
+        bodyParts,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to update soreness");
+    }
+
+    const updatedCheckIn = (await response.json()) as DailyCheckInRecord;
+
+    setDailyCheckIns((prev) =>
+      prev.map((checkIn) =>
+        getIsoDateKey(checkIn.date) === targetDateKey
+          ? updatedCheckIn
+          : checkIn,
+      ),
+    );
+
+    setSorenessData((prev) => {
+      const withoutTargetDay = prev.filter(
+        (check) =>
+          !check.createdAt || getIsoDateKey(check.createdAt) !== targetDateKey,
+      );
+      return [...withoutTargetDay, ...getCurrentSorenessChecks(updatedCheckIn)];
+    });
+
+    return updatedCheckIn;
+  };
+
+  const clearSoreness = async () => {
+    const targetDateKey = selectedDate
+      ? getIsoDateKey(selectedDate)
+      : filteredData.filteredSoreness[0]?.createdAt
+        ? getIsoDateKey(filteredData.filteredSoreness[0].createdAt)
+        : "";
+
+    if (!targetDateKey) {
+      toast({
+        title: "Unable to clear soreness",
+        description: "No date selected.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setClearingSoreness(true);
+      await updateSorenessForDateKey(targetDateKey, []);
+
+      toast({
+        title: "Soreness cleared",
+        description:
+          "No longer showing soreness for this day (history is still saved).",
+      });
+      setClearSorenessOpen(false);
+      setShowSorenessHistory(true);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to clear soreness. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setClearingSoreness(false);
+    }
+  };
+
+  const clearSorenessPart = async (bodyPart: string) => {
+    const targetDateKey = selectedDate
+      ? getIsoDateKey(selectedDate)
+      : filteredData.filteredSoreness[0]?.createdAt
+        ? getIsoDateKey(filteredData.filteredSoreness[0].createdAt)
+        : "";
+
+    if (!targetDateKey) {
+      toast({
+        title: "Unable to update soreness",
+        description: "No date selected.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const currentParts = filteredData.filteredSoreness.map((entry) => ({
+      bodyPart: entry.bodyPart,
+      soreness: entry.sorenessLevel,
+    }));
+
+    const nextParts = currentParts.filter((p) => p.bodyPart !== bodyPart);
+    if (nextParts.length === currentParts.length) return;
+
+    try {
+      setUpdatingSorenessPart(bodyPart);
+      await updateSorenessForDateKey(targetDateKey, nextParts);
+
+      toast({
+        title: `${bodyPart} cleared`,
+        description: "Marked as no longer sore for this day.",
+        action: (
+          <ToastAction
+            altText="Undo"
+            onClick={() => {
+              void (async () => {
+                try {
+                  await updateSorenessForDateKey(targetDateKey, currentParts);
+                  toast({
+                    title: "Undone",
+                    description: `${bodyPart} soreness restored.`,
+                  });
+                } catch (error) {
+                  toast({
+                    title: "Error",
+                    description:
+                      error instanceof Error
+                        ? error.message
+                        : "Failed to undo. Please try again.",
+                    variant: "destructive",
+                  });
+                }
+              })();
+            }}
+          >
+            Undo
+          </ToastAction>
+        ),
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to update soreness. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingSorenessPart(null);
+    }
+  };
 
   // Get sessions to display (all for today, filtered for historical dates)
   const displaySessions = React.useMemo(() => {
@@ -586,12 +948,15 @@ export function RecoveryBodyDiagram({
         chest: "chest",
         back: "upper-back",
         "lower-back": "lower-back",
+        "lower back": "lower-back",
         "upper-back": "upper-back",
+        "upper back": "upper-back",
         shoulders: "deltoids",
         shoulder: "deltoids",
         biceps: "biceps",
         triceps: "triceps",
         arms: "biceps",
+        forearms: "forearm",
         core: "abs",
         abs: "abs",
         legs: "quadriceps",
@@ -624,6 +989,8 @@ export function RecoveryBodyDiagram({
       };
     });
 
+  const showDebugPanel = process.env.NODE_ENV !== "production";
+
   // Create recovery body parts for visualization from recovery status
   const recoveryBodyParts: WorkoutBodyPart[] = detailedRecoveryStatus.map(
     (status) => {
@@ -636,13 +1003,14 @@ export function RecoveryBodyDiagram({
         chest: "chest",
         back: "upper-back",
         "lower-back": "lower-back",
+        "lower back": "lower-back",
         "upper-back": "upper-back",
         shoulders: "deltoids",
         shoulder: "deltoids",
         biceps: "biceps",
         triceps: "triceps",
         arms: "biceps",
-        forearms: "forearms",
+        forearms: "forearm",
         core: "abs",
         abs: "abs",
         legs: "quadriceps",
@@ -652,7 +1020,7 @@ export function RecoveryBodyDiagram({
         glutes: "gluteal",
         glute: "gluteal",
         butt: "gluteal",
-        calves: "calf",
+        calves: "calves",
       };
 
       slug = slugMapping[slug] || slug;
@@ -679,6 +1047,59 @@ export function RecoveryBodyDiagram({
       };
     },
   );
+
+  const debugPayload = {
+    selectedDate: selectedDate?.toISOString() ?? null,
+    selectedDateKey: selectedDate ? getIsoDateKey(selectedDate) : null,
+    activeView,
+    sorenessTab: {
+      filteredSoreness: filteredData.filteredSoreness,
+      sorenessBodyPartsMapped: sorenessBodyParts,
+      sorenessHistory,
+      dailyCheckInsForSelectedDate: selectedDate
+        ? dailyCheckIns.find(
+            (c) => getIsoDateKey(c.date) === getIsoDateKey(selectedDate),
+          )
+        : null,
+    },
+    workoutTab: {
+      recentWorkouts: displaySessions.map((session) => ({
+        id: session.id,
+        name: session.name,
+        performedAt: session.performedAt,
+        relativeTime: formatRelativeTime(session.performedAt),
+        durationMinutes: session.durationMinutes,
+        targets: session.bodyParts,
+        previewTargets: session.bodyParts.slice(0, 3),
+        overflowTargetCount:
+          session.bodyParts.length > 3 ? session.bodyParts.length - 3 : 0,
+      })),
+      workoutBodyPartsMapped: filteredData.filteredMuscleData.map((part) => ({
+        name: part.name,
+        slug: part.slug,
+        intensity: part.intensity,
+        lastWorked: part.lastWorked,
+        sets: part.sets,
+        sessionCount: part.sessionCount,
+      })),
+    },
+    recoveryTab: {
+      detailedRecoveryStatus,
+      recoveryBodyPartsMapped: recoveryBodyParts,
+      recoveryCounts: {
+        ready: detailedRecoveryStatus.filter((part) => part.status === "ready")
+          .length,
+        caution: detailedRecoveryStatus.filter(
+          (part) => part.status === "caution",
+        ).length,
+        rest: detailedRecoveryStatus.filter((part) => part.status === "rest")
+          .length,
+        workedRecently: detailedRecoveryStatus.filter(
+          (part) => part.status === "worked-recently",
+        ).length,
+      },
+    },
+  };
 
   return (
     <Card>
@@ -746,23 +1167,88 @@ export function RecoveryBodyDiagram({
       <CardContent className="space-y-4">
         {activeView === "soreness" &&
           filteredData.filteredSoreness.length > 0 && (
-            <div className="flex flex-wrap gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-lg">
-              <div className="w-full flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-300 mb-1">
-                <AlertCircle className="size-4" />
-                Muscle Soreness Areas
-              </div>
-              {filteredData.filteredSoreness.map((soreness, idx) => (
-                <Badge
-                  key={`${soreness.bodyPart}-${idx}`}
-                  variant="outline"
-                  className="bg-amber-100 dark:bg-amber-900/30 border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300"
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-lg space-y-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-300">
+                  <AlertCircle className="size-4" />
+                  Muscle Soreness Areas
+                </div>
+                <AlertDialog
+                  open={clearSorenessOpen}
+                  onOpenChange={setClearSorenessOpen}
                 >
-                  {soreness.bodyPart}
-                  <span className="ml-1.5 font-semibold">
-                    {soreness.sorenessLevel}/10
-                  </span>
-                </Badge>
-              ))}
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full sm:w-auto"
+                      disabled={
+                        clearingSoreness || updatingSorenessPart !== null
+                      }
+                    >
+                      Clear soreness
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Clear soreness?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This clears the current soreness view for{" "}
+                        {selectedDate
+                          ? selectedDate.toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })
+                          : "this day"}
+                        . Your previous entries stay saved in history.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={clearingSoreness}>
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={clearSoreness}
+                        disabled={clearingSoreness}
+                      >
+                        {clearingSoreness ? "Clearing..." : "Clear"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {filteredData.filteredSoreness.map((soreness, idx) => (
+                  <Badge
+                    key={`${soreness.bodyPart}-${idx}`}
+                    variant="outline"
+                    className="bg-amber-100 dark:bg-amber-900/30 border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 pr-1"
+                  >
+                    {soreness.bodyPart}
+                    <span className="ml-1.5 font-semibold">
+                      {soreness.sorenessLevel}/10
+                    </span>
+                    <button
+                      type="button"
+                      className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-sm text-amber-700/70 hover:text-amber-900 hover:bg-amber-200 dark:hover:bg-amber-900/40 disabled:opacity-50"
+                      onClick={() => clearSorenessPart(soreness.bodyPart)}
+                      disabled={
+                        clearingSoreness || updatingSorenessPart !== null
+                      }
+                      aria-label={`Mark ${soreness.bodyPart} not sore`}
+                      title="Mark not sore"
+                    >
+                      {updatingSorenessPart === soreness.bodyPart ? (
+                        <Loader2 className="size-3 animate-spin" />
+                      ) : (
+                        <X className="size-3" />
+                      )}
+                    </button>
+                  </Badge>
+                ))}
+              </div>
             </div>
           )}
 
@@ -798,15 +1284,66 @@ export function RecoveryBodyDiagram({
 
         {activeView === "soreness" &&
           filteredData.filteredSoreness.length === 0 && (
-            <div className="text-center py-6">
-              <CheckCircle2 className="size-10 mx-auto text-emerald-500 mb-2" />
-              <p className="text-sm font-medium text-muted-foreground">
-                No muscle soreness reported
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                You're feeling fresh and ready to train
-              </p>
-            </div>
+            <>
+              {sorenessHistory.length > 0 ? (
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 rounded-lg space-y-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                      <CheckCircle2 className="size-4" />
+                      Soreness cleared
+                    </div>
+                    <Collapsible
+                      open={showSorenessHistory}
+                      onOpenChange={setShowSorenessHistory}
+                    >
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full sm:w-auto"
+                        >
+                          View history
+                          <ChevronDown
+                            className={`ml-2 size-4 transition-transform ${showSorenessHistory ? "rotate-180" : ""}`}
+                          />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <div className="flex flex-wrap gap-2">
+                          {sorenessHistory.map((entry) => (
+                            <Badge
+                              key={entry.bodyPart}
+                              variant="outline"
+                              className="bg-emerald-100 dark:bg-emerald-900/30 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300"
+                            >
+                              {entry.bodyPart}
+                              <span className="ml-1.5 font-semibold">
+                                {entry.sorenessLevel}/10
+                              </span>
+                            </Badge>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    These entries are hidden from the main view but still saved
+                    for reference.
+                  </p>
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <CheckCircle2 className="size-10 mx-auto text-emerald-500 mb-2" />
+                  <p className="text-sm font-medium text-muted-foreground">
+                    No muscle soreness reported
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    You're feeling fresh and ready to train
+                  </p>
+                </div>
+              )}
+            </>
           )}
 
         {activeView === "recovery" && detailedRecoveryStatus.length === 0 && (
@@ -818,6 +1355,17 @@ export function RecoveryBodyDiagram({
             <p className="text-xs text-muted-foreground mt-1">
               Complete a workout to track your recovery
             </p>
+          </div>
+        )}
+
+        {showDebugPanel && (
+          <div className="rounded-lg border border-dashed p-3 bg-muted/30">
+            <p className="text-xs font-semibold mb-2">
+              Recovery Debug (dev only)
+            </p>
+            <pre className="text-[11px] whitespace-pre-wrap break-words max-h-64 overflow-auto">
+              {JSON.stringify(debugPayload, null, 2)}
+            </pre>
           </div>
         )}
       </CardContent>
@@ -914,6 +1462,18 @@ export function RecoveryBodyDiagram({
                             +{session.bodyParts.length - 3}
                           </Badge>
                         )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 px-2 text-[10px]"
+                          onClick={() => {
+                            setQuickViewWorkout(session.quickViewWorkout);
+                            setQuickViewOpen(true);
+                          }}
+                        >
+                          <Eye className="size-3 mr-1" />
+                          Quick View
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -1084,6 +1644,15 @@ export function RecoveryBodyDiagram({
           )}
         </Tabs>
       </CardContent>
+      <QuickViewModal
+        workout={quickViewWorkout}
+        hasNewerStarted={false}
+        open={quickViewOpen}
+        onOpenChange={(open) => {
+          setQuickViewOpen(open);
+          if (!open) setQuickViewWorkout(null);
+        }}
+      />
     </Card>
   );
 }

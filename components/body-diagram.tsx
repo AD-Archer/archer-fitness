@@ -19,32 +19,13 @@ interface BodyDiagramProps {
   size?: "sm" | "md" | "lg";
   colors?: string[];
   defaultFill?: string;
+  showLegend?: boolean;
   showLabels?: boolean;
   gender?: "male" | "female";
   view?: "front" | "back";
   dualView?: boolean; // Show both front and back side by side
   legendLabels?: string[]; // Custom legend labels [light, moderate, heavy]
-  showLegend?: boolean;
 }
-
-const getIntensityColor = (
-  intensity: "none" | "light" | "moderate" | "heavy",
-  colors?: string[],
-  defaultFill?: string,
-) => {
-  const defaultColors = colors || ["#eab308", "#f97316", "#ef4444"];
-
-  switch (intensity) {
-    case "heavy":
-      return defaultColors[2];
-    case "moderate":
-      return defaultColors[1];
-    case "light":
-      return defaultColors[0];
-    case "none":
-      return defaultFill || "#6b7280";
-  }
-};
 
 export function BodyDiagram({
   bodyParts = [],
@@ -77,11 +58,13 @@ export function BodyDiagram({
   // "tibialis" | "trapezius" | "triceps" | "upper-back"
   const slugNormalization = useMemo<Record<string, string>>(
     () => ({
+      // Back variations
       back: "upper-back",
       "lower back": "lower-back",
       "lower-back": "lower-back",
       "upper back": "upper-back",
       "upper-back": "upper-back",
+      // Shoulders
       shoulders: "deltoids",
       shoulder: "deltoids",
       "shoulder-deltoids": "deltoids",
@@ -89,33 +72,73 @@ export function BodyDiagram({
       "front-deltoids": "deltoids",
       "back deltoids": "deltoids",
       "back-deltoids": "deltoids",
+      // Chest
+      pectorals: "chest",
+      pecs: "chest",
+      "pectoralis major": "chest",
+      // Legs
       legs: "quadriceps",
       leg: "quadriceps",
       quads: "quadriceps",
+      quadriceps: "quadriceps",
+      // Hamstrings
       hamstring: "hamstring",
       hamstrings: "hamstring",
+      // Glutes
       glutes: "gluteal",
       gluteal: "gluteal",
       glute: "gluteal",
+      "gluteus maximus": "gluteal",
+      // Calves
       calves: "calves",
       calf: "calves",
+      gastrocnemius: "calves",
+      soleus: "calves",
+      // Arms
       // Library uses singular "forearm"
       forearms: "forearm",
       forearm: "forearm",
       wrist: "forearm",
       wrists: "forearm",
+      "wrist flexors": "forearm",
+      "wrist extensors": "forearm",
+      // Core
+      abs: "abs",
+      abdominals: "abs",
+      obliques: "obliques",
+      core: "abs",
+      // Neck
       neck: "neck",
+      "neck muscles": "neck",
+      sternocleidomastoid: "neck",
+      // Ankles
       ankles: "ankles",
       ankle: "ankles",
+      feet: "feet",
+      foot: "feet",
+      // Lats
       lats: "upper-back",
       latissimus: "upper-back",
+      "latissimus dorsi": "upper-back",
+      // Other
+      rhomboids: "upper-back",
+      // These are already supported slugs in @mjcdev/react-body-highlighter
+      tibialis: "tibialis",
+      adductors: "adductors",
+      hands: "hands",
+      head: "head",
+      knees: "knees",
     }),
     [],
   );
 
   // Memoize slug sets to avoid recreating on every render
+  // Per @mjcdev/react-body-highlighter docs:
+  // Back only: upper-back, lower-back, hamstring, gluteal
+  // Front only: chest, biceps, abs, quadriceps, obliques, tibialis, knees
+  // Both: trapezius, triceps, forearm, adductors, calves, neck, deltoids, hands, feet, head, ankles
   const backOnlySlugs = useMemo(
-    () => new Set(["upper-back", "lower-back", "trapezius"]),
+    () => new Set(["upper-back", "lower-back", "hamstring", "gluteal"]),
     [],
   );
 
@@ -124,11 +147,11 @@ export function BodyDiagram({
       new Set([
         "chest",
         "biceps",
-        "forearm",
         "abs",
         "quadriceps",
-        "neck",
         "obliques",
+        "tibialis",
+        "knees",
       ]),
     [],
   );
@@ -145,6 +168,8 @@ export function BodyDiagram({
           String(part.slug).toLowerCase();
         return {
           slug: normalizedSlug as any,
+          // Library intensities start at 1 (not 0). 0 = no color.
+          // With 3 colors: 1 → colors[0], 2 → colors[1], 3 → colors[2]
           intensity:
             part.intensity === "heavy"
               ? 3
@@ -153,10 +178,9 @@ export function BodyDiagram({
                 : part.intensity === "light"
                   ? 1
                   : 0,
-          color: getIntensityColor(part.intensity, colors, defaultFill),
         };
       });
-  }, [bodyParts, colors, slugNormalization, defaultFill]);
+  }, [bodyParts, slugNormalization]);
 
   // Filter body parts based on view
   const frontParts = useMemo(() => {

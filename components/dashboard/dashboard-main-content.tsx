@@ -1,14 +1,12 @@
-"use client"
-import { DashboardStats } from "@/components/dashboard/dashboard-stats"
-import { RecentWorkouts } from "@/app/workouts/components/recent-workouts"
-import { WeeklyProgress } from "@/components/dashboard/weekly-progress"
-import { TodaysFocus } from "@/components/dashboard/todays-focus"
-import { WeightTracker } from "@/components/dashboard/weight-tracker"
-import { ScheduleOverview } from "@/components/dashboard/schedule-overview"
-import { RecoveryQuickLink } from "@/components/dashboard/recovery-quick-link"
-import { ProgressionNextNodeCard } from "@/components/dashboard/progression-next-node-card"
-import { ProgressionLeaderboardCard } from "@/components/dashboard/progression-leaderboard-card"
-
+"use client";
+import { DashboardStats } from "@/components/dashboard/dashboard-stats";
+import { RecentWorkouts } from "@/app/workouts/components/recent-workouts";
+import { TodaysFocus } from "@/components/dashboard/todays-focus";
+import { WeightTracker } from "@/components/dashboard/weight-tracker";
+import { ScheduleOverview } from "@/components/dashboard/schedule-overview";
+import { RecoveryQuickLink } from "@/components/dashboard/recovery-quick-link";
+import { ProgressionNextNodeCard } from "@/components/dashboard/progression-next-node-card";
+import { ProgressionLeaderboardCard } from "@/components/dashboard/progression-leaderboard-card";
 
 export function DashboardMainContent() {
   return (
@@ -23,8 +21,9 @@ export function DashboardMainContent() {
           <ProgressionNextNodeCard />
           {/* Schedule (This Week's Schedule + Week at a Glance stacked inside) */}
           <ScheduleOverview />
-          {/* Weekly Progress */}
-          <WeeklyProgress />
+          {/* Weekly Progress Removed for the time being */}
+          {/* <WeeklyProgress /> */}
+
           {/* Recent Workouts */}
           <RecentWorkouts />
         </div>
@@ -38,5 +37,5 @@ export function DashboardMainContent() {
         </div>
       </div>
     </>
-  )
+  );
 }

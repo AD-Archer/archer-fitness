@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Dumbbell, Clock, Calendar, Target, CheckCircle2, Circle, FileText } from "lucide-react"
-import { ReactNode } from "react"
+import { ReactNode, isValidElement } from "react"
 import { formatWeight } from "@/lib/weight-utils"
 import { useUserPreferences } from "@/hooks/use-user-preferences"
 import {
@@ -22,6 +22,7 @@ interface WorkoutSession {
   date: string | Date
   duration: number
   exercises: Array<{
+    instructions?: ReactNode
     exerciseId: string
     exerciseName: string
     targetSets?: number
@@ -41,18 +42,33 @@ interface WorkoutSession {
 }
 
 interface QuickViewModalProps {
-  workout: WorkoutSession
+  workout: WorkoutSession | null
   completionRate?: number
   performanceStatus?: WorkoutPerformanceStatus
   perfectionScore?: number
   isDiscarded?: boolean
-  trigger: ReactNode
+  trigger?: ReactNode
+  additionalTriggers?: ReactNode[]
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   // If a newer workout has started after this one, suppress "In Progress" and show "Incomplete"
   hasNewerStarted?: boolean
 }
 
-export function QuickViewModal({ workout, trigger, hasNewerStarted = false }: QuickViewModalProps) {
+export function QuickViewModal({
+  workout,
+  trigger,
+  additionalTriggers,
+  open,
+  onOpenChange,
+  hasNewerStarted = false
+}: QuickViewModalProps) {
   const { units } = useUserPreferences()
+  const validAdditionalTriggers = additionalTriggers?.filter((item) =>
+    isValidElement(item)
+  )
+
+  if (!workout) return null
 
   const completionRate = workout.completionRate ?? computeCompletionRate(workout.exercises)
   const normalizedPerformance = normalizePerformanceStatus(
@@ -110,12 +126,10 @@ export function QuickViewModal({ workout, trigger, hasNewerStarted = false }: Qu
     }
   }
 
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        {trigger}
-      </DialogTrigger>
-      <DialogContent className="max-w-3xl w-[90vw] max-h-[85vh] overflow-y-auto p-0">
+  if (open !== undefined && onOpenChange) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-3xl w-[90vw] max-h-[85vh] overflow-y-auto p-0">
         {/* Header */}
         <div className="px-6 py-4 border-b">
           <DialogHeader className="text-left space-y-2">
@@ -272,4 +286,143 @@ export function QuickViewModal({ workout, trigger, hasNewerStarted = false }: Qu
       </DialogContent>
     </Dialog>
   )
+} else {
+  return (
+    <Dialog>
+      {isValidElement(trigger) && (
+        <DialogTrigger asChild>
+          {trigger}
+        </DialogTrigger>
+      )}
+      {validAdditionalTriggers?.map((additionalTrigger, index) => (
+        <DialogTrigger key={index} asChild>
+          {additionalTrigger}
+        </DialogTrigger>
+      ))}
+      <DialogContent className="max-w-3xl w-[90vw] max-h-[85vh] overflow-y-auto p-0">
+        {/* Header */}
+        <div className="px-6 py-4 border-b">
+          <DialogHeader className="text-left space-y-2">
+            <DialogTitle className="text-xl font-semibold flex items-center gap-2">
+              <Dumbbell className="w-5 h-5" />
+              {workout.name}
+            </DialogTitle>
+            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Calendar className="w-4 h-4" />
+                {formatDate(workout.date)}
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-4 h-4" />
+                {formatDuration(workout.duration)}
+              </span>
+              <Badge variant="secondary" className="text-xs">
+                {statusLabel}
+              </Badge>
+              {workout.isDiscarded && (
+                <Badge variant="outline" className="text-xs border-dashed text-muted-foreground">
+                  Archived
+                </Badge>
+              )}
+            </div>
+          </DialogHeader>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-4 space-y-6">
+          {/* Summary */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-md border p-3 bg-muted/40">
+              <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                <Target className="w-4 h-4" /> Exercises
+              </div>
+              <div className="text-xl font-semibold">{workout.exercises.length}</div>
+            </div>
+            <div className="rounded-md border p-3 bg-muted/40">
+              <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                <CheckCircle2 className="w-4 h-4" /> Total Sets
+              </div>
+              <div className="text-xl font-semibold">
+                {workout.exercises.reduce((total, ex) => total + ex.sets.length, 0)}
+              </div>
+            </div>
+            <div className="rounded-md border p-3 bg-muted/40">
+              <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                <CheckCircle2 className="w-4 h-4" /> Completed
+              </div>
+              <div className="text-xl font-semibold">
+                {workout.exercises.reduce((total, ex) => total + ex.sets.filter(s => s.completed).length, 0)}
+              </div>
+            </div>
+            <div className="rounded-md border p-3 bg-muted/40">
+              <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                <Clock className="w-4 h-4" /> Duration
+              </div>
+              <div className="text-xl font-semibold">{Math.round(workout.duration / 60)}m</div>
+            </div>
+          </div>
+
+          {/* Exercises */}
+          <div className="space-y-4">
+            <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+              <Dumbbell className="w-4 h-4" /> Exercise details
+            </h3>
+
+            {workout.exercises.map((exercise, exerciseIndex) => {
+              const exerciseName = exercise.exerciseName
+              const stats = calculateSetStats(exercise.sets)
+              const completionRate = stats.totalSets > 0 ? (stats.completedSets / stats.totalSets) * 100 : 0
+
+              return (
+                <Card key={exerciseIndex} className="overflow-hidden">
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-base flex items-center justify-between">
+                      <span className="font-medium">{exerciseName}</span>
+                      <div className="flex gap-2 text-xs">
+                        <Badge variant="secondary">
+                          {stats.completedSets}/{stats.totalSets} sets
+                        </Badge>
+                        <Badge variant="outline">
+                          {Math.round(completionRate)}% complete
+                        </Badge>
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="py-3">
+                    <div className="space-y-2">
+                      {exercise.sets.map((set, setIndex) => (
+                        <div key={setIndex} className="flex items-center justify-between text-sm">
+                          <span className="flex items-center gap-2">
+                            {set.completed ? (
+                              <CheckCircle2 className="w-4 h-4 text-green-600" />
+                            ) : (
+                              <Circle className="w-4 h-4 text-muted-foreground" />
+                            )}
+                            Set {setIndex + 1}
+                          </span>
+                          <div className="flex gap-2 text-muted-foreground">
+                            {set.reps > 0 && <span>{set.reps} reps</span>}
+                            {set.weight && set.weight > 0 && <span>{formatWeight(set.weight, units)}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {exercise.instructions && (
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-sm text-muted-foreground">
+                          <FileText className="w-4 h-4 inline mr-1" />
+                          {exercise.instructions}
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
 }

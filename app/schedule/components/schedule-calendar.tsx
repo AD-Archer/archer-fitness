@@ -27,11 +27,11 @@ import { useCalendar } from "../hooks/use-schedule";
 import {
   CalendarWorkout,
   DAY_NAMES,
-  DAY_NAMES_SHORT,
   formatTime,
   getWeekStartDate,
   getWeekEndDate,
   formatDateForAPI,
+  parseDateFromAPI,
   addWeeks,
 } from "../types";
 import Link from "next/link";
@@ -85,7 +85,7 @@ export function ScheduleCalendar() {
   };
 
   const handleDatePickerConfirm = () => {
-    const selectedDate = new Date(pickedDate);
+    const selectedDate = parseDateFromAPI(pickedDate);
     const weekStart = getWeekStartDate(selectedDate);
     setCurrentWeekStart(weekStart);
     setIsDatePickerOpen(false);
@@ -212,38 +212,40 @@ export function ScheduleCalendar() {
       )}
 
       {/* Week View */}
-      <div className="grid grid-cols-7 gap-2">
-        {/* Day Headers */}
-        {DAY_NAMES.map((day, i) => (
-          <div
-            key={day}
-            className="text-center font-medium text-sm text-muted-foreground py-2"
-          >
-            <span className="hidden sm:inline">{day}</span>
-            <span className="sm:hidden">{DAY_NAMES_SHORT[i]}</span>
-          </div>
-        ))}
-
-        {/* Day Cells */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-3">
+        {/* Day Cards */}
         {weekDays.map((day) => (
           <Card
             key={day.dateStr}
-            className={`min-h-[120px] ${
-              day.isToday ? "ring-2 ring-primary" : ""
-            }`}
+            className={`${day.isToday ? "ring-2 ring-primary" : ""}`}
           >
-            <CardHeader className="p-2 pb-0">
-              <CardTitle
-                className={`text-sm ${
-                  day.isToday ? "text-primary" : "text-muted-foreground"
-                }`}
-              >
-                {day.date.getDate()}
-              </CardTitle>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm">
+                    {DAY_NAMES[day.dayOfWeek]}
+                  </CardTitle>
+                  <p
+                    className={`text-sm font-semibold mt-1 ${
+                      day.isToday ? "text-primary" : "text-muted-foreground"
+                    }`}
+                  >
+                    {day.date.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </p>
+                </div>
+                {day.isToday && (
+                  <Badge className="bg-primary text-primary-foreground">
+                    Today
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
-            <CardContent className="p-2 pt-1 space-y-1">
+            <CardContent className="space-y-2">
               {day.workouts.length === 0 ? (
-                <div className="text-xs text-muted-foreground italic text-center py-2">
+                <div className="text-sm text-muted-foreground italic text-center py-6 border border-dashed rounded-lg bg-muted/30">
                   Rest Day
                 </div>
               ) : (

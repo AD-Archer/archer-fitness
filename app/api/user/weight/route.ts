@@ -24,6 +24,17 @@ interface MonthlyAverage {
   monthDate: string // For sorting/display
 }
 
+function findClosestEntryOnOrBefore(entries: WeightEntry[], target: Date): WeightEntry | null {
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    const entry = entries[index]
+    if (new Date(entry.date) <= target) {
+      return entry
+    }
+  }
+
+  return null
+}
+
 // Helper function to update user's monthly average weight
 async function updateUserAverageWeight(userId: string) {
   try {
@@ -102,14 +113,17 @@ export async function GET(request: NextRequest) {
 
     // Check if WeightEntry table exists, fallback to simulation if not
     try {
-      const entries: WeightEntry[] = await prisma.weightEntry.findMany({
+      const entriesDesc: WeightEntry[] = await prisma.weightEntry.findMany({
         where: {
           userId: session.user.id,
           date: { gte: startDate }
         },
-        orderBy: { date: 'asc' },
+        orderBy: { date: 'desc' },
         take: limit
       })
+      const entries = [...entriesDesc].sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      )
 
       // Calculate statistics and monthly averages
       const weights = entries.map((e: WeightEntry) => e.weight)
@@ -135,17 +149,24 @@ export async function GET(request: NextRequest) {
         ? monthlyAverages[monthlyAverages.length - 1].averageWeight 
         : weights[weights.length - 1]
 
-      const latestWeight = weights[weights.length - 1]
+      const latestEntry = entries[entries.length - 1]
+      const latestWeight = latestEntry.weight
       const weekAgo = new Date()
       weekAgo.setDate(weekAgo.getDate() - 7)
       const monthAgo = new Date()
       monthAgo.setDate(monthAgo.getDate() - 30)
 
-      const weekAgoEntry = entries.find((e: WeightEntry) => new Date(e.date) <= weekAgo)
-      const monthAgoEntry = entries.find((e: WeightEntry) => new Date(e.date) <= monthAgo)
+      const weekAgoEntry = findClosestEntryOnOrBefore(entries, weekAgo)
+      const monthAgoEntry = findClosestEntryOnOrBefore(entries, monthAgo)
 
       const weekChange = weekAgoEntry ? latestWeight - weekAgoEntry.weight : 0
       const monthChange = monthAgoEntry ? latestWeight - monthAgoEntry.weight : 0
+      const trendDelta =
+        monthAgoEntry && monthAgoEntry.id !== latestEntry.id
+          ? monthChange
+          : weekAgoEntry && weekAgoEntry.id !== latestEntry.id
+            ? weekChange
+            : 0
       
       return NextResponse.json({
         entries: entries.map((entry: WeightEntry) => ({
@@ -161,7 +182,7 @@ export async function GET(request: NextRequest) {
           currentMonthAverage,
           weekChange,
           monthChange,
-          trend: monthChange > 0.5 ? 'increasing' : monthChange < -0.5 ? 'decreasing' : 'stable',
+          trend: trendDelta > 0.1 ? 'increasing' : trendDelta < -0.1 ? 'decreasing' : 'stable',
           totalEntries: entries.length,
         }
       })

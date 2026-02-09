@@ -4,21 +4,50 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 
+function parseDateOnlyParam(dateStr: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const monthIndex = Number(match[2]) - 1;
+  const day = Number(match[3]);
+
+  const date = new Date(Date.UTC(year, monthIndex, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== monthIndex ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
+}
+
+function normalizeToUTCMidnight(date: Date): Date {
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+  );
+}
+
 // Helper to get day of week (0 = Sunday, 1 = Monday, etc.)
 function getDayOfWeek(date: Date): number {
-  return date.getDay();
+  return date.getUTCDay();
 }
 
 // Helper to add days to a date
 function addDays(date: Date, days: number): Date {
   const result = new Date(date);
-  result.setDate(result.getDate() + days);
+  result.setUTCDate(result.getUTCDate() + days);
   return result;
 }
 
 // Helper to format date as YYYY-MM-DD
 function formatDate(date: Date): string {
-  return date.toISOString().split("T")[0];
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export interface CalendarWorkout {
@@ -58,10 +87,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const startDate = new Date(startParam);
-    const endDate = new Date(endParam);
+    const startDate = parseDateOnlyParam(startParam);
+    const endDate = parseDateOnlyParam(endParam);
 
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    if (!startDate || !endDate) {
       return NextResponse.json(
         { error: "Invalid date format. Use YYYY-MM-DD" },
         { status: 400 },
@@ -142,9 +171,11 @@ export async function GET(request: NextRequest) {
 
       for (const schedule of activeSchedules) {
         // Check if this date is within the schedule's active range
-        const scheduleStart = new Date(schedule.startDate);
+        const scheduleStart = normalizeToUTCMidnight(
+          new Date(schedule.startDate),
+        );
         const scheduleEnd = schedule.endDate
-          ? new Date(schedule.endDate)
+          ? normalizeToUTCMidnight(new Date(schedule.endDate))
           : null;
 
         if (currentDate < scheduleStart) continue;
@@ -186,7 +217,7 @@ export async function GET(request: NextRequest) {
         userId: session.user.id,
         date: {
           gte: startDate,
-          lte: endDate,
+          lt: addDays(endDate, 1),
         },
       },
       select: {

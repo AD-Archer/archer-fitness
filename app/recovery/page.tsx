@@ -1,44 +1,79 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { RecoveryMonitor } from "@/app/recovery/components/recovery-monitor";
 import { Sidebar } from "@/components/sidebar";
 import { DateSelector } from "@/app/recovery/components/date-selector";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Activity, PieChart } from "lucide-react";
 
-export default function RecoveryPage() {
+const formatLocalDateParam = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const parseLocalDateParam = (value: string) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const monthIndex = Number(match[2]) - 1;
+  const day = Number(match[3]);
+
+  const date = new Date(year, monthIndex, day);
+  date.setHours(0, 0, 0, 0);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+function RecoveryPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
     const dateParam = searchParams.get("date");
     if (dateParam) {
-      const parsed = new Date(dateParam);
-      if (!isNaN(parsed.getTime())) {
+      const parsed = parseLocalDateParam(dateParam);
+      if (parsed) {
         return parsed;
       }
     }
     return new Date();
   });
 
-  // Update URL when date changes
+  const [activeTab, setActiveTab] = useState(() => {
+    const tabParam = searchParams.get("tab");
+    return tabParam === "body-distribution" ? "body-distribution" : "overview";
+  });
+
+  // Update URL when date or tab changes
   useEffect(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const selected = new Date(selectedDate);
     selected.setHours(0, 0, 0, 0);
 
-    if (selected.getTime() === today.getTime()) {
-      // If today, remove date param
-      router.push("/recovery", { scroll: false });
-    } else {
-      // Format as YYYY-MM-DD
-      const dateStr = selectedDate.toISOString().split("T")[0];
-      router.push(`/recovery?date=${dateStr}`, { scroll: false });
+    const params = new URLSearchParams();
+    if (selected.getTime() !== today.getTime()) {
+      const dateStr = formatLocalDateParam(selectedDate);
+      params.set("date", dateStr);
     }
-  }, [selectedDate, router]);
+    if (activeTab !== "overview") {
+      params.set("tab", activeTab);
+    }
+
+    const queryString = params.toString();
+    const newPath = queryString ? `/recovery?${queryString}` : "/recovery";
+    router.replace(newPath, { scroll: false });
+  }, [selectedDate, activeTab, router]);
 
   const handleDateChange = (date: Date) => {
     setSelectedDate(date);
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
   };
 
   return (
@@ -58,16 +93,63 @@ export default function RecoveryPage() {
                   recommendations for optimal performance
                 </p>
               </div>
-              <DateSelector
-                selectedDate={selectedDate}
-                onDateChange={handleDateChange}
-              />
             </div>
           </div>
 
-          <RecoveryMonitor selectedDate={selectedDate} />
+          {/* Main Tabs */}
+          <Tabs
+            value={activeTab}
+            onValueChange={handleTabChange}
+            className="space-y-6"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+              <TabsList className="grid grid-cols-2 sm:grid-cols-2 w-full sm:w-auto">
+                <TabsTrigger
+                  value="overview"
+                  className="text-xs sm:text-sm px-2 sm:px-4"
+                >
+                  <Activity className="sm:hidden h-4 w-4" />
+                  <span className="hidden sm:inline">Overview</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="body-distribution"
+                  className="text-xs sm:text-sm px-2 sm:px-4"
+                >
+                  <PieChart className="sm:hidden h-4 w-4" />
+                  <span className="hidden sm:inline">Body</span>
+                </TabsTrigger>
+              </TabsList>
+              <div className="w-full sm:w-auto">
+                <DateSelector
+                  selectedDate={selectedDate}
+                  onDateChange={handleDateChange}
+                />
+              </div>
+            </div>
+
+            {/* Overview Tab */}
+            <TabsContent value="overview" className="space-y-6">
+              <RecoveryMonitor selectedDate={selectedDate} />
+            </TabsContent>
+
+            {/* Body Distribution Tab */}
+            <TabsContent value="body-distribution" className="space-y-6">
+              <RecoveryMonitor
+                selectedDate={selectedDate}
+                showBodyDistribution
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
     </div>
+  );
+}
+
+export default function RecoveryPage() {
+  return (
+    <Suspense fallback={null}>
+      <RecoveryPageContent />
+    </Suspense>
   );
 }
