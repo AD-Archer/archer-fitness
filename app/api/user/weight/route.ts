@@ -32,7 +32,7 @@ function findClosestEntryOnOrBefore(entries: WeightEntry[], target: Date): Weigh
     }
   }
 
-  return entries[0] ?? null
+  return null
 }
 
 // Helper function to update user's monthly average weight
