@@ -200,8 +200,22 @@ export function RecoveryBodyDiagram({
 
   const getIsoDateKey = (dateLike: string | Date) => {
     try {
+      if (typeof dateLike === "string") {
+        const dateOnly = dateLike.split("T")[0];
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+          return dateOnly;
+        }
+      }
+
       const date = typeof dateLike === "string" ? new Date(dateLike) : dateLike;
-      return date.toISOString().split("T")[0];
+      if (Number.isNaN(date.getTime())) {
+        return "";
+      }
+
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
     } catch {
       return "";
     }
@@ -554,12 +568,12 @@ export function RecoveryBodyDiagram({
   useEffect(() => {
     const checkDailyCheckIn = async () => {
       try {
-        const today = new Date().toISOString().split("T")[0];
+        const today = getIsoDateKey(new Date());
         const response = await fetch("/api/recovery/daily-check-in?days=1");
         if (response.ok) {
           const checkIns = await response.json();
           const todayCheckIn = checkIns.find(
-            (c: any) => new Date(c.date).toISOString().split("T")[0] === today,
+            (c: any) => getIsoDateKey(c.date) === today,
           );
 
           if (!todayCheckIn) {
@@ -639,48 +653,40 @@ export function RecoveryBodyDiagram({
       };
     }
 
-    const selectedDateString = selectedDate.toISOString().split("T")[0];
+    const selectedDateString = getIsoDateKey(selectedDate);
 
     // Filter body parts by lastWorked date
     const filteredParts = bodyParts.filter((part) => {
       if (!part.lastWorked) return false;
-      const lastWorkedDate = new Date(part.lastWorked)
-        .toISOString()
-        .split("T")[0];
+      const lastWorkedDate = getIsoDateKey(part.lastWorked);
       return lastWorkedDate === selectedDateString;
     });
 
     // Filter muscle data by lastWorked date for workout view
     const filteredMuscleData = mappedParts.filter((muscle) => {
       if (!muscle.lastWorked) return false;
-      const lastWorkedDate = new Date(muscle.lastWorked)
-        .toISOString()
-        .split("T")[0];
+      const lastWorkedDate = getIsoDateKey(muscle.lastWorked);
       return lastWorkedDate === selectedDateString;
     });
 
     // Filter pain feedback by date
     const filteredPain = painFeedback.filter((pain) => {
       if (!pain.createdAt) return false;
-      const painDate = new Date(pain.createdAt).toISOString().split("T")[0];
+      const painDate = getIsoDateKey(pain.createdAt);
       return painDate === selectedDateString;
     });
 
     // Filter soreness data by date
     const filteredSoreness = sorenessData.filter((soreness) => {
       if (!soreness.createdAt) return false;
-      const sorenessDate = new Date(soreness.createdAt)
-        .toISOString()
-        .split("T")[0];
+      const sorenessDate = getIsoDateKey(soreness.createdAt);
       return sorenessDate === selectedDateString;
     });
 
     // Filter recent sessions by date
     const filteredSessions = recentSessions.filter((session) => {
       if (!session.performedAt) return false;
-      const sessionDate = new Date(session.performedAt)
-        .toISOString()
-        .split("T")[0];
+      const sessionDate = getIsoDateKey(session.performedAt);
       return sessionDate === selectedDateString;
     });
 

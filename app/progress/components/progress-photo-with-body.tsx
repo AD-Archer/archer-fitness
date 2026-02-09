@@ -81,18 +81,26 @@ export function ProgressPhotoWithBody({
   const [selectedBodyPartFilter, setSelectedBodyPartFilter] = useState<
     string | null
   >(null);
+  const [appLocation, setAppLocation] = useState<{
+    pathname: string;
+    search: string;
+    hash: string;
+    href: string;
+  } | null>(null);
   const { toast } = useToast();
 
   const isDev = process.env.NODE_ENV !== "production";
-  const appLocation =
-    typeof window !== "undefined"
-      ? {
-          pathname: window.location.pathname,
-          search: window.location.search,
-          hash: window.location.hash,
-          href: window.location.href,
-        }
-      : null;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    setAppLocation({
+      pathname: window.location.pathname,
+      search: window.location.search,
+      hash: window.location.hash,
+      href: window.location.href,
+    });
+  }, []);
 
   // Fetch workout data for the selected date
   useEffect(() => {

@@ -8,14 +8,34 @@ import { DateSelector } from "@/app/recovery/components/date-selector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Activity, PieChart } from "lucide-react";
 
+const formatLocalDateParam = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const parseLocalDateParam = (value: string) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const monthIndex = Number(match[2]) - 1;
+  const day = Number(match[3]);
+
+  const date = new Date(year, monthIndex, day);
+  date.setHours(0, 0, 0, 0);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
 function RecoveryPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
     const dateParam = searchParams.get("date");
     if (dateParam) {
-      const parsed = new Date(dateParam);
-      if (!isNaN(parsed.getTime())) {
+      const parsed = parseLocalDateParam(dateParam);
+      if (parsed) {
         return parsed;
       }
     }
@@ -36,7 +56,7 @@ function RecoveryPageContent() {
 
     const params = new URLSearchParams();
     if (selected.getTime() !== today.getTime()) {
-      const dateStr = selectedDate.toISOString().split("T")[0];
+      const dateStr = formatLocalDateParam(selectedDate);
       params.set("date", dateStr);
     }
     if (activeTab !== "overview") {

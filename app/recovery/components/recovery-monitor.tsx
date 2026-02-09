@@ -298,6 +298,7 @@ export function RecoveryMonitor({
                     setDefaultDiagramView("soreness");
                     refresh();
                     setRefreshKey((prev) => prev + 1);
+                    setTimeout(() => setDefaultDiagramView(undefined), 0);
                   }}
                 />
               </div>

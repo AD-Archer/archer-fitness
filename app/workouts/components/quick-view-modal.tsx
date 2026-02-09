@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Dumbbell, Clock, Calendar, Target, CheckCircle2, Circle, FileText } from "lucide-react"
-import { ReactNode } from "react"
+import { ReactNode, isValidElement } from "react"
 import { formatWeight } from "@/lib/weight-utils"
 import { useUserPreferences } from "@/hooks/use-user-preferences"
 import {
@@ -64,6 +64,9 @@ export function QuickViewModal({
   hasNewerStarted = false
 }: QuickViewModalProps) {
   const { units } = useUserPreferences()
+  const validAdditionalTriggers = additionalTriggers?.filter((item) =>
+    isValidElement(item)
+  )
 
   if (!workout) return null
 
@@ -286,10 +289,12 @@ export function QuickViewModal({
 } else {
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        {trigger}
-      </DialogTrigger>
-      {additionalTriggers?.map((additionalTrigger, index) => (
+      {isValidElement(trigger) && (
+        <DialogTrigger asChild>
+          {trigger}
+        </DialogTrigger>
+      )}
+      {validAdditionalTriggers?.map((additionalTrigger, index) => (
         <DialogTrigger key={index} asChild>
           {additionalTrigger}
         </DialogTrigger>
@@ -397,7 +402,7 @@ export function QuickViewModal({
                           </span>
                           <div className="flex gap-2 text-muted-foreground">
                             {set.reps > 0 && <span>{set.reps} reps</span>}
-                            {set.weight && set.weight > 0 && <span>{formatWeight(set.weight, units)} {units}</span>}
+                            {set.weight && set.weight > 0 && <span>{formatWeight(set.weight, units)}</span>}
                           </div>
                         </div>
                       ))}

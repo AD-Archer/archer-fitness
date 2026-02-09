@@ -137,12 +137,11 @@ export function RecentWorkouts({
     [],
   );
   const [loading, setLoading] = useState(true);
-  const [selectedWorkout, setSelectedWorkout] = useState<WorkoutSession | null>(
-    null,
-  );
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [quickViewWorkout, setQuickViewWorkout] =
     useState<WorkoutSession | null>(null);
+  const [quickViewHasNewerStarted, setQuickViewHasNewerStarted] =
+    useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -326,6 +325,9 @@ export function RecentWorkouts({
     const daysAgo = Math.floor(
       (today.getTime() - dateObj.getTime()) / (1000 * 60 * 60 * 24),
     );
+    if (daysAgo < 0) {
+      return `In ${Math.abs(daysAgo)} day${Math.abs(daysAgo) === 1 ? "" : "s"}`;
+    }
     return `${daysAgo} days ago`;
   };
 
@@ -511,6 +513,7 @@ export function RecentWorkouts({
                       className="font-medium truncate text-sm sm:text-base cursor-pointer hover:text-blue-600"
                       onClick={() => {
                         setQuickViewWorkout(workout);
+                        setQuickViewHasNewerStarted(hasNewerStarted);
                         setQuickViewOpen(true);
                       }}
                     >
@@ -554,6 +557,7 @@ export function RecentWorkouts({
                     size="sm"
                     onClick={() => {
                       setQuickViewWorkout(workout);
+                      setQuickViewHasNewerStarted(hasNewerStarted);
                       setQuickViewOpen(true);
                     }}
                     className="text-xs px-1 py-1 h-6 sm:h-8"
@@ -562,7 +566,7 @@ export function RecentWorkouts({
                     <span className="hidden sm:inline">Quick View</span>
                   </Button>
                   <WorkoutDetailsModal
-                    workout={selectedWorkout}
+                    workout={workout}
                     onRepeat={
                       onRepeatWorkout
                         ? (session) => {
@@ -580,7 +584,6 @@ export function RecentWorkouts({
                         variant="ghost"
                         size="sm"
                         className="text-xs px-1 py-1 h-6 sm:h-8"
-                        onClick={() => setSelectedWorkout(workout)}
                       >
                         <span className="hidden sm:inline">View Details</span>
                         <span className="sm:hidden">Details</span>
@@ -599,11 +602,14 @@ export function RecentWorkouts({
         </div>
         <QuickViewModal
           workout={quickViewWorkout}
-          hasNewerStarted={false}
+          hasNewerStarted={quickViewHasNewerStarted}
           open={quickViewOpen}
           onOpenChange={(open) => {
             setQuickViewOpen(open);
-            if (!open) setQuickViewWorkout(null);
+            if (!open) {
+              setQuickViewWorkout(null);
+              setQuickViewHasNewerStarted(false);
+            }
           }}
         />
       </CardContent>

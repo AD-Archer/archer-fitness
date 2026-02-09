@@ -33,6 +33,25 @@ const bodyPartsList = [
   "Calves",
 ];
 
+const toLocalDateKey = (dateLike: string | Date) => {
+  if (typeof dateLike === "string") {
+    const dateOnly = dateLike.split("T")[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+      return dateOnly;
+    }
+  }
+
+  const date = typeof dateLike === "string" ? new Date(dateLike) : dateLike;
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export function DailyCheckIn({ onComplete }: DailyCheckInProps) {
   const [open, setOpen] = useState(false);
   const [selectedBodyPart, setSelectedBodyPart] = useState<string>("");
@@ -56,11 +75,11 @@ export function DailyCheckIn({ onComplete }: DailyCheckInProps) {
         if (!response.ok) return;
 
         const checkIns = await response.json();
-        const todayKey = new Date().toISOString().split("T")[0];
+        const todayKey = toLocalDateKey(new Date());
         const todayCheckIn = Array.isArray(checkIns)
           ? checkIns.find(
               (checkIn: any) =>
-                new Date(checkIn.date).toISOString().split("T")[0] === todayKey,
+                toLocalDateKey(checkIn.date) === todayKey,
             )
           : null;
 
@@ -128,7 +147,7 @@ export function DailyCheckIn({ onComplete }: DailyCheckInProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          date: new Date().toISOString(),
+          date: toLocalDateKey(new Date()),
           energyLevel: energyLevel[0],
           bodyParts: checkIns,
           notes: notes || undefined,
