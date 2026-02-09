@@ -34,7 +34,7 @@ export function DashboardHeader() {
             Begin Workout
           </Button>
         </Link>
-        <Link href="/progress">
+        <Link href="/progress?tab=photos">
           <Button className="bg-blue-700 hover:bg-blue-800 text-white w-full sm:w-auto">
             Progress photos
           </Button>

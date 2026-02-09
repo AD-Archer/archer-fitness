@@ -77,16 +77,15 @@ export function WeeklyCalendar({
     return d;
   };
 
-  const isWorkoutCompleted = (item: { title: string; startTime: string }) => {
+  const isWorkoutCompleted = (
+    item: { title: string; startTime: string },
+    itemDate: Date,
+  ) => {
     // Check if there's a completed session that matches this scheduled workout
     return completedSessions.some((session) => {
       if (session.status !== "completed") return false;
 
       const sessionDate = new Date(session.startTime);
-      // Compare dates (ignoring time)
-      const itemDate = new Date(
-        `${schedule.weekStart.toDateString()} ${item.startTime}`,
-      );
 
       return (
         sessionDate.toDateString() === itemDate.toDateString() &&
@@ -212,7 +211,7 @@ export function WeeklyCalendar({
                   </div>
                 ) : (
                   day.items.map((item) => {
-                    const completed = isWorkoutCompleted(item);
+                    const completed = isWorkoutCompleted(item, day.date);
 
                     return (
                       <div

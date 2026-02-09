@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { RecoveryMonitor } from "@/app/recovery/components/recovery-monitor";
 import { Sidebar } from "@/components/sidebar";
@@ -8,7 +8,7 @@ import { DateSelector } from "@/app/recovery/components/date-selector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Activity, PieChart } from "lucide-react";
 
-export default function RecoveryPage() {
+function RecoveryPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
@@ -45,7 +45,7 @@ export default function RecoveryPage() {
 
     const queryString = params.toString();
     const newPath = queryString ? `/recovery?${queryString}` : "/recovery";
-    router.push(newPath, { scroll: false });
+    router.replace(newPath, { scroll: false });
   }, [selectedDate, activeTab, router]);
 
   const handleDateChange = (date: Date) => {
@@ -123,5 +123,13 @@ export default function RecoveryPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function RecoveryPage() {
+  return (
+    <Suspense fallback={null}>
+      <RecoveryPageContent />
+    </Suspense>
   );
 }

@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { UnifiedProgressDashboard } from "@/app/progress/components/unified-progress-dashboard";
 import { Sidebar } from "@/components/sidebar";
 
-export default function ProgressPage() {
+function ProgressPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
@@ -22,7 +22,7 @@ export default function ProgressPage() {
 
     const queryString = params.toString();
     const newPath = queryString ? `/progress?${queryString}` : "/progress";
-    router.push(newPath, { scroll: false });
+    router.replace(newPath, { scroll: false });
   }, [activeTab, router]);
 
   return (
@@ -38,5 +38,13 @@ export default function ProgressPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function ProgressPage() {
+  return (
+    <Suspense fallback={null}>
+      <ProgressPageContent />
+    </Suspense>
   );
 }

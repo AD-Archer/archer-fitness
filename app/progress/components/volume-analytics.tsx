@@ -22,6 +22,8 @@ import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { getWeightUnitAbbr } from "@/lib/weight-utils";
 import { logger } from "@/lib/logger";
 
+const IS_DEV = process.env.NODE_ENV !== "production";
+
 interface VolumeData {
   week: string;
   volume: number;
@@ -51,6 +53,14 @@ export function VolumeAnalytics({
   const [volumeStats, setVolumeStats] = useState<VolumeStats | null>(null);
   const [loading, setLoading] = useState(true);
   const { units } = useUserPreferences();
+  const debugPayload = {
+    component: "VolumeAnalytics",
+    timeRange,
+    dataPoints: volumeData.length,
+    hasStats: Boolean(volumeStats),
+    volumeStats,
+    volumeData,
+  };
 
   useEffect(() => {
     const fetchVolumeData = async () => {
@@ -335,6 +345,22 @@ export function VolumeAnalytics({
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {IS_DEV && (
+        <Card className="mt-4 border-red-500">
+          <CardHeader>
+            <CardTitle className="text-red-500">Volume Debug Info</CardTitle>
+            <CardDescription>
+              Visible only in non-production environments
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-96">
+              {JSON.stringify(debugPayload, null, 2)}
+            </pre>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

@@ -516,10 +516,15 @@ export function StrengthAnalytics({
       {IS_DEV && debugInfo && (
         <Card className="mt-4 border-red-500">
           <CardHeader>
-            <CardTitle className="text-red-500">Debug Info</CardTitle>
+            <CardTitle className="text-red-500">
+              Strength Debug Info
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-xs">
+              <div>
+                <strong>Component:</strong> StrengthAnalytics
+              </div>
               <div>
                 <strong>Time Range:</strong> {debugInfo.timeRange}
               </div>

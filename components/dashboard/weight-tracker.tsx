@@ -45,6 +45,11 @@ export function WeightTracker({}: WeightTrackerProps) {
   const [notes, setNotes] = useState("")
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
 
+  const sortedEntries = [...entries].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  )
+  const recentEntries = sortedEntries.slice(0, 3)
+
   // Load weight data
   useEffect(() => {
     loadWeightData()
@@ -266,8 +271,8 @@ export function WeightTracker({}: WeightTrackerProps) {
                     {stats.totalEntries} total
                   </Badge>
                 </div>
-                <div className="space-y-1 max-h-32 overflow-y-auto">
-                  {entries.slice(0, 3).map((entry) => (
+                <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+                  {recentEntries.map((entry) => (
                     <div key={entry.id} className="flex items-center justify-between text-sm p-2 rounded-md bg-muted/50">
                       <div>
                         <span className="font-medium">{formatWeight(entry.weight, units)}</span>

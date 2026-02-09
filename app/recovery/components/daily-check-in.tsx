@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,6 +44,65 @@ export function DailyCheckIn({ onComplete }: DailyCheckInProps) {
   >([]);
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
+  const [loadingTodayCheckIn, setLoadingTodayCheckIn] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const loadTodayCheckIn = async () => {
+      try {
+        setLoadingTodayCheckIn(true);
+        const response = await fetch("/api/recovery/daily-check-in?days=1");
+        if (!response.ok) return;
+
+        const checkIns = await response.json();
+        const todayKey = new Date().toISOString().split("T")[0];
+        const todayCheckIn = Array.isArray(checkIns)
+          ? checkIns.find(
+              (checkIn: any) =>
+                new Date(checkIn.date).toISOString().split("T")[0] === todayKey,
+            )
+          : null;
+
+        if (!todayCheckIn) return;
+
+        const bodyPartChecks = Array.isArray(todayCheckIn.bodyPartChecks)
+          ? [...todayCheckIn.bodyPartChecks]
+          : [];
+        bodyPartChecks.sort(
+          (a, b) =>
+            new Date(b.createdAt ?? 0).getTime() -
+            new Date(a.createdAt ?? 0).getTime(),
+        );
+
+        const latestByPart = new Map<string, number>();
+        for (const check of bodyPartChecks) {
+          if (!check?.bodyPart) continue;
+          if (latestByPart.has(check.bodyPart)) continue;
+          latestByPart.set(check.bodyPart, Number(check.sorenessLevel));
+        }
+
+        const mergedCheckIns = Array.from(latestByPart.entries())
+          .filter(([, soreness]) => soreness > 0)
+          .map(([bodyPart, soreness]) => ({ bodyPart, soreness }));
+
+        setCheckIns(mergedCheckIns);
+
+        if (typeof todayCheckIn.energyLevel === "number") {
+          setEnergyLevel([todayCheckIn.energyLevel]);
+        }
+        if (typeof todayCheckIn.notes === "string") {
+          setNotes(todayCheckIn.notes);
+        }
+      } catch {
+        // Non-blocking: dialog still works without preload
+      } finally {
+        setLoadingTodayCheckIn(false);
+      }
+    };
+
+    void loadTodayCheckIn();
+  }, [open]);
 
   const handleAddBodyPart = () => {
     if (!selectedBodyPart) return;
@@ -171,6 +230,11 @@ export function DailyCheckIn({ onComplete }: DailyCheckInProps) {
               </Label>
 
               {/* Added body parts */}
+              {loadingTodayCheckIn && (
+                <p className="text-xs text-muted-foreground">
+                  Loading today&apos;s saved soreness...
+                </p>
+              )}
               {checkIns.length > 0 && (
                 <div className="space-y-2 mb-4">
                   {checkIns.map((checkIn, index) => (

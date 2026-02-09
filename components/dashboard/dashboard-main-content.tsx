@@ -21,9 +21,10 @@ export function DashboardMainContent() {
           <ProgressionNextNodeCard />
           {/* Schedule (This Week's Schedule + Week at a Glance stacked inside) */}
           <ScheduleOverview />
-          {/* Weekly Progress */}
+          {/* Weekly Progress Removed for the time being */}
           {/* <WeeklyProgress /> */}
-          {/* Recent Workouts Removed for the tiem being*/}
+
+          {/* Recent Workouts */}
           <RecentWorkouts />
         </div>
 

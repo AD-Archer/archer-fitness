@@ -73,6 +73,9 @@ export function RecoveryMonitor({
 }: RecoveryMonitorProps) {
   const { data, loading, error, refreshing, refresh } = useRecoveryData();
   const [refreshKey, setRefreshKey] = useState(0);
+  const [defaultDiagramView, setDefaultDiagramView] = useState<
+    "workout" | "soreness" | "recovery" | undefined
+  >(undefined);
 
   // Check if viewing today
   const isViewingToday = () => {
@@ -152,6 +155,7 @@ export function RecoveryMonitor({
           key={refreshKey}
           timeRange="7days"
           selectedDate={selectedDate}
+          defaultView={defaultDiagramView}
         />
       ) : (
         // Overview Tab - Full overview with alerts, status, and diagram
@@ -291,6 +295,7 @@ export function RecoveryMonitor({
               <div className="md:col-span-1">
                 <DailyCheckIn
                   onComplete={() => {
+                    setDefaultDiagramView("soreness");
                     refresh();
                     setRefreshKey((prev) => prev + 1);
                   }}
@@ -304,6 +309,7 @@ export function RecoveryMonitor({
             key={refreshKey}
             timeRange="7days"
             selectedDate={selectedDate}
+            defaultView={defaultDiagramView}
           />
         </>
       )}

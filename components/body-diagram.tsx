@@ -111,17 +111,23 @@ export function BodyDiagram({
       neck: "neck",
       "neck muscles": "neck",
       sternocleidomastoid: "neck",
+      // Ankles
+      ankles: "ankles",
+      ankle: "ankles",
+      feet: "feet",
+      foot: "feet",
       // Lats
       lats: "upper-back",
       latissimus: "upper-back",
       "latissimus dorsi": "upper-back",
       // Other
       rhomboids: "upper-back",
-      tibialis: "calves", // Map to calves as closest
-      adductors: "quadriceps", // Map to quads as closest
-      hands: "forearm", // Map to forearm
-      head: "neck", // Map to neck
-      knees: "quadriceps", // Map to quads
+      // These are already supported slugs in @mjcdev/react-body-highlighter
+      tibialis: "tibialis",
+      adductors: "adductors",
+      hands: "hands",
+      head: "head",
+      knees: "knees",
     }),
     [],
   );

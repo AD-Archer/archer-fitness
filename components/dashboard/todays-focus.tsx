@@ -29,6 +29,21 @@ interface ScheduledWorkout {
   }
 }
 
+interface CalendarWorkout {
+  date: string
+  dailyTemplateName: string | null
+  workoutTemplateName: string | null
+  startTime: string
+  duration: number
+  workoutCategory: string | null
+  workoutDifficulty: string | null
+  isRestDay: boolean
+}
+
+interface CalendarResponse {
+  workouts: CalendarWorkout[]
+}
+
 interface TodaysWorkoutSession {
   id: string
   name: string
@@ -64,6 +79,34 @@ interface ApiTodaysWorkoutSession {
 }
 
 export function TodaysFocus() {
+  const formatDateForAPI = (date: Date): string => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const day = String(date.getDate()).padStart(2, "0")
+    return `${year}-${month}-${day}`
+  }
+
+  const addDurationToTime = (startTime: string, durationMinutes: number): string => {
+    const [hourStr = "0", minuteStr = "0"] = startTime.split(":")
+    const startMinutes = Number(hourStr) * 60 + Number(minuteStr)
+    const endMinutes = (startMinutes + Math.max(0, durationMinutes)) % (24 * 60)
+    const endHour = String(Math.floor(endMinutes / 60)).padStart(2, "0")
+    const endMin = String(endMinutes % 60).padStart(2, "0")
+    return `${endHour}:${endMin}`
+  }
+
+  const getWeekBounds = (date: Date) => {
+    const weekStart = new Date(date)
+    weekStart.setDate(date.getDate() - date.getDay())
+    weekStart.setHours(0, 0, 0, 0)
+
+    const weekEnd = new Date(weekStart)
+    weekEnd.setDate(weekStart.getDate() + 6)
+    weekEnd.setHours(0, 0, 0, 0)
+
+    return { weekStart, weekEnd }
+  }
+
   // Helper function to calculate completion percentage
   const calculateCompletionRate = (exercises: Array<{ sets: Array<{ completed: boolean }> }>) => {
     if (exercises.length === 0) return 0
@@ -98,7 +141,8 @@ export function TodaysFocus() {
     const fetchTodaysFocus = async () => {
       try {
         // Check if there's an active session today
-        const today = new Date().toISOString().split('T')[0]
+        const todayDate = new Date()
+        const today = formatDateForAPI(todayDate)
         const sessionsResponse = await fetch(`/api/workout-tracker/workout-sessions?date=${today}`)
         
         let todaysWorkout = null
@@ -140,22 +184,36 @@ export function TodaysFocus() {
           todaysCompletedSessions = completedSessions
         }
 
-        // Get today's scheduled workouts
-        const todayDate = new Date()
-        const weekStart = new Date(todayDate)
-        weekStart.setDate(todayDate.getDate() - todayDate.getDay()) // Start of week (Sunday)
-        const weekStartStr = weekStart.toISOString().split('T')[0]
-        
-        const scheduleResponse = await fetch(`/api/schedule?weekStart=${weekStartStr}`)
+        // Get this week's workouts from the calendar endpoint (same source as ScheduleOverview),
+        // then filter to today's date. Fetching only "today" can miss schedules with non-midnight start timestamps.
+        const { weekStart, weekEnd } = getWeekBounds(todayDate)
+        const startStr = formatDateForAPI(weekStart)
+        const endStr = formatDateForAPI(weekEnd)
+        const scheduleResponse = await fetch(`/api/schedule/calendar?start=${startStr}&end=${endStr}`)
         if (scheduleResponse.ok) {
-          const scheduleData = await scheduleResponse.json()
-          const todayDayOfWeek = todayDate.getDay() // 0 = Sunday, 1 = Monday, etc.
-          
-          // Filter workouts for today
-          todaysScheduledWorkouts = scheduleData.schedule?.items?.filter((item: ScheduledWorkout) => 
-            item.day === todayDayOfWeek && item.type === 'workout'
-          ) || []
-          
+          const scheduleData: CalendarResponse = await scheduleResponse.json()
+
+          todaysScheduledWorkouts = (scheduleData.workouts || [])
+            .filter((workout) => !workout.isRestDay && workout.date === today)
+            .map((workout, index) => {
+              const title =
+                workout.workoutTemplateName ||
+                workout.dailyTemplateName ||
+                "Workout"
+
+              return {
+                id: `${workout.date}-${workout.startTime}-${title}-${index}`,
+                title,
+                startTime: workout.startTime,
+                endTime: addDurationToTime(workout.startTime, workout.duration || 0),
+                day: todayDate.getDay(),
+                duration: workout.duration,
+                category: workout.workoutCategory || undefined,
+                difficulty: workout.workoutDifficulty || undefined,
+                type: "workout",
+              } satisfies ScheduledWorkout
+            })
+
           setTodaysWorkouts(todaysScheduledWorkouts)
         }
         
@@ -251,15 +309,19 @@ export function TodaysFocus() {
           <div className={`p-3 sm:p-4 rounded-lg border overflow-hidden ${
             actualStatus === 'completed' 
               ? 'bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 border-green-200' 
-              : 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950'
+              : 'bg-muted/40 border-border'
           }`}>
-            <h3 className="font-semibold text-green-900 dark:text-green-100 truncate">
+            <h3 className={`font-semibold truncate ${
+              actualStatus === 'completed'
+                ? 'text-green-900 dark:text-green-100'
+                : 'text-foreground'
+            }`}>
               {todaysSession.name}
             </h3>
             <p className={`text-sm mt-1 truncate ${
               actualStatus === 'completed' 
                 ? 'text-green-700 dark:text-green-300' 
-                : 'text-blue-700 dark:text-blue-300'
+                : 'text-muted-foreground'
             }`}>
               {totalExercises} exercises • {actualStatus === 'completed' ? 'Completed' : 'In Progress'}
               {actualStatus === 'completed' && <span className="ml-2 text-green-600">✓</span>}
@@ -326,7 +388,7 @@ export function TodaysFocus() {
               className={`p-3 sm:p-4 rounded-lg border overflow-hidden ${
                 completedToday 
                   ? 'bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 border-green-200' 
-                  : 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950'
+                  : 'bg-muted/40 border-border'
               }`}
             >
               <h3 className={`font-semibold truncate ${
@@ -340,7 +402,7 @@ export function TodaysFocus() {
               <p className={`text-sm mt-1 truncate ${
                 completedToday 
                   ? 'text-green-700 dark:text-green-300' 
-                  : 'text-blue-700 dark:text-blue-300'
+                  : 'text-muted-foreground'
               }`}>
                 {workout.startTime} - {workout.endTime}
                 {workout.duration && ` • ${workout.duration} min`}
@@ -351,7 +413,7 @@ export function TodaysFocus() {
                 <p className={`text-xs mt-2 truncate ${
                   completedToday 
                     ? 'text-green-600 dark:text-green-400' 
-                    : 'text-blue-600 dark:text-blue-400'
+                    : 'text-muted-foreground'
                 }`}>
                   {workout.description}
                 </p>
@@ -378,11 +440,11 @@ export function TodaysFocus() {
         <CardDescription>No workouts scheduled for today</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 sm:space-y-4">
-        <div className="p-3 sm:p-4 rounded-lg bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-950 dark:to-slate-950 border overflow-hidden">
+        <div className="p-3 sm:p-4 rounded-lg bg-muted/40 border border-border overflow-hidden">
           <h3 className="font-semibold text-gray-900 dark:text-gray-100">
             Rest Day or Free Day
           </h3>
-          <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             No workouts scheduled for today. Enjoy your rest or add workouts to your schedule.
           </p>
         </div>

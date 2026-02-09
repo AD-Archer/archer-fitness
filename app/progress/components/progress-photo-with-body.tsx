@@ -84,6 +84,15 @@ export function ProgressPhotoWithBody({
   const { toast } = useToast();
 
   const isDev = process.env.NODE_ENV !== "production";
+  const appLocation =
+    typeof window !== "undefined"
+      ? {
+          pathname: window.location.pathname,
+          search: window.location.search,
+          hash: window.location.hash,
+          href: window.location.href,
+        }
+      : null;
 
   // Fetch workout data for the selected date
   useEffect(() => {
@@ -153,6 +162,10 @@ export function ProgressPhotoWithBody({
   const selectedPhoto = selectedPhotoId
     ? photosForDate.find((p) => p.id === selectedPhotoId)
     : null;
+
+  const selectedPhotoIndex = selectedPhotoId
+    ? photosForDate.findIndex((photo) => photo.id === selectedPhotoId)
+    : -1;
 
   // Get workout data for the selected date
   const workoutForDate = useMemo(() => {
@@ -232,6 +245,89 @@ export function ProgressPhotoWithBody({
       photo.bodyParts?.includes(selectedBodyPartFilter),
     );
   }, [photosForDate, selectedBodyPartFilter]);
+
+  const debugPayload = useMemo(() => {
+    const photosDetailed = photosForDate.map((photo, index) => ({
+      index,
+      id: photo.id,
+      uploadDate: photo.uploadDate,
+      createdAt: photo.createdAt,
+      appSource: photo.url || null,
+      appSourceKind: photo.url?.startsWith("/api/") ? "api-route" : "direct",
+      notes: photo.notes ?? null,
+      bodyParts: photo.bodyParts ?? [],
+      bodyPartCount: photo.bodyParts?.length ?? 0,
+      isSelected: photo.id === selectedPhotoId,
+      matchesBodyPartFilter: selectedBodyPartFilter
+        ? Boolean(photo.bodyParts?.includes(selectedBodyPartFilter))
+        : true,
+    }));
+
+    const latestPhotoForDate = photosDetailed
+      .slice()
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt || b.uploadDate).getTime() -
+          new Date(a.createdAt || a.uploadDate).getTime(),
+      )[0];
+
+    return {
+      selectedDate: format(selectedDate, "yyyy-MM-dd"),
+      appLocation,
+      component: "ProgressPhotoWithBody",
+      counts: {
+        photosForDate: photosForDate.length,
+        filteredPhotosForDate: filteredPhotosForDate.length,
+        exercisesForDate: exercisesForDate.length,
+        workoutBodyParts: bodyPartsForDate.length,
+        diagramBodyParts: diagramBodyParts.length,
+      },
+      selectedState: {
+        selectedPhotoId,
+        selectedPhotoIndex,
+        selectedBodyPartFilter,
+        bodyView,
+      },
+      latestPhotoForDate: latestPhotoForDate ?? null,
+      selectedPhoto: selectedPhoto
+        ? {
+            id: selectedPhoto.id,
+            uploadDate: selectedPhoto.uploadDate,
+            createdAt: selectedPhoto.createdAt,
+            appSource: selectedPhoto.url || null,
+            notes: selectedPhoto.notes ?? null,
+            bodyParts: selectedPhoto.bodyParts ?? [],
+          }
+        : null,
+      photosDetailed,
+      workoutData: workoutForDate
+        ? {
+            date: workoutForDate.date,
+            exercisesCount: workoutForDate.exercises.length,
+            exercises: workoutForDate.exercises,
+          }
+        : null,
+      diagram: {
+        highlightedBodyPartSlugs: diagramBodyParts.map((part) => part.slug),
+        highlightedBodyPartNames: diagramBodyParts.map((part) => part.name),
+        workoutBodyPartSlugs: bodyPartsForDate.map((part) => part.slug),
+      },
+    };
+  }, [
+    appLocation,
+    bodyPartsForDate,
+    bodyView,
+    diagramBodyParts,
+    exercisesForDate.length,
+    filteredPhotosForDate.length,
+    photosForDate,
+    selectedBodyPartFilter,
+    selectedDate,
+    selectedPhoto,
+    selectedPhotoId,
+    selectedPhotoIndex,
+    workoutForDate,
+  ]);
 
   // When body part filter changes, auto-select first matching photo
   useEffect(() => {
@@ -754,16 +850,7 @@ export function ProgressPhotoWithBody({
           </CardHeader>
           <CardContent>
             <pre className="text-xs bg-muted p-2 rounded overflow-auto">
-              {JSON.stringify(
-                {
-                  selectedDate: format(selectedDate, "yyyy-MM-dd"),
-                  photosCount: photosForDate.length,
-                  workoutData: workoutForDate,
-                  bodyParts: bodyPartsForDate,
-                },
-                null,
-                2,
-              )}
+              {JSON.stringify(debugPayload, null, 2)}
             </pre>
           </CardContent>
         </Card>

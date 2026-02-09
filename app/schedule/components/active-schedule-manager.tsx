@@ -56,6 +56,7 @@ import {
   WeeklyTemplate,
   DAY_NAMES_SHORT,
   formatDateForAPI,
+  parseDateFromAPI,
 } from "../types";
 
 export function ActiveScheduleManager() {
@@ -103,8 +104,7 @@ export function ActiveScheduleManager() {
   }, [fetchActiveSchedules, fetchWeeklyTemplates]);
 
   const openCreateDialog = () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrow = getTomorrow();
     setFormData({
       weeklyTemplateId: weeklyTemplates[0]?.id || "",
       name: "",
@@ -150,7 +150,7 @@ export function ActiveScheduleManager() {
   };
 
   const formatDate = (dateStr: string): string => {
-    return new Date(dateStr).toLocaleDateString("en-US", {
+    return parseDateFromAPI(dateStr).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",

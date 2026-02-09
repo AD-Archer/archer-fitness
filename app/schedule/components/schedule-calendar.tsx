@@ -31,6 +31,7 @@ import {
   getWeekStartDate,
   getWeekEndDate,
   formatDateForAPI,
+  parseDateFromAPI,
   addWeeks,
 } from "../types";
 import Link from "next/link";
@@ -84,7 +85,7 @@ export function ScheduleCalendar() {
   };
 
   const handleDatePickerConfirm = () => {
-    const selectedDate = new Date(pickedDate);
+    const selectedDate = parseDateFromAPI(pickedDate);
     const weekStart = getWeekStartDate(selectedDate);
     setCurrentWeekStart(weekStart);
     setIsDatePickerOpen(false);
