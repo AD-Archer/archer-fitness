@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
-import { Analytics } from "@vercel/analytics/next";
 import { AuthProvider } from "@/components/auth-provider";
+import { PlausibleAnalytics } from "@/components/plausible-analytics";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 import Script from "next/script";
@@ -13,6 +13,7 @@ import { PrivacyCheck } from "@/components/privacy-check";
 import { Footer } from "@/components/footer";
 
 const baseUrl = process.env.NEXTAUTH_URL || "https://fitness.adarcher.app";
+const plausibleDomain = new URL(baseUrl).hostname;
 
 export const metadata: Metadata = {
   title: "Archer Fitness | AI Workout Dashboard",
@@ -207,6 +208,7 @@ export default function RootLayout({
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
+            <PlausibleAnalytics domain={plausibleDomain} />
             <NotificationInitializer />
             <PrivacyCheck />
             {children}
@@ -216,8 +218,6 @@ export default function RootLayout({
             <Toaster />
           </AuthProvider>
         </ThemeProvider>
-        {process.env.NODE_ENV === "production" && <Analytics />}
-
         {/* Service Worker Registration */}
         <Script id="sw-registration" strategy="afterInteractive">
           {`
