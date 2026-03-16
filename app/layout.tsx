@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { AuthProvider } from "@/components/auth-provider";
@@ -106,6 +106,12 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#000000",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -115,7 +121,8 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* Site-level structured data */}
-        <Script
+        <script
+          key="website-json-ld"
           id="website-json-ld"
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -139,7 +146,8 @@ export default function RootLayout({
             }),
           }}
         />
-        <Script
+        <script
+          key="person-json-ld"
           id="json-ld"
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -172,38 +180,6 @@ export default function RootLayout({
             }),
           }}
         />
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link
-          rel="icon"
-          href="/favicon-16x16.png"
-          sizes="16x16"
-          type="image/png"
-        />
-        <link
-          rel="icon"
-          href="/favicon-32x32.png"
-          sizes="32x32"
-          type="image/png"
-        />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <link
-          rel="icon"
-          href="/android-chrome-192x192.png"
-          sizes="192x192"
-          type="image/png"
-        />
-        <link
-          rel="icon"
-          href="/android-chrome-512x512.png"
-          sizes="512x512"
-          type="image/png"
-        />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <meta name="theme-color" content="#000000" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Archer Fitness" />
       </head>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

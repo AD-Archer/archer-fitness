@@ -16,6 +16,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import type { ValueType } from "recharts/types/component/DefaultTooltipContent";
 import { Dumbbell } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useUserPreferences } from "@/hooks/use-user-preferences";
@@ -273,14 +274,20 @@ export function VolumeAnalytics({
                       color: "hsl(var(--foreground))",
                     }}
                     labelStyle={{ color: "hsl(var(--foreground))" }}
-                    formatter={(value?: number) =>
-                      value !== undefined
-                        ? [
-                            `${value.toLocaleString()} ${getWeightUnitAbbr(units)}`,
-                            "Volume",
-                          ]
-                        : ["", "Volume"]
-                    }
+                    formatter={(value: ValueType | undefined) => {
+                      const normalizedValue = Array.isArray(value)
+                        ? value[0]
+                        : value;
+
+                      if (typeof normalizedValue !== "number") {
+                        return ["", "Volume"] as const;
+                      }
+
+                      return [
+                        `${normalizedValue.toLocaleString()} ${getWeightUnitAbbr(units)}`,
+                        "Volume",
+                      ] as const;
+                    }}
                   />
                   <Bar
                     dataKey="volume"
